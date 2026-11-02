@@ -58,7 +58,7 @@
     {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "pass1-complete", "head": "8645179", "merged_to_discovery": "5c8b237", "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"},
     {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pending"},
     {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pass1-complete", "head": "0b391e5", "merged_to_discovery": "82e4364", "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md"},
-    {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pending"}
+    {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pass1-complete", "head": "c4b61a5", "merged_to_discovery": "3085eb4", "notes": "leads: F1 (high) attrition L27 forward-fill reports final-cohort members that do not exist (cohort_final AND ptsmasterlist empty, remaining=2; NULL excluded forward-filled), F2 (medium) CIDA numerator exceeds denominator in stratified cells (75+ cell: npts=1, dennumpts=0); comparator semantics documented (duplicates only via ROW COUNT — calibration proved load-bearing); open questions incl. undocumented cohorts-together-vs-separate promise; witnesses pkg-f-lead-f1/f2"}
   ],
   "passes": [
     {
@@ -105,6 +105,24 @@
       "result": "pass",
       "detail": "165 passed, 2 xfailed in campaign venv after merge",
       "duration_seconds": 74.3
+    },
+    {
+      "id": "pkg-f-quick-1",
+      "package": "F",
+      "command": "python -m pytest tests/properties/test_pkg_f_* --hypothesis-profile=quick",
+      "revision": "c4b61a5",
+      "result": "pass",
+      "detail": "58 passed, 4 xfailed (F1/F2 lead pins); comparator detection 28/28 across 9 corruption kinds, acceptance 28/28 across 7 equivalence kinds; all 28 optional-feature pairs + dense combos under permutation/partitioning/threads-4 with tie payloads pinned",
+      "duration_seconds": null
+    },
+    {
+      "id": "orchestrator-merge-f-1",
+      "package": "F",
+      "command": "python -m pytest tests/properties --hypothesis-profile=quick",
+      "revision": "3085eb4 (discovery merge)",
+      "result": "pass",
+      "detail": "223 passed, 6 xfailed in campaign venv after merge (xfails: B2, A-2 strict; F1 x2, F2 x2 non-strict)",
+      "duration_seconds": 179.1
     },
     {
       "id": "pkg-a-quick-1",
