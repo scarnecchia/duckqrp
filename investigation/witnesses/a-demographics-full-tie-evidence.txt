@@ -1,0 +1,39 @@
+demographics full-tie experiment — observed behavior of the
+shipped 10_normalize.sql QUALIFY (row_number OVER (PARTITION BY
+patid ORDER BY birth_date, sex, race, hispanic, postalcode)).
+
+D_DIFFER_ZIP separates in an ORDER-BY column: the documented
+total order must and does decide. D_DIFFER_PCD and D_IDENTICAL
+agree on ALL five order columns: the shipped SQL leaves the
+choice undefined; the survivor values below are OBSERVED, not
+contracted.
+
+fixture       order  writer     thr  survivor (patid, birth, sex_raw, sex, race, hisp, zip, zipdt)
+--------------------------------------------------------------------------------------------------------------
+D_DIFFER_ZIP  AB     registered   1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_ZIP  AB     parquet      1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_ZIP  AB     registered   4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_ZIP  AB     parquet      4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_ZIP  BA     registered   1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_ZIP  BA     parquet      1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_ZIP  BA     registered   4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_ZIP  BA     parquet      4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_PCD  AB     registered   1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_PCD  AB     parquet      1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_PCD  AB     registered   4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_PCD  AB     parquet      4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_DIFFER_PCD  BA     registered   1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2012, 2, 29))
+D_DIFFER_PCD  BA     parquet      1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2012, 2, 29))
+D_DIFFER_PCD  BA     registered   4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2012, 2, 29))
+D_DIFFER_PCD  BA     parquet      4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2012, 2, 29))
+D_IDENTICAL   AB     registered   1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_IDENTICAL   AB     parquet      1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_IDENTICAL   AB     registered   4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_IDENTICAL   AB     parquet      4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_IDENTICAL   BA     registered   1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_IDENTICAL   BA     parquet      1  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_IDENTICAL   BA     registered   4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+D_IDENTICAL   BA     parquet      4  (7, datetime.date(1980, 5, 1), 'F', 'F', '4', 'N', '60601', datetime.date(2011, 1, 1))
+
+contract checks (documented, asserted in the test):
+  all cases: one demographics row per patid, patid in demographics_multi, pov1 excludes patid 7 and includes control 8: ALL OK
