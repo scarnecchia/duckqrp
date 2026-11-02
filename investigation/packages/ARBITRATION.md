@@ -18,7 +18,7 @@ A-2-optional-rxamt-binder.md, A-3-demographics-full-tie-comment.md).
 
 | id | classification | shipped fix | fix branch |
 |---|---|---|---|
-| B2 | DEFECT — inherited bug-for-bug from the SAS original; parity kept by operator ruling | none (documented; strict-xfail pin kept) | none (prototype validated then removed per ruling) |
+| B2 | DEFECT — inherited bug-for-bug from the SAS original; parity kept by operator ruling | none (documented; the pass-1 strict-xfail pin was later replaced by positive parity pins — see the witness repair note in the outcome section) | none (prototype validated then removed per ruling) |
 | B1 (question) | RESOLVED by SAS source, closed by operator ruling: segmentation is parity-intended; the double-count is inherited | — | — (DB-1 below, answered) |
 | A-1 | production defect (cohortgrp side); covarnum merge intended | YES | inv/0f462p/fix-a1, red f971710 → green 5bbc4ff |
 | A-2 | production defect (published contract violated) | YES | inv/0f462p/fix-a2, red 1577f83 → green 564eb7a |
@@ -117,6 +117,19 @@ tests/test_pipeline.py 287 passed with only the two pre-existing exempt
 spill failures — manifest passes arb-red-b2-1 / arb-green-b2-1) and
 then removed per this ruling; its results are the record of what the
 join-side fix would look like.
+
+**Witness repair (closing records, 2026-11-02):** the strict-xfail
+witness named above (`test_enrollment_overlapping_raw_spans_known_divergence`)
+no longer exists. It was replaced at B pass 2 (oracle-only, integrated
+at 88edf91; final work on `inv/0f462p/b-final`, head 4891dfa, integrated
+into the closing base 3709ab2) by the positive parity pins
+`test_enrollment_overlapping_raw_spans_parity`
+(tests/properties/test_pkg_b_enrollment.py — explicit B2 witness
+asserts: one dispensing, supply 46 > 30, numdispensing 2 > 1; witness,
+not endorsement) and `test_stockpile_fanout_parity_on_overlapping_spans`
+(tests/properties/test_pkg_b_stockpile.py). The ruling and its
+classification are unchanged; the current pins are recorded in the
+manifest findings[] B2 witness and in B.md's Properties table.
 
 **Evidence the ruling rests on (all paths under the read-only SAS
 reference tree /home/scarndp/dev/Sentinel/qrp/, quoting verified by the
@@ -308,7 +321,10 @@ not an all-green pipeline result.
 
 - `inv/0f462p/arb-findings` (this branch): B2 strict-xfail pin restored
   with the ruling context, A-1/A-2 fix merges, property-suite updates,
-  finding docs, this file, manifest updates.
+  finding docs, this file, manifest updates. (Historical note, closing
+  records 2026-11-02: the strict-xfail pin restored here was later
+  replaced by the positive parity pins at B pass 2 — see the witness
+  repair note in the B2 outcome section.)
 - `inv/0f462p/fix-a1`, `inv/0f462p/fix-a2`: shipped fixes, merged.
 - `inv/0f462p/fix-b2`: REMOVED per the operator's B2 parity ruling —
   no fix branch for B2. The validated prototype's results (red
@@ -645,3 +661,16 @@ scope — then (a) with the oracle work budgeted up front.
   changes verified by diff.
 - Decision briefs DB-2..DB-5 above are verbatim-ready; DB-1 (wave 1)
   stands answered by the operator's B2 ruling.
+
+## Closing records pointer (2026-11-02)
+
+B and D pass-2 final batteries are recorded in the manifest as
+pkg-b-pass2-* and pkg-d-pass2-* (B from B.md pass records 1-6 at
+`inv/0f462p/b-final` head 4891dfa, integrated into base 3709ab2; D from
+D.md run records at cc4945d on `inv/0f462p/d-final-check`, battery
+recorded at e5d4dd4 — that branch is NOT merged at recording time and
+independent review is pending, which the records state explicitly).
+Stale pass-1 strict-xfail B2 witness references in this file and the
+manifest were repaired to the current positive parity pins (see the
+witness repair note in the B2 outcome section). Narrative and the full
+record inventory: [CLOSING-RECORDS.md](CLOSING-RECORDS.md).
