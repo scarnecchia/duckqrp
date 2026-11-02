@@ -40,7 +40,7 @@ from qrp.config import CohortConfig, StockpilingRule, StudyConfig
 from qrp.pipeline import _enr_cfg_id
 
 from ..synth import SyntheticDataset
-from .b_enrollment_model import containing_episode, enrollment_episodes
+from .b_enrollment_model import containing_episodes, enrollment_episodes
 
 # ---------------------------------------------------------------------
 # Small helpers
@@ -162,19 +162,21 @@ def model_stockpiled(dataset: SyntheticDataset,
         cfg = _enr_cfg_id(cohort)
         chain_floor = study.start_date - timedelta(days=cohort.enr_days)
         # ---- pre-shave: fill must START inside an episode; supply is
-        # trimmed at the episode end, amount prorated.
+        # trimmed at the episode end, amount prorated. Parity (operator
+        # ruling on B2): a fill inside SEVERAL output episodes is shaved
+        # once PER containing span — the SQL joins enrollment_spans,
+        # fanning out, and the same-day collapse sums the copies.
         shaved: dict[tuple[str, int, date], list[tuple[float, float]]] = {}
         for claim in _rx_claims(dataset, cohort, claims_from, claims_to):
             if claim.adate + timedelta(days=claim.rxsup - 1) < chain_floor:
                 continue  # the chain only admits fills reaching enr floor
             episodes = enrollment.get((cfg, claim.patid), ())
-            ep = containing_episode(episodes, claim.adate)
-            if ep is None:
-                continue
-            sup = min(claim.rxsup, (ep.enr_end - claim.adate).days + 1)
-            amt = claim.rxamt * sup / claim.rxsup
-            shaved.setdefault(
-                (claim.stockgroup, claim.patid, claim.adate), []).append((sup, amt))
+            for ep in containing_episodes(episodes, claim.adate):
+                sup = min(claim.rxsup, (ep.enr_end - claim.adate).days + 1)
+                amt = claim.rxamt * sup / claim.rxsup
+                shaved.setdefault(
+                    (claim.stockgroup, claim.patid, claim.adate),
+                    []).append((sup, amt))
         # ---- ranges, same-day collapse, sequential recurrence per group
         groups: dict[tuple[str, int], list[tuple[date, float, float, int]]] = {}
         for (sg, patid, adate), pairs in shaved.items():
@@ -202,19 +204,19 @@ def model_stockpiled(dataset: SyntheticDataset,
             recs = _sequential_recurrence(day_rows,
                                           rule.percentdays if rule else None)
             # ---- re-shave: a pushed start must sit inside an episode;
-            # supply running past its end is trimmed there, amount prorated.
+            # supply running past its end is trimmed there, amount
+            # prorated. Parity (B2 ruling): one stockpiled row PER
+            # containing span of the pushed start (SQL re-shave JOIN).
             for rec in recs:
                 episodes = enrollment.get((cfg, patid), ())
-                ep = containing_episode(episodes, rec.start)
-                if ep is None:
-                    continue
-                new_end = min(rec.end, ep.enr_end)
-                new_sup = (new_end - rec.start).days + 1
-                if new_sup <= 0:
-                    continue
-                amt = rec.amt * new_sup / rec.sup
-                rows.append((cohort.cohortgrp, sg, patid, rec.start,
-                             new_end, rec.orig, new_sup, amt, rec.n))
+                for ep in containing_episodes(episodes, rec.start):
+                    new_end = min(rec.end, ep.enr_end)
+                    new_sup = (new_end - rec.start).days + 1
+                    if new_sup <= 0:
+                        continue
+                    amt = rec.amt * new_sup / rec.sup
+                    rows.append((cohort.cohortgrp, sg, patid, rec.start,
+                                 new_end, rec.orig, new_sup, amt, rec.n))
     rows.sort(key=lambda r: (r[0], r[1], r[2], r[3], r[4]))
     return rows
 
@@ -303,7 +305,8 @@ def model_index_dates(dataset: SyntheticDataset, study: StudyConfig,
         cohortgrp, _sg, patid, adate, expiredt, orig, rxsup, rxamt, n = row
         cohort = next(c for c in study.cohorts if c.cohortgrp == cohortgrp)
         cfg = _enr_cfg_id(cohort)
-        if containing_episode(enrollment.get((cfg, patid), ()), adate) is None:
+        # fan-out immune SEMI JOIN: any containing span qualifies
+        if not containing_episodes(enrollment.get((cfg, patid), ()), adate):
             continue  # index detection is enrollment-bounded
         key = (cohortgrp, patid, adate)
         # total-order tie-break: longest supply wins, then the documented
@@ -431,8 +434,9 @@ def model_pov1(dataset: SyntheticDataset, study: StudyConfig,
                     or dm["race"] not in cohort.race
                     or dm["hispanic"] not in cohort.hispanic):
                 continue
-            ep = containing_episode(enrollment.get((cfg, patid), ()), indexdt)
-            if ep is None:
+            ep_hits = containing_episodes(enrollment.get((cfg, patid), ()),
+                                          indexdt)
+            if not ep_hits:
                 continue
             stratum = next(
                 (s for s in cohort.age_strata.strata
@@ -441,13 +445,16 @@ def model_pov1(dataset: SyntheticDataset, study: StudyConfig,
                 None)
             if stratum is None:
                 continue  # the age-stratum join is INNER
-            rows.append((
-                cohort.cohortgrp, patid, indexdt, expiredt, rxsup, rxamt, n,
-                ep.enr_start, ep.enr_end, dm["birth_date"], dm["sex"],
-                dm["race"], dm["hispanic"], dm["zip"], dm["zip_date"],
-                _age_yrdif(dm["birth_date"], indexdt),
-                stratum.label, stratum.ordinal, deaths.get(patid),
-            ))
+            for ep in ep_hits:
+                # POV1 pass 2 joins enrollment_spans on indexdt BETWEEN,
+                # so one candidate becomes one row PER containing span
+                rows.append((
+                    cohort.cohortgrp, patid, indexdt, expiredt, rxsup, rxamt,
+                    n, ep.enr_start, ep.enr_end, dm["birth_date"], dm["sex"],
+                    dm["race"], dm["hispanic"], dm["zip"], dm["zip_date"],
+                    _age_yrdif(dm["birth_date"], indexdt),
+                    stratum.label, stratum.ordinal, deaths.get(patid),
+                ))
     rows.sort(key=lambda r: (r[0], r[1], r[2]))
     return rows
 

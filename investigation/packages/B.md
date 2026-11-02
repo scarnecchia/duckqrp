@@ -1,5 +1,11 @@
 # Package B — Enrollment, stockpiling, index dates, episodes
 
+> **Pass 1 verification correction (follow-up):** see the section
+> "Pass 1 verification correction — exact-duplicate index claims" at the
+> bottom. The parity-fan-out oracles described there supersede the
+> single-containing-span language in the earlier sections below; those
+> sections are kept as written for the pass-1 record.
+
 Branch: `inv/0f462p/b-enrollment-stockpiling` (base a0d0b93). Worker B.
 Private, local-only; nothing pushed.
 
@@ -228,3 +234,101 @@ mode — all eight `_MODES` entries generated + example-pinned.
   shared infra.
 - The 2 "invalid" enrollment examples under discovery are Hypothesis
   duplicate/replayed draws, not filters (no assume() in the suite).
+
+## Pass 1 verification correction — exact-duplicate index claims
+
+**Symptom.** On integrated discovery 98197f2,
+`tests/properties/test_pkg_b_index.py::test_index_matches_prior_claim_scan`
+failed deterministically on a Hypothesis-saved shrunk example (observed
+in a fresh-database full-suite run in the main checkout). Salient shape:
+exact same-day duplicates where amount AND supply tie exactly (a
+sup=1/amt=0.5 triple plus a day-5 single), twin=False — not the
+differing-amount twins the generators build deliberately.
+
+**Reproduction (main-checkout-independent).** My worktree passed: its
+example database held different entries. Reproduced by copying the main
+checkout's saved Hypothesis examples (READ-ONLY source:
+`/home/scarndp/dev/duckqrp/tests/properties/.hypothesis-db/examples/`)
+into my worktree's DB and re-running — replay failed in ~1s. Knob-scan
+probe (wash_per × span length × single span, `probes/b_exact_dup_probe.py`,
+since deleted) did NOT reproduce: the missing dimensions were the
+two-span flag-change shape and two patients. The replayed spec:
+patient 2 = spans `[("overlap",1,"YY"), ("overlap",2,"AY")]` + the
+exact triple on day 0 + one day-5 fill; no death/dup-demographics/leap.
+
+**Root cause.** Failure site was MY oracle:
+`b_enrollment_model.containing_episode` raised
+"day model produced overlapping episodes" while pre-shaving patient 2's
+day-8 (day 5) fill. Two compounding facts:
+
+1. The pass-1 oracle docstring claimed the accumulator "cannot produce
+   overlapping episodes" — WRONG. A coverage-flag rupture emits the
+   accumulated episode even when a later span reaches back inside it
+   (spans [0,10]=YY, [5,8]=NY, [7,9]=YY under MD emit [0,10], [5,8],
+   [7,9]). The SQL's lag-based segmentation emits the same overlapping
+   segments on this input, so both models agree on the segmentation —
+   my belief was the only wrong part.
+2. Given overlapping output episodes, the shipped SQL — per the
+   OPERATOR RULING on B2 (arb branch: "inherited defect, parity kept,
+   no fix branch"; fix-b2 red f4d2e6a / green c87dc0b was merged and
+   then reverted) — fans each claim out PER CONTAINING SPAN at every
+   `enrollment_spans` join: the stockpile pre-shave and re-shave
+   (30_exposure.sql), POV1 pass 2 (45_pov1.sql), the episodes `located`
+   LEFT JOIN (50_episodes.sql). The pass-1 oracle asserted at most ONE
+   containing span and refused to model the arbitrated behavior.
+
+**Classification: (a) oracle bug.** The oracle predated the arbitration
+and encoded the one-span semantics that the operator explicitly ruled
+against. NOT (b): production behaves exactly as the ruling requires and
+the parity case is documented (40_index.sql's dedupe QUALIFY has a
+total-order tie-break and its SEMI JOIN is fan-out immune; the SQL
+comments promise deterministic tie-breaking, which exact-duplicate
+payloads satisfy trivially — any survivor is interchangeable). NOT (c):
+fix-a2 keeps present-column rxamt semantics bit-for-bit (`IS NOT NULL
+AND rxamt > 0`, ms_cidanum.sas:617 rule); amt=0.5 is untouched by it.
+
+**Fix (oracle only; production untouched).**
+- `containing_episode` (single hit + raising guard) replaced by
+  `containing_episodes` (ALL hits), with the parity rationale recorded.
+- Pre-shave and re-shave: one shaved/stockpiled row PER (claim ×
+  containing episode), matching the SQL JOIN fan-out (the same-day
+  collapse then sums the copies; numdispensing counts fan-out copies —
+  the arbitrated inflation).
+- `model_index_dates`: the dedupe SEMI JOIN is any-hit (fan-out immune).
+- `model_pov1`: one pov1 row PER containing span of the index date
+  (pass-2 JOIN).
+- `model_episodes` `located`: chain rows fan out per containing span
+  (each copy carrying that span's start; the span-change break then
+  separates them); LEFT-JOIN NULL span preserved.
+- `model_episode_criteria`: pov1 × episodes is a CARTESIAN over all
+  episodes starting on the index date (both sides fan out); the former
+  "two episodes start on one index date" assertion removed.
+
+**Pins added.**
+- `test_index_matches_prior_claim_scan` @examples: the replayed shape
+  (exact TRIPLE on day 0 + day-5 fill, overlapping flag-rupture spans)
+  and an exact QUADRUPLE variant.
+- `test_stockpile_fanout_parity_on_overlapping_spans`: deterministic
+  fan-out parity pin — flag-rupture overlap, one 30-day fill inside
+  both episodes → two stockpiled rows, numdispensing=2 each, supplies
+  7/27 (trimmed at each span's own end). Fails loudly if the parity
+  policy ever changes.
+
+**Scope note.** The fan-out is assertable by the oracle only where BOTH
+segmentations agree (flag-change ruptures). Pure spatial overlaps
+without a flag change still split the models (lead B1, segmentation
+itself ruled parity-intended; pinned by the strict-xfail enrollment
+test) — the stockpile oracle cannot reproduce fan-out for that input
+family because its enrollment input differs; recorded here as a known
+oracle scope boundary under the ruling.
+
+**Verification after the fix.**
+- Replayed failing example: PASSES (DB-copy replay, quick profile).
+- Full package quick set + harness stages: 15 passed, 1 xfailed, 8.1s
+  (the 1 xfail is the pre-existing segmentation pin).
+- `ruff --select E4,E7,E9,F tests/properties` clean; `mypy src
+  tests/properties` clean (70 files incl. merged packages D and E/F).
+- The exact-duplicate-triple dimension is now pinned deterministically;
+  fresh-database exploration of this family is covered by the
+  generated spec strategy (flag-rupture + overlap shapes + twin knobs
+  draw independently).
