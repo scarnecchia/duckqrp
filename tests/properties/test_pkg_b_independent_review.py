@@ -13,6 +13,11 @@ red.
 Every assertion below must hold under EVERY legal ordering of the tied
 ROWS-window peers in 50_episodes.sql:
 
+(Contrast: the legacy exact episode pins in test_pkg_b_episodes.py
+characterize the observed DuckDB 2.0 threads=1 span-major ordering
+only and are not independent overlap-domain correctness evidence —
+see that module's docstring.)
+
 1. Upstream determinism: enrollment_spans / stockpiled / located
    multisets are identical across the threads x optimizer grid at
    fixed input order.

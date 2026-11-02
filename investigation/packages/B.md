@@ -238,6 +238,19 @@ mode — all eight `_MODES` entries generated + example-pinned.
   shared infra.
 - The 2 "invalid" enrollment examples under discovery are Hypothesis
   duplicate/replayed draws, not filters (no assume() in the suite).
+- Episode-level exact parity (test_pkg_b_episodes.py: the generated
+  row-for-row comparison and the deterministic @examples, including
+  overlap fan-out cases — 3.77% of discovery draws) CHARACTERIZES the
+  observed DuckDB 2.0 threads=1 span-major ordering. It is NOT
+  independent correctness evidence for the overlap domain and can fail
+  on legal engine/plan drift; the pinned configuration is not a
+  determinism guarantee (non-span-major outcomes occur at threads=1
+  under input permutation, run-varying outcomes at threads=4 —
+  investigation/packages/B-independent-review.md; model reproduction of
+  the observed order: oracles/b_episode_model.py:93-103). Durable
+  order-independent overlap evidence: test_pkg_b_independent_review.py
+  (invariants only). Exact supported-domain (nonoverlap) evidence:
+  test_pkg_b_pass2.py.
 
 ## Pass 1 verification correction — exact-duplicate index claims
 
@@ -495,10 +508,26 @@ approved or asserted.
   ambiguity is now characterized by invariants instead.
 - Neither rejection weakens supported semantics: the supported
   (nonoverlap, uniform-flag) domain gained EXACT checks it did not
-  have, and the overlap domain is asserted only through laws that hold
-  under every legal engine ordering. No observed output is copied into
-  an assertion of correctness; the only observed-behavior pins are the
-  arbitrated B2 defect witnesses, labeled as such.
+  have, and the NEW overlap characterization asserts only laws that
+  hold under every legal engine ordering (upstream multiset stability,
+  supply conservation, allowed-set membership —
+  test_pkg_b_independent_review.py). PRE-EXISTING exact episode-level
+  checks remain in place and keep pinning span-major output: the
+  legacy generated property and deterministic @examples in
+  test_pkg_b_episodes.py (including overlap fan-out cases — 3.77% of
+  discovery draws) compare SQL row-for-row against a model that
+  reproduces the observed ordering by construction
+  (oracles/b_episode_model.py:93-103). Those legacy exact checks
+  characterize the observed DuckDB 2.0 threads=1 ordering only, can
+  fail on legal engine drift, and are NOT independent correctness
+  evidence for the overlap domain; the pinned configuration must not
+  be read as a determinism guarantee (the same witness family yields
+  non-span-major decompositions at threads=1 under input permutation
+  and run-varying decompositions at threads=4 —
+  B-independent-review.md). The durable order-independent overlap
+  evidence is test_pkg_b_independent_review.py; the only
+  correctness-endorsed pins elsewhere are the arbitrated B2 defect
+  witnesses, labeled as such.
 
 **Pass records (worktree `inv/0f462p/b-final`, base 132fa87; fresh
 `.venv` via `uv venv --python 3.13` + `-e '.[dev]'`, hypothesis

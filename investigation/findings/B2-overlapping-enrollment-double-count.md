@@ -168,12 +168,25 @@
   investigation/packages/B-independent-review.md; in-suite invariant
   tests: tests/properties/test_pkg_b_independent_review.py). SAS `BY`
   keys do not pin this order; tied differently-flagged raw enrollment
-  rows meet the same non-total ordering in 20_enrollment.sql. The suite
-  therefore asserts only order-agnostic invariants in the overlap
-  domain (upstream multiset stability, episode/located supply
-  conservation, membership in the enumerated allowed decompositions)
-  and asserts exact episode pairing NOWHERE — no observed ordering is
-  endorsed. Any production ordering/rejection policy is a precondition
+  rows meet the same non-total ordering in 20_enrollment.sql. The
+  suite's NEW overlap characterization
+  (tests/properties/test_pkg_b_independent_review.py) asserts only
+  order-agnostic invariants in the overlap domain (upstream multiset
+  stability, episode/located supply conservation, membership in the
+  enumerated allowed decompositions) — order-independent and durable.
+  The LEGACY exact episode checks remain in place and still pin
+  SQL == span-major model row-for-row: the generated property and
+  deterministic @examples in tests/properties/test_pkg_b_episodes.py,
+  including overlap fan-out cases (3.77% of discovery draws). Those
+  legacy checks characterize the observed DuckDB 2.0 threads=1
+  ordering only, can fail on legal engine drift, and are NOT
+  independent correctness evidence for this overlap domain; the
+  pinned configuration is not a determinism guarantee — the same
+  witness family yields non-span-major decompositions at threads=1
+  under input permutation and run-varying decompositions at threads=4
+  (investigation/packages/B-independent-review.md). No observed
+  ordering is endorsed. Any production ordering/rejection policy is a
+  precondition
   for a future fix and remains operator-gated; upstream Sentinel QA
   rejection of overlapping spans remains expected-but-unverified.
 - **related findings:** B1 — RESOLVED: the segmentation is parity-
