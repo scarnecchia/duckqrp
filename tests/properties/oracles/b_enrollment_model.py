@@ -7,14 +7,17 @@ patient with any non-chart span overlapping the study window is dropped
 entirely when `chart_required`; spans whose coverage fails the study's mode
 never qualify at all.
 
-Derivation: an explicit sorted interval scan with a running episode
-accumulator (compare each span against the episode built so far). This is
-NOT the SQL's formulation, which breaks each span against the immediately
-PREVIOUS SPAN via `lag()` and numbers islands with a running sum. The two
-derivations agree whenever every raw span either merges with its ordered
-predecessor or starts beyond every earlier span's end; they diverge on
-overlapping raw spans whose inner boundary ruptures mid-episode (see
-investigation/packages/B.md, lead B1).
+Derivation: an explicit sorted interval scan where each span ruptures
+against the IMMEDIATELY PREVIOUS SPAN's end and flags (the documented SAS
+lag formula, ms_episoderec2.sas:87-93 — parity-intended per the campaign
+arbitration of lead B1), and each episode reports the min start / max end
+of its member spans. This is NOT the SQL's formulation (lag() over a
+window plus a running-sum island numbering), and its output episodes can
+OVERLAP — on overlapping raw spans an inner span's short end ruptures the
+next span even though that span sits inside the episode built so far.
+Downstream stages fan out per containing span (operator ruling on B2),
+which containing_episodes models. Pinned end to end by
+test_enrollment_overlapping_raw_spans_parity.
 
 Pure functions only: dataset rows in, episode intervals out. No SQL, no
 window formulas, no IO.
@@ -119,24 +122,35 @@ def enrollment_episodes(
         for patid, group in per_pat.items():
             group = sorted(group, key=lambda s: (s.enr_start, s.enr_end))
             episodes: list[Episode] = []
-            cur: NormSpan | None = None
-            cur_end: date | None = None
+            members: list[NormSpan] = []
+            prev: NormSpan | None = None
             for s in group:
-                if cur is None or cur_end is None:
-                    cur, cur_end = s, s.enr_end
-                    continue
-                blank_gap = (s.enr_start - cur_end).days - 1
-                if blank_gap > cohort.enrol_gap or _flag_change(
-                        cur, s, cohort.coverage):
-                    episodes.append(Episode(cur.enr_start, cur_end))
-                    cur, cur_end = s, s.enr_end
+                if prev is None:
+                    members = [s]
                 else:
-                    # merge: the episode extends to the farthest end seen
-                    cur_end = max(cur_end, s.enr_end)
-            if cur is not None and cur_end is not None:
-                episodes.append(Episode(cur.enr_start, cur_end))
+                    # Parity: the rupture compares against the immediately
+                    # previous SPAN (lag), not the episode built so far —
+                    # an inner span's short end can therefore rupture the
+                    # next span while it still lies inside the episode,
+                    # and output episodes may overlap.
+                    blank_gap = (s.enr_start - prev.enr_end).days - 1
+                    if blank_gap > cohort.enrol_gap or _flag_change(
+                            prev, s, cohort.coverage):
+                        episodes.append(_episode_of(members))
+                        members = [s]
+                    else:
+                        members.append(s)
+                prev = s
+            if members:
+                episodes.append(_episode_of(members))
             out[(cfg, patid)] = tuple(episodes)
     return out
+
+
+def _episode_of(members: list[NormSpan]) -> Episode:
+    return Episode(
+        min(m.enr_start for m in members),
+        max(m.enr_end for m in members))
 
 
 def containing_episodes(
@@ -144,16 +158,15 @@ def containing_episodes(
 ) -> tuple[Episode, ...]:
     """ALL episodes covering `day`, in episode order.
 
-    Parity note (operator ruling on B2, arb branch): the shipped SQL
-    joins `enrollment_spans` on `adate BETWEEN enr_start AND enr_end`,
-    so a claim dated inside several (overlapping) output episodes fans
-    out per containing span — at the stockpile shaves, at POV1 pass 2,
-    and at the episodes `located` join. The accumulator model emits the
-    same overlapping segments when coverage flags rupture mid-episode
-    (e.g. spans [0,10]=YY, [5,8]=NY, [7,9]=YY under MD emit [0,10],
-    [5,8], [7,9]), so the oracle must fan out identically instead of
-    picking one span. Only 40_index.sql's dedupe SEMI JOIN is fan-out
-    immune (any-hit).
+    Parity notes (campaign arbitration): (1) lead B1 — the segmentation
+    breaks each span against the immediately PREVIOUS SPAN, so output
+    episodes can overlap on overlapping raw spans; (2) operator ruling
+    on B2 — the shipped SQL joins `enrollment_spans` on
+    `adate BETWEEN enr_start AND enr_end`, so a claim dated inside
+    several output episodes fans out per containing span at the
+    stockpile shaves, at POV1 pass 2, and at the episodes `located`
+    join. The oracle models both, instead of picking one span. Only
+    40_index.sql's dedupe SEMI JOIN is fan-out immune (any-hit).
     """
     return tuple(e for e in episodes if e.enr_start <= day <= e.enr_end)
 

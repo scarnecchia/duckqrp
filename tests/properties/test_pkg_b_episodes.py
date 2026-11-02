@@ -66,6 +66,94 @@ def _spec(over: dict) -> dict:
 
 
 @example(_spec({"mode": "chain_f0", "spec": {
+    # regression pin (a085f8b replay, failure 1): lag-break segmentation
+    # emits overlapping episodes; the in-both-episodes fill fans out per
+    # containing span and the span-change break splits the copies into
+    # FOUR chain episodes
+    "enrol_gap": 0, "wash_per": 0, "coverage": "MD",
+    "gap_b_differs": False,
+    "patients": [
+        {"spans": [("overlap", 1, "YY")],
+         "fills": [{"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+                    "twin": False, "twin_sup_delta": 0,
+                    "twin_amt_epsilon": 0.0}],
+         "death_day": None},
+        {"spans": [("overlap", 1, "YY"), ("overlap", 5, "YY"),
+                   ("overlap", 1, "YY")],
+         "fills": [
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 7, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+         ],
+         "death_day": None},
+    ],
+    "dup_demog": False, "leap_birth": None,
+}}))
+@example(_spec({"mode": "chain_f0", "spec": {
+    # regression pin (a085f8b replay, failure 2): the lag-break
+    # segmentation ([span2 ruptured against the inner span's short end])
+    # makes POV1's index-carrying span end earlier than a running-max
+    # merge would, which flows into dataavail_dt
+    "enrol_gap": 0, "wash_per": 0, "coverage": "MD",
+    "gap_b_differs": False,
+    "patients": [
+        {"spans": [("overlap", 1, "YY")],
+         "fills": [{"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+                    "twin": False, "twin_sup_delta": 0,
+                    "twin_amt_epsilon": 0.0}],
+         "death_day": None},
+        {"spans": [("overlap", 1, "YY"), ("overlap", 3, "YY"),
+                   ("adjacent", 1, "YY")],
+         "fills": [
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 4, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+         ],
+         "death_day": None},
+    ],
+    "dup_demog": False, "leap_birth": None,
+}}))
+@example(_spec({"mode": "chain_f0", "spec": {
+    # regression pin (a085f8b replay, failure 3): two output episodes
+    # with different starts both contain the same-day-summed fill; the
+    # fan-out copies tie on (adate, expiredt, rxsup) and the chaining
+    # window's span-major tie order pairs them into TWO episodes of
+    # rxsup 4 (not four of rxsup 2)
+    "enrol_gap": 0, "wash_per": 0, "coverage": "MD",
+    "gap_b_differs": False,
+    "patients": [
+        {"spans": [("overlap", 1, "YY")],
+         "fills": [{"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+                    "twin": False, "twin_sup_delta": 0,
+                    "twin_amt_epsilon": 0.0}],
+         "death_day": None},
+        {"spans": [("overlap", 1, "YY"), ("overlap", 1, "YY"),
+                   ("overlap", 3, "AY")],
+         "fills": [
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 4, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+         ],
+         "death_day": None},
+    ],
+    "dup_demog": False, "leap_birth": None,
+}}))
+@example(_spec({"mode": "chain_f0", "spec": {
     # same-day pair (supplies 16 and 30 sum to 46) chaining a fill 56
     # days later: correct chaining keeps ONE episode; a tie-break defect
     # that dropped the 16-day claim would break the chain at gap 16 > 10

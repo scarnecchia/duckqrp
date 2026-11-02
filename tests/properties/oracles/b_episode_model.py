@@ -80,22 +80,39 @@ def model_episodes(dataset: SyntheticDataset, study: StudyConfig,
                     out.append((cohort.cohortgrp, patid, rn, p[2], end, p[4]))
             continue
         rows: dict[int, list[_ChainRow]] = {}
+        raws: dict[int, list[_ChainRow]] = {}
         for row in stockpiled:
             if row[0] != cohort.cohortgrp:
                 continue
             patid = row[2]
-            # Parity (B2 ruling): `located` LEFT JOINs enrollment_spans
-            # per containing span, so a record inside several episodes
-            # chains once PER span (each copy carrying that span's
-            # start; the span-change break then separates them). A
-            # record outside every span keeps NULL (LEFT JOIN) — not
-            # reachable for reshave-surviving RX rows, kept for parity.
-            hits = containing_episodes(enrollment.get((cfg, patid), ()),
-                                       row[3])
-            for ep in hits or (None,):
-                rows.setdefault(patid, []).append(_ChainRow(
-                    adate=row[3], expiredt=row[4], rxsup=row[6],
-                    claim_enr_start=ep.enr_start if ep else None))
+            raws.setdefault(patid, []).append(_ChainRow(
+                adate=row[3], expiredt=row[4], rxsup=row[6],
+                claim_enr_start=None))
+        for patid, recs in raws.items():
+            # Parity (B1 + B2 rulings): `located` LEFT JOINs
+            # enrollment_spans per containing span, so a record inside
+            # several episodes chains once PER span. The chaining window
+            # orders by (adate, expiredt, rxsup) — NOT a total order
+            # when fan-out copies tie on all three — and DuckDB emits
+            # the ties SPAN-MAJOR (all copies of the first span, then
+            # the next; observed and pinned by the replayed regression
+            # examples). The oracle reproduces that: span-outer,
+            # date-inner insertion, then a STABLE sort on the window key
+            # so tied copies keep span-major order.
+            episodes_for_patid = enrollment.get((cfg, patid), ())
+            recs.sort(key=lambda r: (r.adate, r.expiredt, r.rxsup))
+            for ep in episodes_for_patid:
+                for rec in recs:
+                    if ep.enr_start <= rec.adate <= ep.enr_end:
+                        rows.setdefault(patid, []).append(_ChainRow(
+                            adate=rec.adate, expiredt=rec.expiredt,
+                            rxsup=rec.rxsup, claim_enr_start=ep.enr_start))
+            # a record outside every span chains with a NULL span (LEFT
+            # JOIN) — not reachable for reshave-surviving RX rows, kept
+            # for parity; appended row-major after the span-major block.
+            for rec in recs:
+                if not containing_episodes(episodes_for_patid, rec.adate):
+                    rows.setdefault(patid, []).append(rec)
         for patid, recs in rows.items():
             recs.sort(key=lambda r: (r.adate, r.expiredt, r.rxsup))
             episode_no = 0
