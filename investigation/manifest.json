@@ -379,12 +379,17 @@
     {
       "id": "A-4",
       "doc": "investigation/findings/A-4-optional-diagnosis-columns.md",
-      "title": "Declared-optional diagnosis, procedure and lab columns crash SQL binding; diagnosis subset fixed",
-      "status": "partially-fixed",
+      "title": "Declared-optional diagnosis, procedure and lab columns: complete 18-column fix validated",
+      "status": "fixed",
       "classification": "production defect against the published contract (INPUTS.md:180; same class as A-2; mechanism mirrored exactly)",
       "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
-      "fix_branch": "inv/0f462p/fix2-a4 (red 054faf1 / green 7285bec), merged to arb2",
-      "witness": "tests/test_regression_a4.py; investigation/probes/arb2_a4_probe.py (reproduced at base c3e60db and discovery HEAD 2a71a0c)"
+      "fix_branch": "inv/0f462p/fix3-a4-complete",
+      "red_commit": "8bc521e",
+      "green_commit": "a6a74e4f1116e096572170551aa44085f84d995c",
+      "final_commit": "f1dca19",
+      "supersedes": "inv/0f462p/fix2-a4 (preserved; diagnosis-only)",
+      "validation": "Red 21 failed/3 passed exit 1; final standalone 24 passed exit 0; labs-enabled quick and discovery each 34 passed exit 0; integration regressions 45 passed exit 0; layout consumers 36 passed exit 0. See investigation/packages/A4-validation.md for commands and outputs.",
+      "witness": "tests/test_optional_claim_columns.py; tests/properties/test_pkg_a_optional_columns.py; investigation/packages/A4-validation.md"
     }
   ],
   "open_questions": [

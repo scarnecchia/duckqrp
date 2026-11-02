@@ -166,9 +166,10 @@ witnesses were re-reproduced (F pins xfail at HEAD; A-4's
 BinderException reproduced at base c3e60db AND discovery HEAD 2a71a0c
 via a detached throwaway worktree) before classification. All three
 classified as production defects. F1/F2 and the diagnosis subset of A-4
-have local fixes validated; the expanded A-4 procedure/lab family remains
-outstanding (package A pass-2 evidence, commit f5a2a85). No fixes were
-published.
+have local fixes validated. The expanded A-4 procedure/lab family is now
+also fixed and validated, including a labs-enabled property suite. No fixes
+were published. The parent has not merged arb2. Current complete-family
+commands and AC9 collection evidence: [A4-validation.md](A4-validation.md).
 
 ### Rulings at a glance
 
@@ -176,7 +177,7 @@ published.
 |---|---|---|---|
 | F1 | production defect — SAS parity + the funnel's own declared contract | inv/0f462p/fix2-f1 | 0bcb1a8 / 3001086 |
 | F2 | production defect — undocumented SAS parity divergence in the denominator banding | inv/0f462p/fix2-f2 | 0e7eeee / 37e3d89 (amended) |
-| A-4 | production defect — published contract violated, same class as A-2 | inv/0f462p/fix2-a4 | 054faf1 / 7285bec |
+| A-4 | production defect — complete 18-column family fixed | inv/0f462p/fix3-a4-complete | 8bc521e / a6a74e4; final f1dca19 |
 
 ### F1 — attrition forward-fill (finder claimed HIGH; confirmed)
 
@@ -247,14 +248,13 @@ not mask it). The fix mirrors fix-a2's mechanism exactly: the
 `{opt_dx_codetype}`/`{opt_pdx}`/`{opt_enctype}` — NULL codetype is the
 exposure join's match-any convention (30_exposure.sql:76-82); NULL
 pdx/enctype fall to the view's own COALESCE wildcards ('X'/'XX').
-Consumers verified before the fix. Same-class related lead, NOT
-fixed: `_cdm_procedure_raw` references `px_codetype`/`enctype`
-unconditionally (procedure table optional, its columns declared
-optional in INPUTS.md). Package A's subsequent pass-2 sweep also reports
-13 unresolved lab_result optionals. These remain part of A-4 (not A-5);
-only 3 of the expanded family's 18 columns are fixed here. The complete
-family resolution and independent validation remain outstanding. See
-the A-4 finding's expanded-family section and probe() recommendation.
+Consumers were verified before the initial diagnosis-only fix. Historically,
+package A's pass-2 sweep at `f5a2a85` extended the same defect to two
+procedure and thirteen lab columns. All 18 are now resolved by the clean
+`inv/0f462p/fix3-a4-complete` branch: red `8bc521e`, green `a6a74e4`,
+final typing correction `f1dca19`. The original `fix2-a4` is superseded,
+not deleted. Compatibility changes to existing tests and the campaign
+harness remain arb2-only. See [A4-validation.md](A4-validation.md).
 
 ### Validation on the merged arb2 tree
 

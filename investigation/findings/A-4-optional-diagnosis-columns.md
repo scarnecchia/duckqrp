@@ -1,5 +1,10 @@
-# A-4: declared-optional diagnosis columns crash normalize with a
-# BinderException — FIXED via the existing optional-column mechanism
+# A-4: optional diagnosis, procedure, and lab columns — fixed
+
+Current status: all 18 columns are fixed. The clean minimal deliverable is
+`inv/0f462p/fix3-a4-complete` at `f1dca19`. See the complete-family
+follow-through and `../packages/A4-validation.md` for current evidence.
+
+## Initial diagnosis-only investigation (historical; superseded)
 
 - **id:** A-4
 - **proposed issue title:** An extract whose diagnosis table carries only
@@ -121,11 +126,13 @@ The clean standalone branch `inv/0f462p/fix3-a4-complete` supersedes
   correction. `ruff check tests/test_optional_claim_columns.py`: pass.
   Pipeline Ruff reports six existing import/broad-exception findings.
 
-Remaining campaign work: transfer package A's optional-column property
-and its `a_scdm_layouts` dependency from `f5a2a85`, remove obsolete
-expected-crash handling, and run broader integration validation. The
-standalone suite queries `cdm_lab` directly; it does not enable the labs
-stage. No claim of that additional stage validation is made here.
+Completed integration: the optional-column property and layout support from
+`f5a2a85` now require success without expected-crash handling. Quick and
+discovery each pass 34 tests. A nonempty eligible synthetic cohort exercises
+`lab_results` and `lab_summary`, including explicit-NULL equivalence and
+present values. The standalone suite remains normalization-focused.
+Exact commands, collection names, and output references are recorded in
+`investigation/packages/A4-validation.md`.
 
 ## Expanded family reported after the diagnosis fix (historical)
 
@@ -138,7 +145,8 @@ are bound even in RX-only studies; labs expose the failure when their
 stage runs. These additional reproductions were reported by package A,
 not independently rerun in this arbitration worktree.
 
-**Status: partially fixed.** The remaining 15 columns need the same
+**Historical status at package A commit f5a2a85: partially fixed (superseded).**
+At that point the remaining 15 columns needed the same
 optional-column resolution review and standalone red/green coverage;
 no claim is made that distinct mechanics justify leaving them out.
 The requested complete-family follow-through is outstanding. Keep them
