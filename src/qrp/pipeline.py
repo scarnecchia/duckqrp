@@ -1189,7 +1189,7 @@ def run(
         ("read_encounter", ("ddate", "discharge_status")),
     ):
         optional_cols.update(_optional(key, *cols))
-    for table, cols in (
+    for table, claim_cols in (
         ("diagnosis", ("dx_codetype", "pdx", "enctype")),
         ("procedure", ("px_codetype", "enctype")),
         ("lab_result", (
@@ -1201,7 +1201,7 @@ def run(
     ):
         optional_cols.update({
             f"{table}_{name}": value
-            for name, value in _optional(f"read_{table}", *cols).items()
+            for name, value in _optional(f"read_{table}", *claim_cols).items()
         })
     chart_col = optional_cols["chart"]
 
