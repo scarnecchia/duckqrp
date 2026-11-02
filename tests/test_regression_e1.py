@@ -42,7 +42,7 @@ def test_tui_run_closes_the_run_engine():
     """After a TUI run reaches its terminal state, its engine must be
     released: `handle.close()` is the caller's job (runner.py) and the
     TUI is the caller."""
-    textual = pytest.importorskip("textual")
+    pytest.importorskip("textual")
 
     from qrp.tui import QRPApp
 

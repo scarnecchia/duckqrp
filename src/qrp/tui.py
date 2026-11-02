@@ -437,8 +437,19 @@ class QRPApp(App):
         interface responsive while DuckDB is busy.
         """
         assert self.handle is not None
-        for ev in self.handle.events():
-            self.call_from_thread(self._apply, ev)
+        try:
+            for ev in self.handle.events():
+                self.call_from_thread(self._apply, ev)
+        finally:
+            # The run is over — or the pump is dying — so release its
+            # engine. close() is caller-owned (runner.py) and this app is
+            # the caller; without it every completed run leaves a live
+            # DuckDB connection behind and a session that runs several
+            # studies accumulates them. `running` flips first so a Cancel
+            # arriving right at completion lands on an open, idle engine
+            # (a documented no-op) instead of a closed one.
+            self.call_from_thread(setattr, self, "running", False)
+            self.handle.close()
         if self._runlog is not None:
             if self.handle.engine is not None:
                 self._runlog.stage_summary(self.handle.engine)
@@ -447,7 +458,6 @@ class QRPApp(App):
                 self.log_line,
                 f"[dim]log written: {self._runlog.log_path}[/dim]",
             )
-        self.call_from_thread(setattr, self, "running", False)
 
     def _apply(self, ev) -> None:
         bar = self.query_one("#bar", ProgressBar)
