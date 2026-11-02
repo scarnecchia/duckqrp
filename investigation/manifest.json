@@ -81,16 +81,16 @@
       "status": "pass1-complete",
       "head": "028ebfb",
       "merged_to_discovery": "a085f8b",
-      "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended)"
+      "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended). PASS 2 (oracle-only, integrated at 88edf91): enrollment segmentation rewritten to the arbitrated SAS lag break and the chaining window's span-major tie order modeled as OBSERVED behavior; strict B2 xfail replaced by positive parity pins; full quick set 16 passed twice (B.md Pass 2 verification correction). Pass-2 coverage record + unresolved chaining witness (d63a8fb, inv/0f462p/b-tie-review) and the independent episode tie review (0f76539: B-independent-review.md + tests/properties/test_pkg_b_independent_review.py) are NOT merged, deliberately: real overlap-tie nondeterminism (lead L-B3 below) and oracle overspecification of the observed span-major tie order. B2 ruling unchanged: doc-only, SAS inherited, QA-expected"
     },
     {
       "id": "C",
       "branch": "inv/0f462p/c-dose-inclusion-followup",
       "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model",
-      "status": "pass1-complete",
+      "status": "pass2-complete",
       "head": "8645179",
       "merged_to_discovery": "5c8b237",
-      "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"
+      "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md. PASS 2 recorded in C.md at 3dfe463 + package-C pass-2 changes (integrated as d3b6043): discovery 35 passed 1 xfailed (C-1 parity characterization), deep pure 2 passed at 2000 examples/property, quick 42 passed 1 xfailed incl. harness stages plus identical replay; C-1 reclassified as a SAS/Python ordering parity gap (DB-5), not comment-only; no new lead; RX exact-fit and event-attribution coverage remain sparse (recorded gaps)"
     },
     {
       "id": "D",
@@ -99,25 +99,25 @@
       "status": "pass1-complete",
       "head": "cbd1038",
       "merged_to_discovery": "0006b8c",
-      "notes": "no production defect in oracle scope (denominator day-enumeration oracle matches exactly; together==separate on 7 dimensions); D1 (moderate, SAS-cited parity gap): Python lacks SAS's incl-window restriction and dose restriction in CIDA denominators (ms_cidadenom.sas L145-165, L380-430, L307-322) \u2014 decision brief needed; D2: 92_cidadenom.sql header comment demonstrably wrong (says exclusion shave NOT included; it is, and SAS confirms) \u2014 doc fix; D3: documented window-clip deviation, no action; D4: build_study care-setting wildcard trap confirmed (cross-package, infra debt for pass 2)"
+      "notes": "no production defect in oracle scope (denominator day-enumeration oracle matches exactly; together==separate on 7 dimensions); D1 (moderate, SAS-cited parity gap): Python lacks SAS's incl-window restriction and dose restriction in CIDA denominators (ms_cidadenom.sas L145-165, L380-430, L307-322) \u2014 decision brief needed; D2: 92_cidadenom.sql header comment demonstrably wrong (says exclusion shave NOT included; it is, and SAS confirms) \u2014 doc fix; D3: documented window-clip deviation, no action; D4: build_study care-setting wildcard trap confirmed (cross-package, infra debt for pass 2). PASS 2 (status as of this reconciliation): underway by a separate worker on inv/0f462p/d-final-check (22fad19/917e75d/af8021a, NOT merged); this integrated branch still carries one preserved executable-red test, tests/properties/test_pkg_d_optional_stages.py::test_optional_stage_matches_reference[attrition_person_time] (optional-stage oracle expects pre-F1 semantics, 2 person-time members on an empty counted step; production/F1 contract counts 0) — verified red at d5fb14b by the final-records reconciliation run; the full integrated suite is therefore not green until the D worker reconciles that oracle"
     },
     {
       "id": "E",
       "branch": "inv/0f462p/e-runtime-lifecycle",
       "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states",
-      "status": "pass1-complete",
+      "status": "pass2-complete",
       "head": "0b391e5",
       "merged_to_discovery": "82e4364",
-      "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md"
+      "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md. PASS 2 recorded in E.md at 6bc4171 + tests/properties/test_pkg_e_pass2.py (integrated as 96204bd), all commands exit 0: discovery 31 passed, deep -k 'bounded_handle or logging_fault' 2 passed 8 deselected, quick 31 passed twice, existing suites (rewrites+determinism+regression_e1+ui, 2 deliberate deselects) 52 passed; covers real Textual worker terminals with engine-close proofs, CLI failure-then-success with exact close counts, generated RunHandle histories (deep exhausts 648 tuples), kth-log-call multi_sink delivery, and four real partial-write variants"
     },
     {
       "id": "F",
       "branch": "inv/0f462p/f-comparators-metamorphic",
       "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation",
-      "status": "pass1-complete",
+      "status": "pass2-complete",
       "head": "c4b61a5",
       "merged_to_discovery": "3085eb4",
-      "notes": "leads: F1 (high) attrition L27 forward-fill reports final-cohort members that do not exist (cohort_final AND ptsmasterlist empty, remaining=2; NULL excluded forward-filled), F2 (medium) CIDA numerator exceeds denominator in stratified cells (75+ cell: npts=1, dennumpts=0); comparator semantics documented (duplicates only via ROW COUNT \u2014 calibration proved load-bearing); open questions incl. undocumented cohorts-together-vs-separate promise; witnesses pkg-f-lead-f1/f2"
+      "notes": "leads: F1 (high) attrition L27 forward-fill reports final-cohort members that do not exist (cohort_final AND ptsmasterlist empty, remaining=2; NULL excluded forward-filled), F2 (medium) CIDA numerator exceeds denominator in stratified cells (75+ cell: npts=1, dennumpts=0); comparator semantics documented (duplicates only via ROW COUNT \u2014 calibration proved load-bearing); open questions incl. undocumented cohorts-together-vs-separate promise; witnesses pkg-f-lead-f1/f2. PASS 2 recorded in F.md at 6aaba22 + owned F changes (integrated as 6bc4171): threads=4 baseline std_age drift (1.18e-15 relative) classified a test-oracle false positive under DEPLOYMENT.md:220-221 (<4e-15 allowed); aggregate oracle tolerance rel_tol=4e-15 restricted to baseline mean_/std_ kind='stat' aggregates only, everything else exact; discovery 74 passed 4 xfailed, deep 48 passed, quick 78 passed 4 xfailed twice after four explicit ulp threshold pins, existing suites 15 passed; F1/F2 later fixed via arb2 (see findings[]); raw pass-2 logs are /tmp-resident (f-pass2-*.log), not committed"
     }
   ],
   "passes": [
@@ -381,6 +381,105 @@
       "result": "pass",
       "detail": "109 passed (A quick set incl. documented-rejection case, un-xfailed A-2 witness, both regression tests) + 8 passed (B, 0 xfailed, SAS-parity witness) + 38 passed (C + harness)",
       "duration_seconds": null
+    },
+    {
+      "id": "pkg-c-pass2-discovery-1",
+      "package": "C",
+      "command": "python -m pytest tests/properties/test_pkg_c_*.py --hypothesis-profile=discovery --hypothesis-show-statistics",
+      "revision": "3dfe463 + package-C pass-2 changes (integrated as d3b6043)",
+      "result": "pass",
+      "detail": "35 passed, 1 xfailed (C-1 parity characterization); dose/inclusion/follow-up 50 examples each, pure 500 each; full record in investigation/packages/C.md Pass 2",
+      "duration_seconds": 51.6
+    },
+    {
+      "id": "pkg-c-pass2-deep-1",
+      "package": "C",
+      "command": "python -m pytest tests/properties/test_pkg_c_pure.py --hypothesis-profile=deep --hypothesis-show-statistics",
+      "revision": "3dfe463 + package-C pass-2 changes (integrated as d3b6043)",
+      "result": "pass",
+      "detail": "2 passed; 2000 passing examples per property, 0 failing/invalid",
+      "duration_seconds": 1.0
+    },
+    {
+      "id": "pkg-c-pass2-quick-1",
+      "package": "C",
+      "command": "python -m pytest tests/properties/test_pkg_c_*.py tests/properties/test_harness_stages.py --hypothesis-profile=quick",
+      "revision": "3dfe463 + package-C pass-2 changes (integrated as d3b6043)",
+      "result": "pass",
+      "detail": "42 passed, 1 xfailed; independent replay of the same command identical (42 passed, 1 xfailed)",
+      "duration_seconds": 25.8
+    },
+    {
+      "id": "pkg-e-pass2-discovery-1",
+      "package": "E",
+      "command": "python -m pytest tests/properties/test_pkg_e_*.py --hypothesis-profile=discovery --hypothesis-show-statistics -q",
+      "revision": "6bc4171 + tests/properties/test_pkg_e_pass2.py (integrated as 96204bd)",
+      "result": "pass",
+      "detail": "31 passed, exit 0; full record with per-command exit codes in investigation/packages/E.md Pass2",
+      "duration_seconds": 39
+    },
+    {
+      "id": "pkg-e-pass2-deep-1",
+      "package": "E",
+      "command": "python -m pytest tests/properties/test_pkg_e_pass2.py -k 'bounded_handle or logging_fault' --hypothesis-profile=deep --hypothesis-show-statistics -q",
+      "revision": "6bc4171 + tests/properties/test_pkg_e_pass2.py (integrated as 96204bd)",
+      "result": "pass",
+      "detail": "2 passed, 8 deselected, exit 0; deep exhausts the 648-tuple RunHandle history space",
+      "duration_seconds": 2
+    },
+    {
+      "id": "pkg-e-pass2-quick-1",
+      "package": "E",
+      "command": "python -m pytest tests/properties/test_pkg_e_*.py --hypothesis-profile=quick --hypothesis-show-statistics -q",
+      "revision": "6bc4171 + tests/properties/test_pkg_e_pass2.py (integrated as 96204bd)",
+      "result": "pass",
+      "detail": "31 passed, exit 0 (first run)",
+      "duration_seconds": 17
+    },
+    {
+      "id": "pkg-e-pass2-quick-2",
+      "package": "E",
+      "command": "python -m pytest tests/properties/test_pkg_e_*.py --hypothesis-profile=quick --hypothesis-show-statistics -q",
+      "revision": "6bc4171 + tests/properties/test_pkg_e_pass2.py (integrated as 96204bd)",
+      "result": "pass",
+      "detail": "31 passed, exit 0 (repeat run)",
+      "duration_seconds": 17
+    },
+    {
+      "id": "pkg-e-pass2-existing-1",
+      "package": "E",
+      "command": "python -m pytest tests/test_rewrites.py tests/test_determinism.py tests/test_regression_e1.py tests/test_ui.py -k 'not cancel_stops_mid_query and not spilling_is_detected_and_reported' -q",
+      "revision": "6bc4171 + tests/properties/test_pkg_e_pass2.py (integrated as 96204bd)",
+      "result": "pass",
+      "detail": "52 passed, 2 deselected (the two deliberate deselects), exit 0; ruff clean",
+      "duration_seconds": 44
+    },
+    {
+      "id": "pkg-f-pass2-discovery-1",
+      "package": "F",
+      "command": "python -m pytest tests/properties/test_pkg_f_*.py --hypothesis-profile=discovery --hypothesis-show-statistics -q",
+      "revision": "6aaba22 + owned F changes (integrated as 6bc4171)",
+      "result": "pass",
+      "detail": "74 passed, 4 xfailed (F1/F2 lead pins, later fixed via arb2); aggregate boundary stats 55.2% inside / 44.8% outside; full record in investigation/packages/F.md Pass 2; raw log /tmp-resident",
+      "duration_seconds": 146.8
+    },
+    {
+      "id": "pkg-f-pass2-deep-1",
+      "package": "F",
+      "command": "python -m pytest tests/properties/test_pkg_f_comparators.py tests/properties/test_pkg_f_compare_runs.py tests/properties/test_pkg_f_aggregate_comparison.py --hypothesis-profile=deep --hypothesis-show-statistics -q",
+      "revision": "6aaba22 + owned F changes (integrated as 6bc4171)",
+      "result": "pass",
+      "detail": "48 passed; aggregate boundary 2000 passing, 50.75% inside / 49.25% outside",
+      "duration_seconds": 0.6
+    },
+    {
+      "id": "pkg-f-pass2-quick-1",
+      "package": "F",
+      "command": "python -m pytest tests/properties/test_pkg_f_*.py --hypothesis-profile=quick -q",
+      "revision": "6aaba22 + owned F changes, after the four explicit ulp threshold pins (integrated as 6bc4171)",
+      "result": "pass",
+      "detail": "78 passed, 4 xfailed, run twice (41.63s/42.16s); existing rewrites+determinism 15 passed; ruff clean; mypy clean (73 files)",
+      "duration_seconds": 41.9
     }
   ],
   "baseline": {
@@ -617,14 +716,24 @@
     "tools/gen_synthetic.py writes rxamt as an integer (BIGINT), tripping the pipeline's fractional-amount truncation warning; calibrating oracles against it inherit that semantics",
     "claims_from scan bound does not apply to enrollment spans (contract intent unconfirmed; low impact)",
     "encounter tables are never identified by column fingerprint (fingerprint=False); name/table_map only",
-    "denominators table grain is cohort x stratum level, not cohort"
+    "denominators table grain is cohort x stratum level, not cohort",
+    "D optional-stage attrition_person_time oracle still expects pre-F1 semantics (2 person-time members on an empty counted step) while production and the F1 fix count 0: tests/properties/test_pkg_d_optional_stages.py::test_optional_stage_matches_reference[attrition_person_time] is executable-red on the integrated branch (verified at d5fb14b); reconciliation is owned by the separate D pass-2 worker, not altered here"
   ],
   "follow_up_leads": [
     "near-tie families for episode/stockpiling properties (amounts differing by epsilon, supplies by 1 day)",
     "run_envelope with NULL encounter ddate and discharge-status deaths colliding with death-table rows",
     "utilization dedup when encounter rows share encounterid",
-    "combo covariates referencing later covarnums vs documented one-at-a-time evaluation"
+    "combo covariates referencing later covarnums vs documented one-at-a-time evaluation",
+    "B lead L-B3 (production robustness, NOT authorized to fix): the 50_episodes.sql chaining window ORDER BY s.adate, s.expiredt, s.rxsup is not a total order when the located fan-out emits copies tied on all three columns, so episode pairing/count depends on DuckDB join emission order (span-major observed on threads=1); a tie-break extension is SAS-parity-sensitive and flagged for arbitration, not applied (B.md Pass 2 verification correction; unmerged d63a8fb preserves the witness)"
   ],
+  "reconciliation": {
+    "report": "investigation/packages/FINAL-RECORDS.md",
+    "date": "2026-11-02",
+    "reconciled_at": "inv/0f462p/final-records (branch base d5fb14b) plus this manifest update",
+    "scope": "final records reconciliation: package statuses refreshed against package reports and git ancestry (A/C/E/F pass2-complete; B pass1-complete with integrated pass-2 oracle verification and deliberately unmerged pass-2 record + independent review; D pass1-complete, pass-2 underway by its own worker); pass-2 run records appended for C/E/F; L-B3 lead and the preserved D attrition oracle divergence recorded; all pre-existing entries preserved verbatim",
+    "ac8_state": "machinery complete and manifest validator green; 6/6 calibration records carry executed red-then-green replay evidence (a-1/b-1/c-1/e-1/f-1 recorded in investigation/README.md from the 2026-11-02 campaign-venv run; d-1-pass2-20261102 recorded in its calibration record from replay_mutation.py offline run); machine-verdict artifacts for the mutation replay are not committed; D second pass incomplete; B pass-2 record unmerged by operator decision",
+    "ac9_state": "complete: 7 replay groups over 8 fixed findings, 16 executed per-revision pytest runs, committed logs + verdicts.json, always-on validator green (42 checks)"
+  },
   "open_decisions": [
     {
       "id": "E-4",
