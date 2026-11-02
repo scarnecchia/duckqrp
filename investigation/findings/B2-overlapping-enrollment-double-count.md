@@ -109,7 +109,7 @@
   break — same input family, not separately witnessed), src/qrp/sql/
   40_index.sql (SEMI JOIN, fan-out immune; consumes the inflated
   payload).
-- **minimal fix (NOT APPLIED — parity decision):** shave each claim
+- **minimal fix/commit:** NOT APPLIED (operator ruling: parity kept) — the validated prototype (red f4d2e6a / green c87dc0b, branch since deleted, evidence in manifest passes arb-red-b2-1/arb-green-b2-1): shave each claim
   against exactly ONE containing span: replace both enrollment-spans
   joins in 30_exposure.sql with a lateral one-row pick, e.g. `JOIN
   LATERAL (SELECT e.enr_end FROM enrollment_spans e WHERE
@@ -127,7 +127,7 @@
   pre-existing exempt spill-attribution OOM failures) and then REMOVED
   when the operator ruled for parity — results preserved in manifest
   passes arb-red-b2-1 / arb-green-b2-1.
-- **red/green commands+results (probe/xfail evidence, per the ruling —
+- **red/green commands+results:** probe/xfail evidence per the ruling —
   no fix branch):**
   - red (defect present):
     `python investigation/probes/b_overlap_probe.py` → enrollment_spans

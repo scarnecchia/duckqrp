@@ -55,7 +55,10 @@ CALIBRATIONS_DIR = REPO_ROOT / "investigation" / "calibrations"
 
 MANIFEST_SCHEMA = "qrp-investigation-manifest/1"
 PACKAGE_IDS = ("infra", "A", "B", "C", "D", "E", "F")
-PASS_RESULTS = frozenset({"pass", "confirmed", "red then green"})
+# 'red'/'green' record single-leg prototype evidence (e.g. a validated fix
+# prototype that was later removed by an operator ruling); 'red then green'
+# records a complete committed fix branch.
+PASS_RESULTS = frozenset({"pass", "confirmed", "red then green", "red", "green"})
 IN_FLIGHT_STATUSES = frozenset({"pending", "in_progress"})
 REQUIRED_TOP_LEVEL = (
     "schema", "campaign", "environment", "profiles", "packages",
