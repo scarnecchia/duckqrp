@@ -1,4 +1,4 @@
-"""Package B: episode selection matches an independent chaining model.
+"""Package B: episode selection parity characterization.
 
 Contract under test (50_episodes.sql, docs/SAS_PARITY.md "Episode gap
 type P"): for non-point cohorts, stockpiled records chain into episodes
@@ -15,6 +15,29 @@ all five hold.
 Oracle: tests/properties/oracles/b_episode_model.py — sequential scans.
 Selected claim payloads, eligibility flags and multiplicity are
 compared, not just counts.
+
+Characterization scope (M1 doc-accuracy repair, independent review).
+This property is EXACT SQL == model, and the model reproduces the
+OBSERVED span-major emission of tied fan-out copies by construction
+(see oracles/b_episode_model.py:93-103 — span-outer, date-inner
+insertion, then a stable sort on the window key). Every exact pin here
+— the deterministic @example blocks below (including the overlap
+fan-out family) and the generated row-for-row comparison — therefore
+characterizes the OBSERVED ordering of DuckDB 2.0 under the pinned
+configuration (threads=1, default optimizer, fixed input order) only.
+These pins can fail on legal engine or plan drift; such a failure
+flags drift for investigation and is NOT, by itself, a demonstrated
+contract violation. They are NOT independent correctness evidence for
+the overlap domain: no contract-guaranteed peer order exists there
+(B2 ruling). Do not read the pinned configuration as a determinism
+guarantee — the same witness family already yields non-span-major
+decompositions at threads=1 under input permutation and run-varying
+decompositions at threads=4 (investigation/packages/B-independent-review.md).
+The order-independent overlap evidence — upstream multiset stability,
+supply conservation, allowed-set membership under EVERY legal engine
+ordering — lives in test_pkg_b_independent_review.py; exact
+supported-domain (nonoverlap, uniform-flag) checks live in
+test_pkg_b_pass2.py.
 """
 
 
@@ -30,6 +53,7 @@ from .oracles.b_episode_model import (
     model_episode_criteria,
     model_episodes,
 )
+from .oracles.b_enrollment_model import enrollment_episodes
 from .oracles.b_pkg_fixtures import (
     assert_rows_match,
     expand_spec,
@@ -276,6 +300,15 @@ def test_episode_selection_matches_model(case: dict) -> None:
         event("death interaction present")
     fills = [f for p in spec["patients"] for f in p["fills"] if f["twin"]]
     event(f"same-day tie pairs={len(fills)}")
+    # Coverage statistic: does this case place a dispensing date inside
+    # >= 2 modeled episodes — the B2 fan-out family the overlap-domain
+    # invariants in test_pkg_b_independent_review.py characterize?
+    # Statistic only; no policy implied.
+    modeled = enrollment_episodes(dataset, study)
+    if any(sum(ep.enr_start <= d.rxdate <= ep.enr_end for ep in eps) >= 2
+           for eps in modeled.values()
+           for d in dataset.dispensings):
+        event("dispensing inside multiple episodes (B2 fan-out family)")
 
     with StageHarness(study) as harness:
         harness.attach_dataset(dataset)

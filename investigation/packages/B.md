@@ -84,7 +84,7 @@ examples (overlap pushes, exact duplicates).
 | `test_episode_selection_matches_model` | all supported modes (chain F/P/NULL gap, exp_ext_per, max_epis_dur, flag criteria, point) ; payloads, flags, multiplicity | chain scan + criteria model (`model_episodes`, `model_episode_criteria`) |
 | `test_index_washout_boundary_is_exact` | blank gap == wash_per keeps, one less blocks | hand calculation + model |
 | `test_enrollment_chart_required_drops_nonchart_patients` | chart restriction drops the whole patient | hand + model |
-| `test_enrollment_overlapping_raw_spans_known_divergence` | xfail(strict) documents lead B1/B2 below | accumulator vs shipped SQL |
+| `test_enrollment_overlapping_raw_spans_parity` | positive pin of the B1/B2 overlap fan-out (replaced the pass-1 strict-xfail `test_enrollment_overlapping_raw_spans_known_divergence` at 88edf91; supports the nonoverlap exact domain + overlap invariants) | lag model vs shipped SQL |
 
 ## Interaction cases (deterministic @example)
 
@@ -180,9 +180,13 @@ of src/ changes:
   eligibility; requires overlapping raw enrollment rows, which messy
   SCDM extracts do contain — the same motivation as the demographics
   dedup). Not a crash; correctness only.
-- Witness in suite: strict-xfail
-  `test_enrollment_overlapping_raw_spans_known_divergence` (fails the
-  day the SQL is fixed, prompting removal of the marker).
+- Witness in suite (pass-1 record; superseded at 88edf91): the
+  strict-xfail `test_enrollment_overlapping_raw_spans_known_divergence`
+  became the positive parity pin
+  `test_enrollment_overlapping_raw_spans_parity` plus the stockpile
+  fan-out pin and explicit one-claim/46-day/numdispensing-2 witness
+  asserts — see the pass 2 section below and
+  investigation/findings/B2-overlapping-enrollment-double-count.md.
 
 ### B1 (lead, AMBIGUITY): overlapping enrollment episodes may be SAS parity
 - docs/SAS_PARITY.md documents the break formula as SAS's
@@ -234,6 +238,19 @@ mode — all eight `_MODES` entries generated + example-pinned.
   shared infra.
 - The 2 "invalid" enrollment examples under discovery are Hypothesis
   duplicate/replayed draws, not filters (no assume() in the suite).
+- Episode-level exact parity (test_pkg_b_episodes.py: the generated
+  row-for-row comparison and the deterministic @examples, including
+  overlap fan-out cases — 3.77% of discovery draws) CHARACTERIZES the
+  observed DuckDB 2.0 threads=1 span-major ordering. It is NOT
+  independent correctness evidence for the overlap domain and can fail
+  on legal engine/plan drift; the pinned configuration is not a
+  determinism guarantee (non-span-major outcomes occur at threads=1
+  under input permutation, run-varying outcomes at threads=4 —
+  investigation/packages/B-independent-review.md; model reproduction of
+  the observed order: oracles/b_episode_model.py:93-103). Durable
+  order-independent overlap evidence: test_pkg_b_independent_review.py
+  (invariants only). Exact supported-domain (nonoverlap) evidence:
+  test_pkg_b_pass2.py.
 
 ## Pass 1 verification correction — exact-duplicate index claims
 
@@ -318,7 +335,9 @@ AND rxamt > 0`, ms_cidanum.sas:617 rule); amt=0.5 is untouched by it.
 segmentations agree (flag-change ruptures). Pure spatial overlaps
 without a flag change still split the models (lead B1, segmentation
 itself ruled parity-intended; pinned by the strict-xfail enrollment
-test) — the stockpile oracle cannot reproduce fan-out for that input
+test, replaced at 88edf91 by the positive parity pin
+`test_enrollment_overlapping_raw_spans_parity` — see pass 2) — the
+stockpile oracle cannot reproduce fan-out for that input
 family because its enrollment input differs; recorded here as a known
 oracle scope boundary under the ruling.
 
@@ -434,3 +453,121 @@ flip it, and this suite would flag that immediately.
 span-major chaining modeled, overlapping-span fan-out is assertable for
 ALL shapes; the pass-1 boundary ("pure spatial overlaps cannot be
 asserted") is void.
+
+## Pass 3 — FINAL-AUDIT §4 resolution: exact nonoverlap domain, order-agnostic overlap domain
+
+**Mandate.** Independent acceptance audit
+(investigation/packages/FINAL-AUDIT.md, AUDIT-1/2/3 + §4): replace the
+flaky exact pairing pin proposed by `d63a8fb` and the standing red of
+`0f76539` with (a) exact assertions on the supported nonoverlap domain,
+(b) order-agnostic invariant assertions on the overlap fan-out, (c) the
+B2 inflation kept as documented witness; fix the stale strict-xfail
+names; produce the missing two-pass B evidence. No production,
+manifest, or shared-record edits; no production tie/rejection policy
+approved or asserted.
+
+**Changed files (all worker-owned).**
+- NEW `tests/properties/oracles/b_day_sets.py` — independent day-set
+  oracle (gap-filled connected components over occupied days; shares no
+  mechanism with the SQL's lag/window formulation or the lag model).
+- NEW `tests/properties/test_pkg_b_pass2.py` — exact supported-domain
+  checks: day-set property vs shipped SQL; exhaustive 128-mask x 3-gap
+  model-vs-oracle domain sweep (384 cases); a shipped-SQL twin of the
+  sweep (128 cases at gap 1, enrollment stage only, bounded).
+- NEW `tests/properties/test_pkg_b_independent_review.py` — overlap
+  witness characterization: upstream multiset stability across
+  threads x optimizer at fixed input; per-run conservation/structural
+  invariants; membership in `allowed_numbered_supplies()` (492
+  decompositions from the 84 binary words over six A + three B labels);
+  bounded 6-permutation x threads x optimizer grid (24 runs) under
+  per-run invariants only (input permutation may reorder tied raw
+  enrollment rows in 20_enrollment.sql, so cross-run equality is
+  asserted ONLY at fixed input order). The shipped CTE text is
+  extracted from `SQL_DIR`/50_episodes.sql, never copied.
+- `tests/properties/test_pkg_b_enrollment.py` — module docstring
+  rewritten (stale accumulator description and the removed strict-xfail
+  name — AUDIT-3); explicit B2 witness asserts added to the parity pin
+  (one dispensing, supply 46 > 30, numdispensing 2 > 1 — witness, not
+  endorsement).
+- `tests/properties/test_pkg_b_episodes.py` — coverage event added:
+  "dispensing inside multiple episodes (B2 fan-out family)".
+- `investigation/packages/B-independent-review.md` — integrated from
+  `0f76539` with a disposition header: the standing-red recommendation
+  was NOT adopted; salvage list and rejections recorded there.
+- `investigation/findings/B2-overlapping-enrollment-double-count.md` —
+  witness names updated to the current pins (AUDIT-1); tie-ordering
+  ambiguity addendum added (doc-only, per audit §4 item 3).
+
+**Rejected on purpose.**
+- `d63a8fb`'s exact `@example` episode pairing pin on the overlap
+  witness — thread/optimizer-sensitive; the b-final grid reproduced
+  THREE distinct fixed-order decompositions ((3,3,3), (3,6), (6,3)),
+  so any single pin is flaky.
+- `0f76539`'s standing red (broad generated comparison) — an
+  all-green, all-failures-classified suite is required; the tie-order
+  ambiguity is now characterized by invariants instead.
+- Neither rejection weakens supported semantics: the supported
+  (nonoverlap, uniform-flag) domain gained EXACT checks it did not
+  have, and the NEW overlap characterization asserts only laws that
+  hold under every legal engine ordering (upstream multiset stability,
+  supply conservation, allowed-set membership —
+  test_pkg_b_independent_review.py). PRE-EXISTING exact episode-level
+  checks remain in place and keep pinning span-major output: the
+  legacy generated property and deterministic @examples in
+  test_pkg_b_episodes.py (including overlap fan-out cases — 3.77% of
+  discovery draws) compare SQL row-for-row against a model that
+  reproduces the observed ordering by construction
+  (oracles/b_episode_model.py:93-103). Those legacy exact checks
+  characterize the observed DuckDB 2.0 threads=1 ordering only, can
+  fail on legal engine drift, and are NOT independent correctness
+  evidence for the overlap domain; the pinned configuration must not
+  be read as a determinism guarantee (the same witness family yields
+  non-span-major decompositions at threads=1 under input permutation
+  and run-varying decompositions at threads=4 —
+  B-independent-review.md). The durable order-independent overlap
+  evidence is test_pkg_b_independent_review.py; the only
+  correctness-endorsed pins elsewhere are the arbitrated B2 defect
+  witnesses, labeled as such.
+
+**Pass records (worktree `inv/0f462p/b-final`, base 132fa87; fresh
+`.venv` via `uv venv --python 3.13` + `-e '.[dev]'`, hypothesis
+6.170.14; serial pytest, no xdist; `StageHarness` threads=1 default;
+logs session-local, not committed).** Selection B = test_pkg_b_
+{enrollment,stockpile,index,episodes,pass2,independent_review} +
+test_harness_stages (quick passes include harness stages; statistics
+runs omit it). Pre-change baseline at 132fa87: 16 passed, 8.65s.
+
+1. B quick PASS 1: `.venv/bin/python -m pytest $B
+   --hypothesis-profile=quick -q` → **21 passed, 20.48s, exit 0**.
+2. B quick PASS 2: same command → **21 passed, 20.36s, exit 0**.
+3. Discovery statistics: `$B --hypothesis-profile=discovery
+   --hypothesis-show-statistics -q` → **14 passed, 37.35s, exit 0**.
+   Actual coverage: enrollment nonempty output 96.15%, overlapping raw
+   spans 30.77%; stockpile nonempty 83.02%/empty 11.32%; episodes
+   nonempty 35.29%, same-day tie pairs 0-10 (17.65% zero);
+   nonoverlap day-set property nonempty 69.23%/empty 7.69% (rest
+   Hypothesis duplicate draws, no assume in the suite). Episodes-only
+   re-run (fresh DB draw, exit 0): all 8 episode modes covered;
+   "dispensing inside multiple episodes (B2 fan-out family)" 3.77%
+   (the B2 overlap family IS generated, not probe-only).
+4. Cheap deep bounded serial (one thread): `$B
+   --hypothesis-profile=deep -q` → **14 passed, 57.62s, exit 0**
+   (expensive budget 100 examples/property; the 384+128 exhaustive and
+   24-run grid cases run identically at every profile).
+5. Tie-signature observation (instrumented run of the grid helpers,
+   not committed): fixed-order signatures across the 12-run
+   threads x optimizer grid = {(1,3),(2,3),(3,3)}, {(1,3),(2,6)},
+   {(1,6),(2,3)} — all in the allowed set (492 decompositions);
+   permuted inputs additionally yield single-episode {(1,4)} (raw
+   enrollment ties re-segment), invariants held in all 24 runs.
+6. Static checks: `ruff check --select E4,E7,E9,F` clean on all five
+   touched/new test+oracle files. `mypy src tests/properties`: 3
+   errors, ALL pre-existing at 132fa87 in files outside this worker's
+   ownership (tests/properties/harness.py:262 x2,
+   tests/properties/test_property_builder_events.py:251; both
+   unmodified by this pass) — reported, not masked, not fixed here.
+
+**Manifest note (for the orchestrator; not edited by this worker):**
+B now has two recorded quick passes (records 1-2 above) at
+`inv/0f462p/b-final`; AUDIT-2's missing B pass-2 record can be closed
+from this section plus the integrated pass-2 correction above.

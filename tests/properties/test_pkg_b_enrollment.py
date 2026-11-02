@@ -1,4 +1,4 @@
-"""Package B: enrollment episodes match an independent day-model oracle.
+"""Package B: SAS lag-segmentation parity characterization.
 
 Contract under test (20_enrollment.sql, docs/SAS_PARITY.md "Enrollment
 spans"): continuous enrollment episodes — spans separated by at most
@@ -7,11 +7,19 @@ chart-required configuration drops patients with any non-chart span
 overlapping the study window, and spans failing the coverage mode never
 qualify.
 
-Oracle: tests/properties/oracles/b_enrollment_model.py — a sorted
-interval scan with a running episode accumulator. The known divergence
-on overlapping raw spans (lag-break vs episode-accumulator derivations)
-is documented separately in
-test_enrollment_overlapping_raw_spans_known_divergence.
+Oracle: tests/properties/oracles/b_enrollment_model.py — the lag
+segmentation (each span ruptures against the immediately PREVIOUS
+span's end and flags; episode = min start / max end of member spans),
+i.e. the SAME ruled recurrence the shipped SQL encodes. It is a parity
+characterization, not an independent day-set proof: restricted
+uniform-flag, nonoverlap day-set checks with exact assertions live in
+test_pkg_b_pass2.py (independent oracle:
+tests/properties/oracles/b_day_sets.py), and the overlap fan-out
+invariant surface lives in test_pkg_b_independent_review.py. The old
+strict-xfail pin
+(test_enrollment_overlapping_raw_spans_known_divergence) was replaced
+at 88edf91 by the positive parity pin
+test_enrollment_overlapping_raw_spans_parity below.
 """
 
 from datetime import date, timedelta
@@ -204,6 +212,11 @@ def test_enrollment_overlapping_raw_spans_parity() -> None:
     assert len(stock) == 2, stock
     assert sorted(r[6] for r in stock) == [16, 46]
     assert {r[8] for r in stock} == {2}
+    # B2 invariant-violation witness, not a correctness endorsement:
+    # a single 30-day claim becomes a 46-day row with count two.
+    assert len(dataset.dispensings) == 1
+    assert max(r[6] for r in stock) > 30
+    assert max(r[8] for r in stock) > len(dataset.dispensings)
 
 
 # ---------------------------------------------------------------------
