@@ -314,9 +314,10 @@ def test_followup_blackout_includes_the_index_day() -> None:
 
 def test_followup_zero_length_followup_via_at_risk_start() -> None:
     """followuptime floors at 0: at_risk_start=2 on a one-day episode
-    gives (0 - 0 - 2 + 1) = -1 -> 0. person_days is NOT floored (the
-    shipped expression has no greatest(0)) and reads -1 -- pinned as
-    observed behavior, see open question OC-3."""
+    gives (0 - 0 - 2 + 1) = -1 -> 0. person_days is floored at 0 too,
+    since the C-3 fix (inv/0f462p/fix3-c3): zero days at risk, not -1 —
+    matching SAS, whose at-risk span quantity is Max(0, ...)
+    (ms_finalizeptsmasterlist.sas:305). Resolves open question OC-3."""
     dataset = grid_dataset(fills=[(0, "E00001", 1, 2.0)], index_fill=False)
     run, outcomes = _run_followup(dataset, at_risk_start=2)
     _assert_followup_matches_model(run, outcomes)
@@ -325,7 +326,7 @@ def test_followup_zero_length_followup_via_at_risk_start() -> None:
     o = outcomes[index_keys[0]]
     assert o.kept and o.feventdt is None, o
     assert o.followuptime == 0 and o.exit_reason == "exposure_end", o
-    assert o.episodelength == 1 and o.person_days == -1, o
+    assert o.episodelength == 1 and o.person_days == 0, o
 
 
 def test_followup_same_day_competing_reasons() -> None:

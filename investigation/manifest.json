@@ -29,9 +29,21 @@
     }
   },
   "profiles": {
-    "quick": {"max_examples": 50, "expensive_examples": 10, "deadline_seconds": 1},
-    "discovery": {"max_examples": 500, "expensive_examples": 50, "deadline_seconds": 1},
-    "deep": {"max_examples": 2000, "expensive_examples": 100, "deadline_seconds": 1},
+    "quick": {
+      "max_examples": 50,
+      "expensive_examples": 10,
+      "deadline_seconds": 1
+    },
+    "discovery": {
+      "max_examples": 500,
+      "expensive_examples": 50,
+      "deadline_seconds": 1
+    },
+    "deep": {
+      "max_examples": 2000,
+      "expensive_examples": 100,
+      "deadline_seconds": 1
+    },
     "selection": "pytest --hypothesis-profile=<name>; $HYPOTHESIS_PROFILE is the default (quick); expensive stage/pipeline properties use expensive_settings() from tests/properties/conftest.py"
   },
   "packages": [
@@ -53,12 +65,60 @@
         "stage gates == plan_stages; fmt key set via harness/pipeline agreement"
       ]
     },
-    {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "pass1-complete", "head": "2d12750", "merged_to_discovery": "462c7bb", "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity); new lead: diagnosis optionals dx_codetype/pdx/enctype referenced unconditionally in 10_normalize.sql (same class as A-2, unfixed)"},
-    {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended)"},
-    {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "pass1-complete", "head": "8645179", "merged_to_discovery": "5c8b237", "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"},
-    {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pass1-complete", "head": "cbd1038", "merged_to_discovery": "0006b8c", "notes": "no production defect in oracle scope (denominator day-enumeration oracle matches exactly; together==separate on 7 dimensions); D1 (moderate, SAS-cited parity gap): Python lacks SAS's incl-window restriction and dose restriction in CIDA denominators (ms_cidadenom.sas L145-165, L380-430, L307-322) — decision brief needed; D2: 92_cidadenom.sql header comment demonstrably wrong (says exclusion shave NOT included; it is, and SAS confirms) — doc fix; D3: documented window-clip deviation, no action; D4: build_study care-setting wildcard trap confirmed (cross-package, infra debt for pass 2)"},
-    {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pass1-complete", "head": "0b391e5", "merged_to_discovery": "82e4364", "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md"},
-    {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pass1-complete", "head": "c4b61a5", "merged_to_discovery": "3085eb4", "notes": "leads: F1 (high) attrition L27 forward-fill reports final-cohort members that do not exist (cohort_final AND ptsmasterlist empty, remaining=2; NULL excluded forward-filled), F2 (medium) CIDA numerator exceeds denominator in stratified cells (75+ cell: npts=1, dennumpts=0); comparator semantics documented (duplicates only via ROW COUNT — calibration proved load-bearing); open questions incl. undocumented cohorts-together-vs-separate promise; witnesses pkg-f-lead-f1/f2"}
+    {
+      "id": "A",
+      "branch": "inv/0f462p/a-input-contracts",
+      "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence",
+      "status": "pass1-complete",
+      "head": "2d12750",
+      "merged_to_discovery": "462c7bb",
+      "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity); new lead: diagnosis optionals dx_codetype/pdx/enctype referenced unconditionally in 10_normalize.sql (same class as A-2, unfixed)"
+    },
+    {
+      "id": "B",
+      "branch": "inv/0f462p/b-enrollment-stockpiling",
+      "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models",
+      "status": "pass1-complete",
+      "head": "1d4dfec",
+      "merged_to_discovery": "58d7efa",
+      "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended)"
+    },
+    {
+      "id": "C",
+      "branch": "inv/0f462p/c-dose-inclusion-followup",
+      "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model",
+      "status": "pass1-complete",
+      "head": "8645179",
+      "merged_to_discovery": "5c8b237",
+      "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"
+    },
+    {
+      "id": "D",
+      "branch": "inv/0f462p/d-denominators-outputs",
+      "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy",
+      "status": "pass1-complete",
+      "head": "cbd1038",
+      "merged_to_discovery": "0006b8c",
+      "notes": "no production defect in oracle scope (denominator day-enumeration oracle matches exactly; together==separate on 7 dimensions); D1 (moderate, SAS-cited parity gap): Python lacks SAS's incl-window restriction and dose restriction in CIDA denominators (ms_cidadenom.sas L145-165, L380-430, L307-322) — decision brief needed; D2: 92_cidadenom.sql header comment demonstrably wrong (says exclusion shave NOT included; it is, and SAS confirms) — doc fix; D3: documented window-clip deviation, no action; D4: build_study care-setting wildcard trap confirmed (cross-package, infra debt for pass 2)"
+    },
+    {
+      "id": "E",
+      "branch": "inv/0f462p/e-runtime-lifecycle",
+      "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states",
+      "status": "pass1-complete",
+      "head": "0b391e5",
+      "merged_to_discovery": "82e4364",
+      "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md"
+    },
+    {
+      "id": "F",
+      "branch": "inv/0f462p/f-comparators-metamorphic",
+      "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation",
+      "status": "pass1-complete",
+      "head": "c4b61a5",
+      "merged_to_discovery": "3085eb4",
+      "notes": "leads: F1 (high) attrition L27 forward-fill reports final-cohort members that do not exist (cohort_final AND ptsmasterlist empty, remaining=2; NULL excluded forward-filled), F2 (medium) CIDA numerator exceeds denominator in stratified cells (75+ cell: npts=1, dennumpts=0); comparator semantics documented (duplicates only via ROW COUNT — calibration proved load-bearing); open questions incl. undocumented cohorts-together-vs-separate promise; witnesses pkg-f-lead-f1/f2"
+    }
   ],
   "passes": [
     {
@@ -368,15 +428,95 @@
       "id": "A-3",
       "doc": "investigation/findings/A-3-demographics-full-tie-comment.md",
       "title": "'TOTAL order' comment false for full-tie duplicate demographics — doc-only; behavior is SAS parity and strictly more deterministic than SAS",
-      "status": "resolved-doc-only",
+      "status": "resolved-doc-only (comment applied in wave 3)",
       "classification": "documentation defect (behavior kept; SAS dedupes by PatId alone with an unstable sort, ms_create_enrollment_spans.sas:198-201)",
       "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
-      "fix_branch": "none — replacement comment wording proposed verbatim in the finding doc",
+      "fix_branch": "inv/0f462p/fix3-docs commit b0be77e (merged into inv/0f462p/arb3-findings) applies the proposed replacement comment verbatim; comment-only, zero executable changes",
       "witness": "investigation/witnesses/a-demographics-full-tie-evidence.txt"
+    },
+    {
+      "id": "E-1",
+      "doc": "investigation/findings/E-1-tui-leaks-run-engine.md",
+      "title": "TUI never releases the run's engine — one leaked DuckDB connection per completed run in a session",
+      "status": "fixed",
+      "classification": "resource-release defect (close is caller-owned; the TUI is the caller; a long-lived multi-run session is the designed usage)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix3-e1, red 323b231 / green 0a26573, merged into inv/0f462p/arb3-findings",
+      "witness": "investigation/witnesses/e1-e2-frontend-engine-leak-evidence.txt + tests/test_regression_e1.py::test_tui_run_closes_the_run_engine"
+    },
+    {
+      "id": "E-2",
+      "doc": "investigation/findings/E-2-cli-failure-path-leaks-engine.md",
+      "title": "CLI failure path never closes its engine (low severity; process-bounded for subprocess use)",
+      "status": "fixed",
+      "classification": "resource-release defect, low (fixed on the same branch as E-1: identical try/finally fix shape)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix3-e1, red 323b231 / green 0a26573",
+      "witness": "investigation/witnesses/e1-e2-frontend-engine-leak-evidence.txt + tests/test_regression_e1.py::test_cli_failure_closes_the_engine (CloseProbeEngine exit-path hook)"
+    },
+    {
+      "id": "E-3",
+      "doc": "investigation/findings/E-3-E4-sigint-and-failure-terminal-contracts.md",
+      "title": "CLI SIGINT mid-run: unhandled, exit −2, JSONL without terminal record, no manifest — contract choice open",
+      "status": "open-contract-choice (decision brief DB-3; no fix by charter)",
+      "classification": "unspecified contract (exit code, diagnostics, terminal log record for a killed run); resource half now clean since the E-2 fix (finally unwinds on BaseException)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none — DB-3",
+      "witness": "package E characterization test test_cli_sigint_mid_run_is_characterized (discovery branch); evidence in the finding doc"
+    },
+    {
+      "id": "E-4",
+      "doc": "investigation/findings/E-3-E4-sigint-and-failure-terminal-contracts.md",
+      "title": "Direct pipeline.run() failures emit no RunFinished; only RunHandle synthesizes it — who owns the failure terminal event is unspecified",
+      "status": "open-contract-choice (decision brief DB-4; no fix by charter)",
+      "classification": "unspecified contract; safe direction asserted (nothing claims ok on failure); LOGGING.md parity promise holds for successes only",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none — DB-4",
+      "witness": "package E characterization test test_direct_run_sql_fault_propagates_without_ok (discovery branch)"
+    },
+    {
+      "id": "C-1",
+      "doc": "investigation/findings/C-1-dose-censor-no-post-truncation-recheck.md",
+      "title": "55_dose_censor.sql claims a post-truncation criteria re-check; the SQL does not re-check and SAS does (parity-gap lead; comment corrected)",
+      "status": "lead-open (decision brief DB-5); doc half resolved (comment corrected)",
+      "classification": "silent divergence from SAS for maxcumdose+cumdoseper studies whose censor pushes an episode below a length criterion (magnitude unmeasured, needs a witness study); the false comment corrected in fix3-docs",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none for behavior — DB-5; comment-only commit inv/0f462p/fix3-docs dff222c",
+      "witness": "investigation/witnesses/c1-dose-censor-recheck-sas-evidence.txt"
+    },
+    {
+      "id": "C-3",
+      "doc": "investigation/findings/C-3-person-days-no-floor.md",
+      "title": "cohort_final.person_days has no floor and reads negative when at_risk_start outruns the episode; negatives sum into the denominators and inflate rates",
+      "status": "fixed (closes package C open question OC-3)",
+      "classification": "wrong answer via 70_outputs denominators/rates for studies with at_risk_start > episode span; SAS floors the same at-risk span at 0 (ms_finalizeptsmasterlist.sas:305) and deletes zero-at-risk episodes (ms_createptsmasterlist.sas:175-176)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix3-c3, red 26ddf87 / green 1a810a2, merged into inv/0f462p/arb3-findings",
+      "witness": "investigation/witnesses/c3-person-days-negative-evidence.txt + tests/test_regression_c3.py"
+    },
+    {
+      "id": "D2",
+      "doc": "investigation/findings/D2-cidadenom-header-comment.md",
+      "title": "92_cidadenom.sql header claims exclusion shaving is NOT implemented — it is (doc error corrected; inclusion half is the D1 gap)",
+      "status": "resolved-doc-only",
+      "classification": "documentation defect (comment contradicted the stage's own WHERE r.criteria='EXC' and the SAS original)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix3-docs commit 34f84e7 (comment-only, zero executable changes)",
+      "witness": "investigation/packages/D.md finding D2 + git show 34f84e7"
+    },
+    {
+      "id": "D1",
+      "doc": "investigation/packages/D.md (finding D1); decision brief DB-2 in investigation/packages/ARBITRATION.md wave 3",
+      "title": "CIDA denominators omit SAS's INCLUSION-subcondition window restriction and dose restriction under excl_incl=Y — INC-condition studies get overstated member-days",
+      "status": "open-contract-choice (decision brief DB-2; no code by charter)",
+      "classification": "parity gap, confirmed against the SAS original by D and re-verified by arbiter 3 (ms_cidadenom.sas:146, 413-417, 265/359); affects studies with INCLUSIONCODES only",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none — DB-2",
+      "witness": "investigation/packages/D.md with SAS citations"
     }
   ],
   "open_questions": [
-    "demographics QUALIFY tie-break is total only if (birth_date, sex, race, hispanic, postalcode) differ across duplicate rows — full-tie behavior unverified",
+    "RESOLVED (wave 1 arbitration; comment applied wave 3, fix3-docs b0be77e): demographics QUALIFY tie-break is total only if (birth_date, sex, race, hispanic, postalcode) differ across duplicate rows — full-tie rows resolve by scan order, same as SAS's unstable proc sort; behavior kept, comment corrected",
     "tools/gen_synthetic.py writes rxamt as an integer (BIGINT), tripping the pipeline's fractional-amount truncation warning; calibrating oracles against it inherit that semantics",
     "claims_from scan bound does not apply to enrollment spans (contract intent unconfirmed; low impact)",
     "encounter tables are never identified by column fingerprint (fingerprint=False); name/table_map only",

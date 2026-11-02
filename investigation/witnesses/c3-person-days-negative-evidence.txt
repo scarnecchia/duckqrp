@@ -1,0 +1,37 @@
+C-3 witness — person_days goes negative without a floor
+PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+
+Reproduction: fix branch inv/0f462p/fix3-c3 (worktree wt/fix3-c3).
+Red commit 26ddf87 adds tests/test_regression_c3.py, which builds a
+minimal SCDM root inline (four parquet tables, integer patid) and runs
+the real pipeline on a study with t2atriskstart=60 whose only episode
+is one 30-day dispensing (index 2014-06-01, episode end 2014-06-30,
+no outcome events).
+
+  command:  .venv/bin/python -m pytest tests/test_regression_c3.py
+  (in wt/fix3-c3 at red commit 26ddf87, base c3e60db)
+
+  AssertionError: person_days is not floored at 0 for episodes whose
+  at-risk window starts after the episode end:
+    [(datetime.date(2014, 7, 31),   # atriskindexdt = index + 60
+      datetime.date(2014, 6, 30),   # episodeenddt  = index + rxsup - 1
+      -30)]                         # person_days = span_days(...) - 30
+  - followuptime on the SAME row is 0 (already floored exactly as SAS
+    defines it, Max(0, ...), ms_finalizeptsmasterlist.sas:305), which
+    isolates the gap to person_days alone.
+  - the negative row is summed into the denominators table
+    (70_outputs.sql sum(person_days)) and inflates rate_per_1000_py.
+
+Green commit 1a810a2 (greatest(0, ...) around the span in
+60_followup.sql): the same witness row carries person_days 0.
+Merged-tree validation: tests/test_determinism.py +
+tests/test_rewrites.py 15 passed; full tests/test_pipeline.py in the
+fix worktree (see the finding doc for the recorded result; the two
+pre-existing exempt spill-attribution OOM failures excluded).
+
+Fixture notes (recorded because they cost time): SCDM patid must be
+INTEGER (10_normalize casts patid AS BIGINT); enrollment medcov/drugcov
+must be 'Y' for coverage 'MD' (has_coverage macro); the diagnosis
+optionals dx_codetype/pdx/enctype are declared optional in scdm.py but
+referenced unconditionally in normalize — the recorded arbiter-1 lead —
+so the fixture carries them like a real extract.

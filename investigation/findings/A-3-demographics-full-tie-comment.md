@@ -50,10 +50,11 @@
   join at 70_outputs.sql:109) could surface a different survivor's
   zip_date after a re-extraction — same as SAS.
 - **affected paths:** src/qrp/sql/10_normalize.sql (comment only).
-- **minimal fix/commit:** none shipped (doc-only finding, per the
-  arbiter charter: no fix branch touches the demographics QUALIFY
-  area). Proposed replacement comment, verbatim, for the operator to
-  apply or delegate:
+- **minimal fix/commit:** APPLIED in wave 3: inv/0f462p/fix3-docs
+  commit b0be77e (merged into inv/0f462p/arb3-findings) applies the
+  replacement comment below verbatim; comment-only, zero executable
+  changes (verified by diff). Proposed replacement comment, verbatim,
+  as applied:
 
   > The ORDER BY is total ONLY when one of these columns separates the
   > duplicate rows: birth_date, sex, race, hispanic, postalcode. Rows
