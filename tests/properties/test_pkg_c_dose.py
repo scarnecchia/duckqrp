@@ -43,7 +43,7 @@ from .oracles.c_glue import (
     two_pass_run,
     with_dose,
 )
-from .oracles.c_models import DoseCandidate, dose_verdict
+from .oracles.c_models import DoseCandidate, dose_verdict, round_half_away
 
 _EXCL_COLS = ("cohortgrp", "patid", "adate", "reason")
 _STRENGTHS = {"E00001": 1.0}
@@ -106,13 +106,15 @@ def _run_dose(
 
 
 def _assert_dose_matches_model(run: Any, verdicts: dict) -> None:
-    excluded_stage = {
-        (str(r["cohortgrp"]), int(r["patid"]), r["adate"]):
-            str(r["reason"])
-        for r in run.outputs["dose_excluded"]
-    }
+    # dose_excluded is DISTINCT over (candidate, reason): one candidate
+    # can carry SEVERAL reason rows when its same-day claims fail
+    # different bounds -- compare reason SETS, never a single reason.
+    excluded_stage: dict[tuple, set] = {}
+    for r in run.outputs["dose_excluded"]:
+        key = (str(r["cohortgrp"]), int(r["patid"]), r["adate"])
+        excluded_stage.setdefault(key, set()).add(r["reason"])
     excluded_model = {
-        k: v.reason for k, v in verdicts.items() if v.excluded
+        k: set(v.reasons) for k, v in verdicts.items() if v.excluded
     }
     assert excluded_stage == excluded_model, (
         "dose_excluded differs", excluded_stage, excluded_model)
@@ -219,6 +221,88 @@ def test_dose_any_same_day_claim_out_of_bounds_excludes() -> None:
         assert index_keys, (amts, verdicts)
         assert verdicts[index_keys[0]].excluded is expect_excluded, (
             amts, verdicts)
+
+
+def test_dose_reason_equal_min_max_corners() -> None:
+    """PASS-1 CORRECTION pins: the reason comes from each bound's OWN
+    predicate, so with min_cfdd == max_cfdd the reason is min_cfdd
+    only BELOW the bound and max_cfdd only ABOVE it; a rounded cfdd
+    exactly AT the bound excludes nothing.
+
+    All cases: one index fill over a 4-day supply, min=max=1.0, no cum
+    bounds -- the orchestrator's replayed failing shape (amount 8,
+    cfdd 2.0 -> 'max_cfdd') among them.
+    """
+    cases: tuple[tuple[float, float, int, set[str]], ...] = (
+        # (amount, cfdd, rounded, expected reasons)
+        (8.0, 2.0, 2, {"max_cfdd"}),     # above both: ONLY max fires
+        (1.0, 0.25, 0, {"min_cfdd"}),    # below both: ONLY min fires
+        (4.0, 1.0, 1, set()),            # exactly at: neither fires
+        (2.0, 0.5, 1, set()),            # 0.5 rounds to 1: at bound
+    )
+    for amt, cfdd, rounded, expect_reasons in cases:
+        dataset = grid_dataset(fills=[(0, "E00001", 4, amt)],
+                               index_fill=False)
+        run, verdicts = _run_dose(
+            dataset, wash_per=5, cum_dose_per=10,
+            min_cum_dose=None, max_cum_dose=None,
+            min_cfdd=1.0, max_cfdd=1.0)
+        _assert_dose_matches_model(run, verdicts)
+        index_keys = [k for k in verdicts if k[2] == GRID_ANCHOR]
+        assert index_keys, (amt, verdicts)
+        v = verdicts[index_keys[0]]
+        assert v.excluded is bool(expect_reasons), (amt, cfdd, v)
+        assert v.reasons == frozenset(expect_reasons), (amt, cfdd, v)
+        # and the rounding table the case names rely on
+        assert round_half_away(cfdd) == rounded, (cfdd, rounded)
+
+
+def test_dose_rounding_crosses_bound_raw_does_not() -> None:
+    """round(cfdd) can cross a bound the RAW cfdd does not, in both
+    directions: cfdd 1.5 with max 1.5 passes raw (1.5 <= 1.5) but
+    round(1.5) = 2 excludes; cfdd 0.5 with min 0.8 fails raw
+    (0.5 < 0.8) but round(0.5) = 1 passes."""
+    for amt, knob, value, expect_excluded in (
+            (6.0, "max_cfdd", 1.5, True),     # raw passes, round 2 fails
+            (2.0, "min_cfdd", 0.8, False),    # raw fails, round 1 passes
+    ):
+        dataset = grid_dataset(fills=[(0, "E00001", 4, amt)],
+                               index_fill=False)
+        kwargs: dict[str, float | None] = dict(
+            min_cum_dose=None, max_cum_dose=None,
+            min_cfdd=None, max_cfdd=None)
+        kwargs[knob] = value
+        run, verdicts = _run_dose(
+            dataset, wash_per=5, cum_dose_per=10, **kwargs)
+        _assert_dose_matches_model(run, verdicts)
+        index_keys = [k for k in verdicts if k[2] == GRID_ANCHOR]
+        assert index_keys, (amt, knob, verdicts)
+        assert verdicts[index_keys[0]].excluded is expect_excluded, (
+            amt, knob, value, verdicts)
+
+
+def test_dose_two_same_day_rows_two_reason_rows() -> None:
+    """Two same-day claims failing DIFFERENT bounds put TWO reason rows
+    in dose_excluded for ONE candidate: the table is DISTINCT over
+    (candidate, reason), so the exclusion carries the SET
+    {min_cfdd, max_cfdd}. A single-reason model cannot represent this.
+    """
+    dataset = grid_dataset(fills=[(0, "E00001", 4, 1.0),
+                                  (0, "E00001", 4, 8.0)],
+                           index_fill=False)
+    run, verdicts = _run_dose(
+        dataset, wash_per=5, cum_dose_per=10,
+        min_cum_dose=None, max_cum_dose=None,
+        min_cfdd=1.0, max_cfdd=1.0)
+    _assert_dose_matches_model(run, verdicts)
+    index_keys = [k for k in verdicts if k[2] == GRID_ANCHOR]
+    assert index_keys, verdicts
+    v = verdicts[index_keys[0]]
+    assert v.excluded and v.reasons == frozenset({"min_cfdd", "max_cfdd"}), v
+    # and the stage really wrote two rows for this candidate
+    rows = [r for r in run.outputs["dose_excluded"]
+            if r["adate"] == GRID_ANCHOR]
+    assert len(rows) == 2, rows
 
 
 def test_dose_washout_zero_prior_fill_feeds_second_index() -> None:
@@ -369,7 +453,8 @@ def test_dose_boundaries_match_model(data: Any) -> None:
     excluded = [v for v in verdicts.values() if v.excluded]
     event("exclusions", "some" if excluded else "none")
     for v in excluded:
-        event("reason", str(v.reason))
+        for reason in sorted(str(r) for r in v.reasons):
+            event("reason", reason)
     lo = GRID_ANCHOR - timedelta(days=cum_per)
     for r in run.inputs["exposure_claims"]:
         if r["adate"] in (lo, GRID_ANCHOR - timedelta(days=1)):

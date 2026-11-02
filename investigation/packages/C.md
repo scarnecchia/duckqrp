@@ -186,11 +186,97 @@ bug in my package's stages):
   given study is config, not contract — behavior only pinned as
   implemented.
 
-## Pass records / verification
+## Pass 1 verification correction
+
+The orchestrator's verification of pass 1 found a deterministic
+failure on the committed tree that my final pass-1 run did not:
+
+    test_pkg_c_dose.py::test_dose_boundaries_match_model FAILS
+    (quick profile, example-DB replay): one patient, one dispensing
+    2014-02-15 rxsup=4 rxamt=8.0, dose params (None, None, 1.0, 1.0);
+    SQL reason = 'max_cfdd', model expected 'min_cfdd'.
+
+**Root cause (oracle bug, not a production defect).** My
+`dose_verdict` evaluated ONE lumped `any_cfdd_fail` boolean and then
+applied a min-first PRIORITY to pick the reason. The shipped stage
+does neither: the exclusion CASE gives each bound its OWN predicate
+(`round(cfdd) < min_cfdd` for the min branch, `round(cfdd) > max_cfdd`
+for the max branch) evaluated PER JOINED ROW, and dose_excluded is
+DISTINCT over (candidate, reason). With min_cfdd = max_cfdd = 1.0 and
+round(cfdd) = 2.0, only the max predicate holds, so the reason is
+'max_cfdd' — the equal-min/max corner makes the lumped-priority
+reading wrong systematically (any candidate with a cfdd at or above
+the shared bound). I re-read 42_dose.sql under arbitration and
+CONCUR the SQL is internally consistent: the WHERE and CASE use the
+same per-bound predicates, INCLUSION.md and the stage header specify
+no reason attribution, and per-row CASE attribution with DISTINCT is
+a coherent reading. No contract document contradicts it, so this was
+fixed in the oracle, not flagged as a lead.
+
+A second, latent modeling gap surfaced with the same fix: two
+same-day claims failing DIFFERENT bounds produce TWO reason rows for
+ONE candidate (DISTINCT over the fanned join). A single-reason model
+cannot represent that; the model and the comparison now carry reason
+SETS. The CASE's cfdd branches also lack the NULL guard its WHERE
+has, so a NULL-cfdd row is excluded with reason None — modeled
+explicitly (unreachable through conformant SCDM, rxsup > 0), along
+with the LEFT JOIN's virtual all-NULL row when the index day has no
+claim_dose rows.
+
+**Why generation + hand cases missed it.** The failing conjunction
+needs min_cfdd and max_cfdd BOTH drawn (~25% of knob profiles) AND an
+index-day claim with round(cfdd) above the bound (~30% of the
+amount/supply grid) — roughly 8% per fresh example. My hand cases
+never set min_cfdd and max_cfdd together (each exercised one bound
+with the other None), a genuine oracle-test design gap; the
+generated property had a ~10-example quick budget, most of it spent
+replaying the DB's saved covering examples, and never drew the
+conjunction during development.
+
+**Why the final run passed while the committed tree fails.** The
+failing example entered the suite's example database at 12:15,
+AFTER my final verification (~11:55) and after commit afb31f9:
+`find tests/properties/.hypothesis-db -newer <test file>` shows the
+dose-test entries written by the orchestrator's runs, and
+`investigation/witnesses/` is empty — my runs never failed, so
+Hypothesis had nothing to persist as failing. Plainly: my final
+verification ran WITHOUT this example present; the orchestrator's
+run drew it fresh (single-test invocation), failed, and Hypothesis
+SAVED it — their two repros then replayed it deterministically from
+the DB. After the fix, my re-run replays the saved example first and
+passes, and Hypothesis prunes the failing entry once it replays
+clean. Lesson recorded: an all-green run only covers the examples it
+actually drew; the DB makes later runs STRICTLY stronger, which is
+exactly how a corner that survived pass 1 surfaces on replay.
+
+**New boundary pins** (deterministic tests in test_pkg_c_dose.py):
+
+* `test_dose_reason_equal_min_max_corners` — min=max=1.0 with cfdd
+  2.0 → reasons {max_cfdd} (the replayed failing shape); cfdd 0.25 →
+  {min_cfdd}; cfdd exactly 1.0 and cfdd 0.5 (rounds to 1) → NOT
+  excluded (exactly-at-bound is inclusive on both sides).
+* `test_dose_rounding_crosses_bound_raw_does_not` — cfdd 1.5 with
+  max 1.5: raw passes, round 2 excludes; cfdd 0.5 with min 0.8: raw
+  fails, round 1 passes.
+* `test_dose_two_same_day_rows_two_reason_rows` — two same-day
+  claims failing different bounds: dose_excluded carries TWO rows
+  for the candidate; model and comparison carry the reason SET
+  {min_cfdd, max_cfdd}.
+
+**DB sweep for other saved failures.** The database holds three test
+keys matching the three generated properties (5 + 2 + 1 blobs). After
+the fix, the full suite replays every saved entry and passes
+(38 passed with the DB present); witnesses/ still contains only the
+README, so no other pkg C property has ever recorded a failure. No
+other failing examples existed.
+
+## Pass records / verification (post-correction)
 
 * `.venv/bin/python -m pytest tests/properties/test_pkg_c_*`
   `tests/properties/test_harness_stages.py --hypothesis-profile=quick`
-  → **35 passed**.
+  → **38 passed** (31 package C + 7 harness self-tests), with the
+  example DB present — the orchestrator's saved failing example
+  replays and passes against the corrected oracle.
 * `.venv/bin/python -m pytest tests/test_rewrites.py` → **11 passed**.
 * `.venv/bin/python -m ruff check --select E4,E7,E9,F tests/properties`
   → clean (3 unused-import findings fixed during development).

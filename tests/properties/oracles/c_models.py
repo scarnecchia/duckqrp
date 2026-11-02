@@ -94,10 +94,23 @@ class DoseCandidate:
 
 @dataclass(frozen=True)
 class DoseVerdict:
-    """What 42_dose.sql decides for one candidate."""
+    """What 42_dose.sql decides for one candidate.
+
+    `reasons` is the SET of DISTINCT reason rows dose_excluded holds
+    for the candidate: the shipped exclusion table is DISTINCT over
+    (cohortgrp, patid, adate, reason) above a fanned join, so two
+    same-day claims failing DIFFERENT bounds produce two reason rows.
+    Each row's reason comes from the CASE's first true branch
+    (min_cumdose > max_cumdose > min_cfdd > max_cfdd), each branch
+    requiring its OWN predicate -- a row failing only the max bound
+    reports max_cfdd even when min_cfdd is also set, which is the
+    equal-min/max corner a priority-over-lumped-failure reading gets
+    wrong. A row excluded through NULL cfdd gets reason None (the
+    CASE's cfdd branches lack the NULL guard the WHERE has).
+    """
 
     excluded: bool
-    reason: str | None   # min_cumdose / max_cumdose / min_cfdd / max_cfdd
+    reasons: frozenset[str | None]
 
 
 def dose_verdict(
@@ -115,11 +128,12 @@ def dose_verdict(
     Prior cumulative dose sums every dispensing whose FILL DATE lies in
     [orig_adate - cum_dose_per, orig_adate - 1] (the RANGE frame's
     closed day window; the candidate's own day is never counted). The
-    cfdd bounds apply per dispensing ON the index day: one bad
-    dispensing that day excludes the candidate even when its siblings
-    pass, because the exclusion table is DISTINCT over the fanned join.
-    No claim rows at all on the index day means cfdd is NULL, which
-    fails either cfdd bound.
+    exclusion CASE is evaluated PER JOINED ROW -- one row per same-day
+    dispensing -- and dose_excluded keeps the DISTINCT reasons across
+    rows. With no claim rows at all on the index day the LEFT JOIN
+    emits one all-NULL row whose NULL cfdd fails either cfdd bound in
+    the WHERE (reason None from the CASE, or a cum reason when a cum
+    bound fires on the coalesced-zero prior).
     """
     # Same-day claims; the day's prior dose is identical on every row.
     same_day = [c for c in claims if c.adate == candidate.orig_adate]
@@ -137,32 +151,50 @@ def dose_verdict(
                 prior += float(c.cumdose or 0.0)
     rounded_prior = round_half_away(prior)
 
-    def cfdd_fail(c: DoseClaim) -> bool:
-        v = c.cfdd
-        if v is None:
-            return True
-        r = round_half_away(v)
-        if min_cfdd is not None and r < min_cfdd:
-            return True
-        if max_cfdd is not None and r > max_cfdd:
-            return True
-        return False
+    def row_reason(cfdd_value: float | None) -> str | None:
+        """One joined row's CASE outcome: first true branch wins, each
+        branch requiring its own predicate. NULL cfdd makes the CASE's
+        cfdd branches fall through (None) even when the WHERE's NULL
+        guard excludes the row -- WHERE membership is tracked
+        separately in row_fired."""
+        if min_cum_dose is not None and rounded_prior < min_cum_dose:
+            return "min_cumdose"
+        if max_cum_dose is not None and rounded_prior > max_cum_dose:
+            return "max_cumdose"
+        if min_cfdd is not None and cfdd_value is not None \
+                and round_half_away(cfdd_value) < min_cfdd:
+            return "min_cfdd"
+        if max_cfdd is not None and cfdd_value is not None \
+                and round_half_away(cfdd_value) > max_cfdd:
+            return "max_cfdd"
+        return None
 
-    # The WHERE clause fires per joined row; DISTINCT collapses the
-    # fan-out, so failing on ANY same-day row excludes the candidate.
-    # With no same-day rows the LEFT JOIN emits one all-NULL row whose
-    # NULL cfdd fails any set bound.
-    any_cfdd_fail = (not same_day) or any(cfdd_fail(c) for c in same_day)
+    def row_fired(cfdd_value: float | None, reason: str | None) -> bool:
+        """Whether the WHERE keeps this row: its own predicate on a
+        non-NULL cfdd, or the NULL guard (any set cfdd bound) plus the
+        cum predicates on NULL cfdd."""
+        if reason is not None:
+            return True
+        return (cfdd_value is None
+                and (min_cfdd is not None or max_cfdd is not None))
 
-    if min_cum_dose is not None and rounded_prior < min_cum_dose:
-        return DoseVerdict(True, "min_cumdose")
-    if max_cum_dose is not None and rounded_prior > max_cum_dose:
-        return DoseVerdict(True, "max_cumdose")
-    if min_cfdd is not None and any_cfdd_fail:
-        return DoseVerdict(True, "min_cfdd")
-    if max_cfdd is not None and any_cfdd_fail:
-        return DoseVerdict(True, "max_cfdd")
-    return DoseVerdict(False, None)
+    reasons: set[str | None] = set()
+    excluded = False
+    for c in same_day:
+        reason = row_reason(c.cfdd)
+        if row_fired(c.cfdd, reason):
+            excluded = True
+            reasons.add(reason)
+    if not same_day:
+        # LEFT JOIN emits one all-NULL row: NULL cfdd fires either set
+        # cfdd bound; the cum predicates evaluate on the coalesced
+        # zero prior.
+        reason = row_reason(None)
+        fired = row_fired(None, reason)
+        excluded = fired
+        if fired:
+            reasons.add(reason)
+    return DoseVerdict(excluded=excluded, reasons=frozenset(reasons))
 
 
 # ---------------------------------------------------------------------
