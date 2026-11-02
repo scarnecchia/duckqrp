@@ -1,0 +1,16 @@
+# group f1 revision green 3001086383294e0f7f1767e9dfe7e18c3ef16a56
+# command: python -m pytest tests/test_regression_f1.py -q
+# exit: 0 duration: 1.1s ok: True
+
+..                                                                       [100%]
+=============================== warnings summary ===============================
+tests/test_regression_f1.py::test_cohort_with_no_claims_counts_zero_not_carried
+  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-f1/tests/test_regression_f1.py:124: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.
+    result = run(_study(), str(indata), verbose=False)
+
+tests/test_regression_f1.py::test_cohort_with_surviving_episode_counts_real_values
+  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-f1/tests/test_regression_f1.py:153: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.
+    result = run(_study(), str(indata), verbose=False)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2 passed, 2 warnings in 0.82s

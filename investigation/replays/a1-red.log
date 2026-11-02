@@ -1,0 +1,20 @@
+# group a1 revision red f97171090206ba3cafd19822b65925b986512427
+# command: python -m pytest tests/test_regression_a1.py -q
+# exit: 1 duration: 0.4s ok: True
+
+F.                                                                       [100%]
+=================================== FAILURES ===================================
+__________________ test_duplicate_cohortgrp_rows_are_rejected __________________
+
+    def test_duplicate_cohortgrp_rows_are_rejected():
+        """Two cohortfile rows naming the same group must raise the
+        documented duplicate-cohortgrp error, not silently keep the last
+        row's parameters."""
+>       with pytest.raises(ValueError, match="duplicate cohortgrp"):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE ValueError
+
+tests/test_regression_a1.py:45: Failed
+=========================== short test summary info ============================
+FAILED tests/test_regression_a1.py::test_duplicate_cohortgrp_rows_are_rejected
+1 failed, 1 passed in 0.11s

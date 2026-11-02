@@ -1,0 +1,549 @@
+[
+  {
+    "group_id": "a1",
+    "ok": true,
+    "worktree_removed": true,
+    "revisions": [
+      {
+        "role": "red",
+        "sha": "f97171090206ba3cafd19822b65925b986512427",
+        "exit_code": 1,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 0.35
+      },
+      {
+        "role": "green",
+        "sha": "5bbc4ffd8dbfcb0d940c93b350fba8b3d34de871",
+        "exit_code": 0,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 0.34
+      }
+    ],
+    "steps": [
+      {
+        "step": "ancestry",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "checkout-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "drop-venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "tails": {
+      "red": "F.                                                                       [100%]\n=================================== FAILURES ===================================\n__________________ test_duplicate_cohortgrp_rows_are_rejected __________________\n\n    def test_duplicate_cohortgrp_rows_are_rejected():\n        \"\"\"Two cohortfile rows naming the same group must raise the\n        documented duplicate-cohortgrp error, not silently keep the last\n        row's parameters.\"\"\"\n>       with pytest.raises(ValueError, match=\"duplicate cohortgrp\"):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE ValueError\n\ntests/test_regression_a1.py:45: Failed\n=========================== short test summary info ============================\nFAILED tests/test_regression_a1.py::test_duplicate_cohortgrp_rows_are_rejected\n1 failed, 1 passed in 0.11s",
+      "green": "..                                                                       [100%]\n2 passed in 0.09s"
+    }
+  },
+  {
+    "group_id": "a2",
+    "ok": true,
+    "worktree_removed": true,
+    "revisions": [
+      {
+        "role": "red",
+        "sha": "1577f8385b88785b34ea89f1e2e3ef356beff095",
+        "exit_code": 1,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 0.88
+      },
+      {
+        "role": "green",
+        "sha": "564eb7a4c9cc38240903ea96a0957fdcd017ca7c",
+        "exit_code": 0,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 1.0
+      }
+    ],
+    "steps": [
+      {
+        "step": "ancestry",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "checkout-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "drop-venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "tails": {
+      "red": "\n    def run_all() -> None:\n        for stmt in split_statements(sql):\n            self.raise_if_cancelled()\n            # Reset the per-statement high-water mark so the peak\n            # is attributed to this statement, not the run.\n            before = self._spill_total()\n            self._stmt_peak = 0\n            s0 = time.perf_counter()\n>           self.con.execute(stmt.sql)\nE           _duckdb.BinderException: Binder Error: Referenced column \"rxamt\" not found in FROM clause!\nE           Candidate bindings: \"rxdate\", \"rx\", \"rxsup\"\nE           \nE           LINE 13:   -- (ms_cidanum.sas:617). This was once applied, measured worse...\nE                            ^^^^^\n\nsrc/qrp/engine.py:483: BinderException\n=============================== warnings summary ===============================\ntests/test_regression_a2.py::test_optional_rxamt_absent_runs\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-a2/tests/test_regression_a2.py:110: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(_study(), str(indata), verbose=False)\n\ntests/test_regression_a2.py::test_rxamt_present_zero_amount_still_excluded\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-a2/tests/test_regression_a2.py:136: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(_study(), str(indata), verbose=False)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/test_regression_a2.py::test_optional_rxamt_absent_runs - _duckdb...\n1 failed, 1 passed, 2 warnings in 0.59s",
+      "green": "..                                                                       [100%]\n=============================== warnings summary ===============================\ntests/test_regression_a2.py::test_optional_rxamt_absent_runs\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-a2/tests/test_regression_a2.py:110: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(_study(), str(indata), verbose=False)\n\ntests/test_regression_a2.py::test_rxamt_present_zero_amount_still_excluded\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-a2/tests/test_regression_a2.py:136: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(_study(), str(indata), verbose=False)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 2 warnings in 0.75s"
+    }
+  },
+  {
+    "group_id": "a4",
+    "ok": true,
+    "worktree_removed": true,
+    "revisions": [
+      {
+        "role": "red",
+        "sha": "8bc521e84053d7ade69247e741fdef02f2be0af2",
+        "exit_code": 1,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 11.42
+      },
+      {
+        "role": "green",
+        "sha": "a6a74e4f1116e096572170551aa44085f84d995c",
+        "exit_code": 0,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 15.96
+      },
+      {
+        "role": "final",
+        "sha": "f1dca19f7db1027206292e711ddd6094a43335c9",
+        "exit_code": 0,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 15.89
+      }
+    ],
+    "steps": [
+      {
+        "step": "ancestry",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "checkout-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "drop-venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "checkout-final",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "drop-venv-final",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-final",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-final",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "tails": {
+      "red": "E   _duckdb.BinderException: Binder Error: Column \"result_dt\" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined\n=============================== warnings summary ===============================\ntests/test_optional_claim_columns.py: 24 warnings\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-a4/tests/test_optional_claim_columns.py:66: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(study, str(root), verbose=False, threads=1)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[diagnosis-dx_codetype]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[diagnosis-pdx]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[diagnosis-enctype]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[procedure-px_codetype]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[procedure-enctype]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-result_dt]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-order_dt]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-ms_result_n]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-ms_result_c]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-result_type]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-loinc]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-px]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-ms_test_name]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-ms_test_sub_category]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-specimen_source]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-ms_result_unit]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-fast_ind]\nFAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-pt_loc]\nFAILED tests/test_optional_claim_columns.py::test_all_optional_columns_match_null[diagnosis]\nFAILED tests/test_optional_claim_columns.py::test_all_optional_columns_match_null[procedure]\nFAILED tests/test_optional_claim_columns.py::test_all_optional_columns_match_null[lab_result]\n21 failed, 3 passed, 24 warnings in 11.14s",
+      "green": "........................                                                 [100%]\n=============================== warnings summary ===============================\ntests/test_optional_claim_columns.py: 24 warnings\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-a4/tests/test_optional_claim_columns.py:66: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(study, str(root), verbose=False, threads=1)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n24 passed, 24 warnings in 15.71s",
+      "final": "........................                                                 [100%]\n=============================== warnings summary ===============================\ntests/test_optional_claim_columns.py: 24 warnings\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-a4/tests/test_optional_claim_columns.py:66: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(study, str(root), verbose=False, threads=1)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n24 passed, 24 warnings in 15.64s"
+    }
+  },
+  {
+    "group_id": "e1e2",
+    "ok": true,
+    "worktree_removed": true,
+    "revisions": [
+      {
+        "role": "red",
+        "sha": "323b2313503892035842d667319543a0ef65199e",
+        "exit_code": 1,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 10.66
+      },
+      {
+        "role": "green",
+        "sha": "0a2657316139588c7ae956271811aa4cecb7bf48",
+        "exit_code": 0,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 2.9
+      }
+    ],
+    "steps": [
+      {
+        "step": "ancestry",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "checkout-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "drop-venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "tails": {
+      "red": ">       assert closed == [True], (\n            \"the CLI closed the engine 0 times on the failure path \"\n            \"(expected exactly once)\"\n        )\nE       AssertionError: the CLI closed the engine 0 times on the failure path (expected exactly once)\nE       assert [] == [True]\nE         \nE         Right contains one more item: True\nE         \nE         Full diff: (-: missing in left side, +: extra in left side)\nE         + []\nE         - [\nE         -     True,\nE         - ]\n\ntests/test_regression_e1.py:122: AssertionError\n=============================== warnings summary ===============================\ntests/test_regression_e1.py::test_tui_run_closes_the_run_engine\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-e1e2/src/qrp/runner.py:123: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    run(self.study, self.indata, engine=self.engine,\n\ntests/test_regression_e1.py::test_tui_run_closes_the_run_engine\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-e1e2/src/qrp/runner.py:123: UserWarning: dispensing.rxamt is stored as INTEGER: any fractional dispensed amount (e.g. a 0.6 mL syringe) was truncated when the extract was written, and amounts below 1 are now 0 and will be excluded by the `rxamt > 0` dispensing rule. If the source has fractional amounts, regenerate the extract with rxamt as a floating-point type.\n    run(self.study, self.indata, engine=self.engine,\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/test_regression_e1.py::test_tui_run_closes_the_run_engine - Asse...\nFAILED tests/test_regression_e1.py::test_cli_failure_closes_the_engine - Asse...\n======================== 2 failed, 2 warnings in 10.33s ========================",
+      "green": "============================= test session starts ==============================\nplatform linux -- Python 3.13.13, pytest-9.2.0, pluggy-1.7.0 -- /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-e1e2/.venv/bin/python\ncachedir: .pytest_cache\nrootdir: /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-e1e2\nconfigfile: pyproject.toml\nplugins: platformdirs-4.14.3\ncollecting ... collected 2 items\n\ntests/test_regression_e1.py::test_tui_run_closes_the_run_engine PASSED   [ 50%]\ntests/test_regression_e1.py::test_cli_failure_closes_the_engine PASSED   [100%]\n\n=============================== warnings summary ===============================\ntests/test_regression_e1.py::test_tui_run_closes_the_run_engine\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-e1e2/src/qrp/runner.py:123: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    run(self.study, self.indata, engine=self.engine,\n\ntests/test_regression_e1.py::test_tui_run_closes_the_run_engine\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-e1e2/src/qrp/runner.py:123: UserWarning: dispensing.rxamt is stored as INTEGER: any fractional dispensed amount (e.g. a 0.6 mL syringe) was truncated when the extract was written, and amounts below 1 are now 0 and will be excluded by the `rxamt > 0` dispensing rule. If the source has fractional amounts, regenerate the extract with rxamt as a floating-point type.\n    run(self.study, self.indata, engine=self.engine,\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================== 2 passed, 2 warnings in 2.59s ========================="
+    }
+  },
+  {
+    "group_id": "c3",
+    "ok": true,
+    "worktree_removed": true,
+    "revisions": [
+      {
+        "role": "red",
+        "sha": "26ddf87c2880bbd41b8dcd9a61907bf337fcd4fb",
+        "exit_code": 1,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 0.7
+      },
+      {
+        "role": "green",
+        "sha": "1a810a2a65152d29b07c1cf97e4470ebe9eaca76",
+        "exit_code": 0,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 0.69
+      }
+    ],
+    "steps": [
+      {
+        "step": "ancestry",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "checkout-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "drop-venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "tails": {
+      "red": "        try:\n            with warnings.catch_warnings():\n                warnings.simplefilter(\"ignore\")\n                run(study, str(tmp_path), engine=eng, verbose=False)\n            rows = eng.con.execute(\"\"\"\n                SELECT atriskindexdt, episodeenddt, followuptime, person_days\n                FROM cohort_final\n            \"\"\").fetchall()\n        finally:\n            eng.close()\n    \n        assert rows, \"witness episode did not survive to cohort_final\"\n        # Witness shape: the at-risk window really does start after the\n        # episode is over (otherwise this fixture proves nothing).\n        assert all(arsk > end for arsk, end, _, _ in rows), rows\n        # followuptime is already floored at 0 (SAS parity); the same span\n        # expressed as person_days must be too.\n        assert all(fup == 0 for _, _, fup, _ in rows), rows\n        bad = [(arsk, end, pd) for arsk, end, _, pd in rows if pd != 0]\n>       assert not bad, (\n            f\"person_days is not floored at 0 for episodes whose at-risk \"\n            f\"window starts after the episode end: {bad}\"\n        )\nE       AssertionError: person_days is not floored at 0 for episodes whose at-risk window starts after the episode end: [(datetime.date(2014, 7, 31), datetime.date(2014, 6, 30), -30)]\nE       assert not [(datetime.date(2014, 7, 31), datetime.date(2014, 6, 30), -30)]\n\ntests/test_regression_c3.py:133: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_regression_c3.py::test_person_days_never_goes_negative - As...\n1 failed in 0.45s",
+      "green": ".                                                                        [100%]\n1 passed in 0.43s"
+    }
+  },
+  {
+    "group_id": "f1",
+    "ok": true,
+    "worktree_removed": true,
+    "revisions": [
+      {
+        "role": "red",
+        "sha": "0bcb1a88f09bc6e1a90877017a771c6b8bdd4fab",
+        "exit_code": 1,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 1.04
+      },
+      {
+        "role": "green",
+        "sha": "3001086383294e0f7f1767e9dfe7e18c3ef16a56",
+        "exit_code": 0,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 1.01
+      }
+    ],
+    "steps": [
+      {
+        "step": "ancestry",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "checkout-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "drop-venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "tails": {
+      "red": "        final_c2 = _scalar(con, \"SELECT count(DISTINCT patid) FROM cohort_final \"\n                                \"WHERE cohortgrp = 'c2'\")\n        assert final_c2 == 0, \"c2 has no claims; nothing can reach cohort_final\"\n    \n        # the member-count steps survive (2 enrolled members)\n        assert _attrition(con, \"c2\", 1.0) == (2, None)\n        assert _attrition(con, \"c2\", 2.0) == (2, 0)\n        # level 6 (at least one claim with cohort-identifying codes) is the\n        # first counted step over an empty relation: remaining 0, and the\n        # whole drop is its exclusion \u2014 SAS's count(*) semantics\n>       assert _attrition(con, \"c2\", 6.0) == (0, 2)\nE       assert (2, None) == (0, 2)\nE         \nE         At index 0 diff: 2 != 0\nE         Use -v to get more diff\n\ntests/test_regression_f1.py:137: AssertionError\n=============================== warnings summary ===============================\ntests/test_regression_f1.py::test_cohort_with_no_claims_counts_zero_not_carried\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-f1/tests/test_regression_f1.py:124: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(_study(), str(indata), verbose=False)\n\ntests/test_regression_f1.py::test_cohort_with_surviving_episode_counts_real_values\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-f1/tests/test_regression_f1.py:153: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(_study(), str(indata), verbose=False)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/test_regression_f1.py::test_cohort_with_no_claims_counts_zero_not_carried\n1 failed, 1 passed, 2 warnings in 0.78s",
+      "green": "..                                                                       [100%]\n=============================== warnings summary ===============================\ntests/test_regression_f1.py::test_cohort_with_no_claims_counts_zero_not_carried\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-f1/tests/test_regression_f1.py:124: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(_study(), str(indata), verbose=False)\n\ntests/test_regression_f1.py::test_cohort_with_surviving_episode_counts_real_values\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-f1/tests/test_regression_f1.py:153: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(_study(), str(indata), verbose=False)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2 passed, 2 warnings in 0.76s"
+    }
+  },
+  {
+    "group_id": "f2",
+    "ok": true,
+    "worktree_removed": true,
+    "revisions": [
+      {
+        "role": "red",
+        "sha": "0e7eeee9147bd6ea6dc3befae7878dc7e311b3f7",
+        "exit_code": 1,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 0.79
+      },
+      {
+        "role": "green",
+        "sha": "37e3d89c6be648ee77b4b10d456c521d2c555ae5",
+        "exit_code": 0,
+        "pattern_matched": true,
+        "ok": true,
+        "duration_seconds": 0.76
+      }
+    ],
+    "steps": [
+      {
+        "step": "ancestry",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "checkout-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "drop-venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "run-green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "tails": {
+      "red": "            WHERE level = '1' AND \"group\" = 'c1'\"\"\")\n        assert {r[\"agegroup\"]: r[\"npts\"] for r in num} == {\"75+\": 1}\n    \n        # the eligible window (clipped to the query period: 2011-01-01,\n        # age 74) crosses the 75th birthday 2011-06-15: the denominator\n        # must emit BOTH bands\n        den = _rows(con, \"\"\"\n            SELECT agegroup, dennumpts, dennummemdays FROM denomcounts\n            WHERE level = '1' AND \"group\" = 'c1' ORDER BY agegroup\"\"\")\n        den_by_band = {r[\"agegroup\"]: r for r in den}\n>       assert set(den_by_band) == {\"65-74\", \"75+\"}, (\n            f\"denominator must split the window at the age threshold, \"\n            f\"got bands {sorted(den_by_band)}\")\nE       AssertionError: denominator must split the window at the age threshold, got bands ['65-74']\nE       assert {'65-74'} == {'65-74', '75+'}\nE         \nE         Extra items in the right set:\nE         '75+'\nE         Use -v to get more diff\n\ntests/test_regression_f2.py:124: AssertionError\n=============================== warnings summary ===============================\ntests/test_regression_f2.py::test_denominator_covers_every_band_the_window_spans\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-f2/tests/test_regression_f2.py:108: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(_study(), str(indata), verbose=False)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED tests/test_regression_f2.py::test_denominator_covers_every_band_the_window_spans\n1 failed, 1 warning in 0.52s",
+      "green": ".                                                                        [100%]\n=============================== warnings summary ===============================\ntests/test_regression_f2.py::test_denominator_covers_every_band_the_window_spans\n  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-f2/tests/test_regression_f2.py:108: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.\n    result = run(_study(), str(indata), verbose=False)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 1 warning in 0.51s"
+    }
+  }
+]

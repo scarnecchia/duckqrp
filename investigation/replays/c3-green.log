@@ -1,0 +1,6 @@
+# group c3 revision green 1a810a2a65152d29b07c1cf97e4470ebe9eaca76
+# command: python -m pytest tests/test_regression_c3.py -q
+# exit: 0 duration: 0.7s ok: True
+
+.                                                                        [100%]
+1 passed in 0.45s

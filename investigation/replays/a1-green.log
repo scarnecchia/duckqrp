@@ -1,0 +1,6 @@
+# group a1 revision green 5bbc4ffd8dbfcb0d940c93b350fba8b3d34de871
+# command: python -m pytest tests/test_regression_a1.py -q
+# exit: 0 duration: 0.4s ok: True
+
+..                                                                       [100%]
+2 passed in 0.10s

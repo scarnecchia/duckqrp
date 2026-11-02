@@ -1,0 +1,431 @@
+# group a4 revision red 8bc521e84053d7ade69247e741fdef02f2be0af2
+# command: python -m pytest tests/test_optional_claim_columns.py -q --tb=short
+# exit: 1 duration: 12.1s ok: True
+
+FFFFFFFFFFFFFFFFFFFFF...                                                 [100%]
+=================================== FAILURES ===================================
+________ test_each_optional_column_matches_null[diagnosis-dx_codetype] _________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Referenced column "dx_codetype" not found in FROM clause!
+E   Candidate bindings: "dx", "pdx", "enctype", "adate"
+E   
+E   LINE 6:     CAST(dx_codetype AS VARCHAR) AS codetype,
+E                      ^^^^^^^^^^^
+____________ test_each_optional_column_matches_null[diagnosis-pdx] _____________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "pdx" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+__________ test_each_optional_column_matches_null[diagnosis-enctype] ___________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "enctype" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+________ test_each_optional_column_matches_null[procedure-px_codetype] _________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Referenced column "px_codetype" not found in FROM clause!
+E   Candidate bindings: "px", "enctype", "patid", "adate"
+__________ test_each_optional_column_matches_null[procedure-enctype] ___________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "enctype" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+_________ test_each_optional_column_matches_null[lab_result-result_dt] _________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "result_dt" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+_________ test_each_optional_column_matches_null[lab_result-order_dt] __________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "order_dt" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+________ test_each_optional_column_matches_null[lab_result-ms_result_n] ________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Referenced column "ms_result_n" not found in FROM clause!
+E   Candidate bindings: "ms_result_c", "ms_result_unit", "ms_test_name", "result_dt", "ms_test_sub_category"
+E   
+E   LINE 23: FROM read_parquet('/tmp/pytest-of-scarndp/pytest-258/test_each_optional_...
+E                         ^^^^^^^^^^^
+________ test_each_optional_column_matches_null[lab_result-ms_result_c] ________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Referenced column "ms_result_c" not found in FROM clause!
+E   Candidate bindings: "ms_result_n", "ms_result_unit", "ms_test_name", "ms_test_sub_category", "result_dt"
+E   
+E   LINE 23: ...-of-scarndp/pytest-258/test_each_optional_column_matc8/omitted/lab_result.parquet')
+E                                                                           ^^^^^^^^^^^
+________ test_each_optional_column_matches_null[lab_result-result_type] ________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "result_type" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+___________ test_each_optional_column_matches_null[lab_result-loinc] ___________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "loinc" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+____________ test_each_optional_column_matches_null[lab_result-px] _____________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "px" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+_______ test_each_optional_column_matches_null[lab_result-ms_test_name] ________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "ms_test_name" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+___ test_each_optional_column_matches_null[lab_result-ms_test_sub_category] ____
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "ms_test_sub_category" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+______ test_each_optional_column_matches_null[lab_result-specimen_source] ______
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "specimen_source" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+______ test_each_optional_column_matches_null[lab_result-ms_result_unit] _______
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "ms_result_unit" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+_________ test_each_optional_column_matches_null[lab_result-fast_ind] __________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "fast_ind" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+__________ test_each_optional_column_matches_null[lab_result-pt_loc] ___________
+tests/test_optional_claim_columns.py:80: in test_each_optional_column_matches_null
+    assert _normalized(tmp_path / "omitted", table, (column,), False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "pt_loc" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+_______________ test_all_optional_columns_match_null[diagnosis] ________________
+tests/test_optional_claim_columns.py:86: in test_all_optional_columns_match_null
+    assert _normalized(tmp_path / "omitted", table, OPTIONALS[table], False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Referenced column "dx_codetype" not found in FROM clause!
+E   Candidate bindings: "dx", "adate"
+E   
+E   LINE 6:     CAST(dx_codetype AS VARCHAR) AS codetype,
+E                      ^^^^^^^^^^^
+_______________ test_all_optional_columns_match_null[procedure] ________________
+tests/test_optional_claim_columns.py:86: in test_all_optional_columns_match_null
+    assert _normalized(tmp_path / "omitted", table, OPTIONALS[table], False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Referenced column "px_codetype" not found in FROM clause!
+E   Candidate bindings: "px", "patid", "adate"
+_______________ test_all_optional_columns_match_null[lab_result] _______________
+tests/test_optional_claim_columns.py:86: in test_all_optional_columns_match_null
+    assert _normalized(tmp_path / "omitted", table, OPTIONALS[table], False) == expected
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_optional_claim_columns.py:66: in _normalized
+    result = run(study, str(root), verbose=False, threads=1)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+src/qrp/engine.py:483: in run_all
+    self.con.execute(stmt.sql)
+E   _duckdb.BinderException: Binder Error: Column "result_dt" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+=============================== warnings summary ===============================
+tests/test_optional_claim_columns.py: 24 warnings
+  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-a4/tests/test_optional_claim_columns.py:66: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.
+    result = run(study, str(root), verbose=False, threads=1)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[diagnosis-dx_codetype]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[diagnosis-pdx]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[diagnosis-enctype]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[procedure-px_codetype]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[procedure-enctype]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-result_dt]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-order_dt]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-ms_result_n]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-ms_result_c]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-result_type]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-loinc]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-px]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-ms_test_name]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-ms_test_sub_category]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-specimen_source]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-ms_result_unit]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-fast_ind]
+FAILED tests/test_optional_claim_columns.py::test_each_optional_column_matches_null[lab_result-pt_loc]
+FAILED tests/test_optional_claim_columns.py::test_all_optional_columns_match_null[diagnosis]
+FAILED tests/test_optional_claim_columns.py::test_all_optional_columns_match_null[procedure]
+FAILED tests/test_optional_claim_columns.py::test_all_optional_columns_match_null[lab_result]
+21 failed, 3 passed, 24 warnings in 11.76s

@@ -1,0 +1,16 @@
+[a1] findings ['A-1']: base c3e60db5d083 then red@f97171090206 -> green@5bbc4ffd8dbf
+[a1] OK: red exit 1 (0.4s), green exit 0 (0.3s), worktree removed (total 1.6s)
+[a2] findings ['A-2']: base c3e60db5d083 then red@1577f8385b88 -> green@564eb7a4c9cc
+[a2] OK: red exit 1 (0.9s), green exit 0 (1.0s), worktree removed (total 2.6s)
+[a4] findings ['A-4']: base c3e60db5d083 then red@8bc521e84053 -> green@a6a74e4f1116 -> final@f1dca19f7db1
+[a4] OK: red exit 1 (11.4s), green exit 0 (16.0s), final exit 0 (15.9s), worktree removed (total 44.3s)
+[e1e2] findings ['E-1', 'E-2']: base c3e60db5d083 then red@323b23135038 -> green@0a2657316139
+[e1e2] OK: red exit 1 (10.7s), green exit 0 (2.9s), worktree removed (total 14.3s)
+[c3] findings ['C-3']: base c3e60db5d083 then red@26ddf87c2880 -> green@1a810a2a6515
+[c3] OK: red exit 1 (0.7s), green exit 0 (0.7s), worktree removed (total 2.1s)
+[f1] findings ['F1']: base c3e60db5d083 then red@0bcb1a88f09b -> green@300108638329
+[f1] OK: red exit 1 (1.0s), green exit 0 (1.0s), worktree removed (total 2.8s)
+[f2] findings ['F2']: base c3e60db5d083 then red@0e7eeee9147b -> green@37e3d89c6be6
+[f2] OK: red exit 1 (0.8s), green exit 0 (0.8s), worktree removed (total 2.2s)
+replay OK for 7 group(s): ['a1', 'a2', 'a4', 'e1e2', 'c3', 'f1', 'f2'] (executed_at 2026-11-02T21:08:04Z; logs in /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/finding-replay/investigation/replays)
+EXIT=0
