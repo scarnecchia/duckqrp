@@ -166,6 +166,14 @@ a test pass.
 * Combo covariates (codecat 'CC') reference earlier covarnums only —
   generate studies whose CC references a LATER covarnum and compare
   against the documented one-at-a-time semantics.
+* `_cdm_procedure_raw` references `px_codetype`/`enctype`
+  unconditionally (10_normalize.sql) though INPUTS.md declares them
+  optional for the optional `procedure` table — A-4's exact class
+  (candidate A-5; found during the A-4 arbitration, not fixed).
+* Denominator time stratification still does not split eligible
+  windows at year/month boundaries (SAS's period splitting); after
+  fix2-f2 the age dimension splits per band, the `year` stratum is the
+  span-start year. Same mechanism family as F2; unquantified.
 
 ## Campaign log (orchestrator)
 

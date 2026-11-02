@@ -136,7 +136,7 @@ arbiter):**
    INPUTS.md:180 but referenced unconditionally in 10_normalize.sql
    (`_cdm_diagnosis_raw`) — the same class as A-2. Found because the
    standalone B2 regression extract crashed on them before reaching
-   the B2 mechanism.
+   the B2 mechanism. FIXED in wave 2 as A-4 (see below).
 3. **A.md's claim "Real files have produced doubled rows before (per
    code comments)" could not be substantiated** — no such comment
    exists in the repo (grep across src/ and docs/). The A-1 fix stands
@@ -156,6 +156,153 @@ arbiter):**
    tool-level divergence from SAS's accepted inputs — the A-2 fix
    honors the tool's published promise, not SAS's stricter requirement,
    and the finding doc records the nuance.
+
+## Wave 2 — arbitration of F1, F2, and the A-4 lead (arb2 report)
+
+Arbiter: second general-purpose subagent, branch
+`inv/0f462p/arb2-findings`. All three findings were re-derived
+independently from code + docs + the read-only SAS reference, and the
+witnesses were re-reproduced (F pins xfail at HEAD; A-4's
+BinderException reproduced at base c3e60db AND discovery HEAD 2a71a0c
+via a detached throwaway worktree) before classification. All three
+classified as production defects. F1/F2 and the diagnosis subset of A-4
+have local fixes validated. The expanded A-4 procedure/lab family is now
+also fixed and validated, including a labs-enabled property suite. No fixes
+were published. The parent has not merged arb2. Current complete-family
+commands and AC9 collection evidence: [A4-validation.md](A4-validation.md).
+
+### Rulings at a glance
+
+| id | classification | fix branch (from c3e60db) | red / green |
+|---|---|---|---|
+| F1 | production defect — SAS parity + the funnel's own declared contract | inv/0f462p/fix2-f1 | 0bcb1a8 / 3001086 |
+| F2 | production defect — undocumented SAS parity divergence in the denominator banding | inv/0f462p/fix2-f2 | 0e7eeee / 37e3d89 (amended) |
+| A-4 | production defect — complete 18-column family fixed | inv/0f462p/fix3-a4-complete | 8bc521e / a6a74e4; final f1dca19 |
+
+### F1 — attrition forward-fill (finder claimed HIGH; confirmed)
+
+The funnel's counted steps produced their counts with GROUP BYs over
+each step's relation; an EMPTY relation yielded no row, `n` came back
+NULL, and the blank-row carry
+`coalesce(n, last_value(n IGNORE NULLS))` — correct for the skeleton's
+blank rows — forward-filled the last member count through the episode
+block into level 27, whose own descr declares "Unique number of
+members in final cohort". SAS never leaves a counted step without a
+number: %ms_attrition_cidacompute fills `:remaining` from
+`count(*)` over the step's data — 0 on empty
+(ms_attrition_cidacompute.sas:77-88) — and ONLY skip rows carry
+forward (:112-119); the initial-episode and final rows are information
+rows carrying the actual count (ms_attrition.sas:291-297, 1008-1015).
+The fix counts a missing count row as 0 at every
+init/excl/final step: the first empty step absorbs the drop as its
+exclusion, later steps report 0, level 27 reports the real final
+cohort size; blank rows keep carrying; non-empty extracts are
+unchanged. Regression (standalone, inline two-cohort extract): a
+claims-free cohort reads (0, 2) at level 6 — red on c3e60db as (2,
+None) — plus a surviving-episode pin. Both F1 xfail pins flipped to
+passing on this branch.
+
+### F2 — npts > dennumpts in stratified cells (finder claimed MEDIUM; confirmed)
+
+The numerator bands episodes at the index date (45_pov1.sql:78, SAS
+ms_createpov1.sas:102-116); the denominator banded each eligible
+window ONCE at denom_start (92_cidadenom.sql, "earliest date an index
+could occur in it"). SAS's denominator instead SPLITS the window at
+the age thresholds — ms_cidadenom.sas:1036-1057 walks the bands
+oldest-first, outputs one span per overlapped band with its own
+member-days, shrinking the window to threshdate-1 — so a member counts
+in every band their eligible time touches, and num ≤ den holds per
+cell by construction. The tool's single-anchor banding is therefore an
+UNDOCUMENTED parity divergence (SAS_PARITY.md's denominator
+verification reconciled level margins only, never per-band cells), not
+an intended semantic. The fix emits one span per overlapped band
+(entry = birth + lo units; end = next band's entry − 1 day; member-days
+per span; index_year at span start). SAS's merge behavior (num-only
+rows get DenNumPts=0, ms_cidatables.sas:272-285) was already correct
+in t2_cida. Regression: a threshold-crossing member (born 1936-06-15,
+query 2011, index at 75) is banded 65-74-only on c3e60db (red);
+post-fix both bands exist with a 165/200 member-day split.
+
+**Nondeterminism caught during fix validation:** the first green used
+`lead() ... ORDER BY ordinal` to find each band's end — but
+`_denom_windows` holds multiple shave segments per (member,
+eligepisode), so the tie-ordered lead() paired rows arbitrarily and
+the emitted spans depended on physical row order (test
+test_denominator_is_shaved_around_outcome_events flapped: beta_blocker
+member-days moved between two IDENTICAL runs; proven on a frozen stage
+input — 5 runs, 5 distinct digests — while the base view under the
+same harness showed 0 diffs). The shipped green replaces the window
+function with per-band interval offsets (bounds are pure band data),
+5 runs → 1 digest. Residual, documented: the denominator still does
+not split at year boundaries (SAS's period splitting) — pre-existing,
+outside this finding's scope.
+
+### A-4 — diagnosis optionals (wave-1 lead; fixed as predicted)
+
+INPUTS.md:180 declares `dx_codetype`/`pdx`/`enctype` optional;
+`_cdm_diagnosis_raw` referenced all three unconditionally. Reproduced
+at c3e60db AND HEAD (`Binder Error: Referenced column "dx_codetype"
+not found`) with an extract carrying rxamt (so A-2's fixed path does
+not mask it). The fix mirrors fix-a2's mechanism exactly: the
+`_optional` loop resolves the trio (column or NULL) and the view reads
+`{opt_dx_codetype}`/`{opt_pdx}`/`{opt_enctype}` — NULL codetype is the
+exposure join's match-any convention (30_exposure.sql:76-82); NULL
+pdx/enctype fall to the view's own COALESCE wildcards ('X'/'XX').
+Consumers were verified before the initial diagnosis-only fix. Historically,
+package A's pass-2 sweep at `f5a2a85` extended the same defect to two
+procedure and thirteen lab columns. All 18 are now resolved by the clean
+`inv/0f462p/fix3-a4-complete` branch: red `8bc521e`, green `a6a74e4`,
+final typing correction `f1dca19`. The original `fix2-a4` is superseded,
+not deleted. Compatibility changes to existing tests and the campaign
+harness remain arb2-only. See [A4-validation.md](A4-validation.md).
+
+### Validation on the merged arb2 tree
+
+Merges: fix2-a4 + fix2-f1 + fix2-f2 (clean; campaign harness fmt
+mirror extended with the diagnosis keys — the same mirror fix-a2
+needed; all four F xfail pins flipped to passing assertions). Runs:
+tests/properties/test_pkg_f_totals.py + the three standalone
+regression suites + determinism + rewrites → 26 passed, 0 xfailed;
+the other F families + package A quick set → 67 passed; package B
+quick suite → 2 passed, 1 xfailed (the B2 strict parity pin,
+unchanged). Full tests/test_pipeline.py on the merged tree → 287 passed,
+1 skipped, 2 failed in 403.09s. Both failures are the pre-existing exempt
+spill-attribution tests (`test_spilling_is_attributed_to_the_statement_that_caused_it`
+and `test_spill_summary_names_the_statement_in_the_log`). The shell job
+returned exit 0, but pytest itself reported these two failures; this is
+not an all-green pipeline result.
+
+### Branch inventory (wave 2)
+
+- `inv/0f462p/arb2-findings` (this branch): the three fix merges,
+  harness mirror extension, xfail flips, finding docs
+  (F1-attrition-empty-step-forward-fill.md,
+  F2-denominator-age-band-split.md, A-4-optional-diagnosis-columns.md),
+  manifest + this file.
+- `inv/0f462p/fix2-a4`, `inv/0f462p/fix2-f1`, `inv/0f462p/fix2-f2`:
+  shipped fixes, merged.
+- `wt/arb2-throwaway`: detached c3e60db worktree used for the A-4 base
+  reproduction.
+
+## Surprises found during independent review (wave 2)
+
+1. **The F2 fix's first version was itself nondeterministic** — a
+   defect the finder's property suite could not see, because the F
+   totals properties compare artifacts WITHIN one run, never across
+   repeated identical runs. A shave test that asserts cross-run
+   equality caught it. Worth remembering for future SQL fixes that add
+   window functions over non-unique partition keys.
+2. **`_cdm_procedure_raw` has A-4's exact defect class** (optional
+   table, optional columns `px_codetype`/`enctype` referenced
+   unconditionally) — discovered while scoping A-4, left as a lead.
+3. **SAS's L7 excluded is NULL by design** (information row, `excluded`
+   parameter defaults to `.`) — the tool's init rows already match,
+   so only the empty-relation counts needed fixing, not the excluded
+   semantics.
+4. **DuckDB 2.0's `DATE + INTERVAL` is TIMESTAMP** — the band-entry
+   expressions need explicit DATE casts (the codebase already does
+   this shape in age_yrdif); a naive port of SAS's intnx arithmetic
+   binds but poisons downstream date arithmetic.
 
 ## Branch inventory
 

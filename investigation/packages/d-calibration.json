@@ -1,0 +1,17 @@
+{
+  "calibrations": [
+    {
+      "id": "d-1-pass2-20261102",
+      "package": "D",
+      "base_revision": "d3b6043cc6f1c9b8746740fd5d751ca896f014c3",
+      "base_note": "Merged discovery; includes cbd1038 working same-code wash calibration test.",
+      "diff_path": "investigation/calibrations/d-1.patch",
+      "failing_command": ".venv/bin/python -m pytest tests/properties/test_pkg_d_config_sharing.py::test_cohorts_together_equal_separate[wash] -q --hypothesis-profile=quick --tb=short -p no:cacheprovider",
+      "expected_failure_pattern": "cohort_a: table denomcounts differs together vs separate",
+      "red_evidence": "Offline replay /tmp/d-pass2-replay.json: red_exit_code=1, red_pattern_matched=true; 1 failed in 30.33s. Expected cohort_a denomcounts together-versus-separate assertion matched.",
+      "green_evidence": "Offline replay /tmp/d-pass2-replay.json: green_exit_code=0; 1 passed in 11.40s after reset; worktree_removed=true; every replay step ok.",
+      "reverted": true,
+      "provenance": "reconstructed"
+    }
+  ]
+}

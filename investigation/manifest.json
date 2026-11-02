@@ -400,7 +400,69 @@
       "tests/test_ui.py:330 needs 2m dataset"
     ]
   },
-  "calibrations": [],
+  "calibrations": [
+    {
+      "id": "a-1", "package": "A", "base_revision": "2d12750",
+      "base_note": "package A pass-1 HEAD (wave base a0d0b93); src/ and tools/ are identical from a0d0b93 through this HEAD, so the diff applies at both",
+      "diff_path": "investigation/calibrations/a-1.patch",
+      "failing_command": "python -m pytest tests/properties/test_pkg_a_sqlsplit.py --hypothesis-profile=quick",
+      "expected_failure_pattern": "assert \\[\\] == \\[None\\]",
+      "red_evidence": "11 failed, 7 passed while mutated: test_empty_and_degenerate_inputs split_statements(\"SELECT 1\") -> [] == [None] failed (tail push gone); mandatory shapes [] != grammar-authored; final table missing from the sequential run",
+      "green_evidence": "clean tree after git checkout -- src/qrp/sqlsplit.py passed 18/18; git status shows no src/ changes",
+      "reverted": true, "provenance": "recorded"
+    },
+    {
+      "id": "b-1", "package": "B", "base_revision": "1d4dfec",
+      "base_note": "package B pass-1 HEAD (branch base a0d0b93 per B.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
+      "diff_path": "investigation/calibrations/b-1.patch",
+      "failing_command": "python -m pytest tests/properties/test_pkg_b_enrollment.py::test_enrollment_matches_day_model --hypothesis-profile=quick",
+      "expected_failure_pattern": "enrollment_spans: SQL returned \\d+ rows, model \\d+",
+      "red_evidence": "FAILED in 0.39s on the gap-threshold interaction @example: AssertionError: enrollment_spans: SQL returned 4 rows, model 3 — patient 2's adjacent+gap_exact pair wrongly split where the model merges (enrol_gap=1)",
+      "green_evidence": "clean tree after git checkout -- src/qrp/sql/20_enrollment.sql re-verified: 2 passed, 1 xfailed in 1.06s",
+      "reverted": true, "provenance": "reconstructed"
+    },
+    {
+      "id": "c-1", "package": "C", "base_revision": "8645179",
+      "base_note": "package C pass-1 HEAD (branch base a0d0b93 per C.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
+      "diff_path": "investigation/calibrations/c-1.patch",
+      "failing_command": "python -m pytest tests/properties/test_pkg_c_followup.py::test_followup_washout_boundaries tests/properties/test_pkg_c_followup.py::test_followup_and_censoring_match_day_model --hypothesis-profile=quick",
+      "expected_failure_pattern": "cohort_final membership differs from the model",
+      "red_evidence": "test_followup_washout_boundaries FAILED for the expected reason — case (wash=6, event at -7): stage dropped the episode the model kept, assertion cohort_final membership differs from the model; the generated property still passed (boundary rare in generated data)",
+      "green_evidence": "reverted with git checkout -- src/qrp/sql/60_followup.sql; git status shows only new package files; re-run green",
+      "reverted": true, "provenance": "reconstructed"
+    },
+    {
+      "id": "e-1", "package": "E", "base_revision": "0b391e5",
+      "base_note": "package E pass-1 HEAD (branch base a0d0b93 per E.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
+      "diff_path": "investigation/calibrations/e-1.patch",
+      "failing_command": "python -m pytest tests/properties/test_pkg_e_outputs.py::test_output_failure_is_not_reported_complete tests/properties/test_pkg_e_faults.py::test_fault_schedule_terminal_events --hypothesis-profile=quick",
+      "expected_failure_pattern": "DID NOT RAISE",
+      "red_evidence": "both FAIL for the expected reason — Failed: DID NOT RAISE RuntimeError (match 'injected output-write'); adhoc confirmation: RunFinished(ok=True) while manifest.json is ABSENT",
+      "green_evidence": "reverted with git checkout -- src/qrp/pipeline.py; git status shows only package-E files; both properties green again",
+      "reverted": true, "provenance": "reconstructed"
+    },
+    {
+      "id": "f-1", "package": "F", "base_revision": "c4b61a5",
+      "base_note": "package F pass-1 HEAD (branch base a0d0b93 per F.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
+      "diff_path": "investigation/calibrations/f-1.patch",
+      "failing_command": "python -m pytest tests/properties/test_pkg_f_comparators.py::test_comparators_detect_targeted_corruption --hypothesis-profile=quick",
+      "expected_failure_pattern": "duplicate_row on stockpiled exited 0",
+      "red_evidence": "AssertionError: duplicate_row on stockpiled exited 0 — hit the deterministic @example immediately; ROW COUNT was the only detection left and dedupe killed it",
+      "green_evidence": "reverted with git checkout -- tools/parity_compare.py; git status shows only package-F files; comparator family green again (26 passed)",
+      "reverted": true, "provenance": "reconstructed"
+    },
+    {
+      "id": "d-1-pass2-20261102", "package": "D",
+      "base_revision": "d3b6043cc6f1c9b8746740fd5d751ca896f014c3",
+      "base_note": "Merged discovery; includes cbd1038 working same-code wash calibration test.",
+      "diff_path": "investigation/calibrations/d-1.patch",
+      "failing_command": ".venv/bin/python -m pytest tests/properties/test_pkg_d_config_sharing.py::test_cohorts_together_equal_separate[wash] -q --hypothesis-profile=quick --tb=short -p no:cacheprovider",
+      "expected_failure_pattern": "cohort_a: table denomcounts differs together vs separate",
+      "red_evidence": "Offline replay /tmp/d-pass2-replay.json: red_exit_code=1, red_pattern_matched=true; 1 failed in 30.33s. Expected cohort_a denomcounts together-versus-separate assertion matched.",
+      "green_evidence": "Offline replay /tmp/d-pass2-replay.json: green_exit_code=0; 1 passed in 11.40s after reset; worktree_removed=true; every replay step ok.",
+      "reverted": true, "provenance": "reconstructed"
+    }
+  ],
   "evidence": [
     {
       "kind": "witness_directory",
@@ -513,6 +575,41 @@
       "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
       "fix_branch": "inv/0f462p/fix3-docs commit 34f84e7 (comment-only, zero executable changes)",
       "witness": "investigation/packages/D.md finding D2 + git show 34f84e7"
+    },
+    {
+      "id": "F1",
+      "doc": "investigation/findings/F1-attrition-empty-step-forward-fill.md",
+      "title": "Attrition forward-fills the last member count through empty counted steps; level 27 reports members that do not exist",
+      "status": "fixed",
+      "classification": "production defect (SAS parity: ms_attrition_cidacompute.sas:77-88 counts each step's relation, 0 on empty; only SKIP rows carry forward)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix2-f1 (red 0bcb1a8 / green 3001086), merged to arb2",
+      "witness": "investigation/witnesses/pkg-f-lead-f1-attrition-l27-forward-fill.txt; tests/test_regression_f1.py; pins test_pkg_f_totals.py test_attrition_final_count_pin_f1 / test_attrition_final_count_matches_cohort_final (flipped to passing)"
+    },
+    {
+      "id": "F2",
+      "doc": "investigation/findings/F2-denominator-age-band-split.md",
+      "title": "CIDA numerator exceeds denominator in stratified cells: denominator bands a whole eligible window at its start instead of splitting at age thresholds",
+      "status": "fixed",
+      "classification": "production defect (SAS parity: ms_cidadenom.sas:1036-1057 splits each window per overlapped band; numerator bands at indexdt, ms_createpov1.sas:102-116)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix2-f2 (red 0e7eeee / green 37e3d89, amended with the deterministic offset-join rewrite after a lead()-tie nondeterminism was proven on frozen input), merged to arb2",
+      "witness": "investigation/witnesses/pkg-f-lead-f2-num-gt-den.txt; tests/test_regression_f2.py; pins test_pkg_f_totals.py test_numerator_denominator_pin_f2 / test_numerator_never_exceeds_denominator (flipped to passing)"
+    },
+    {
+      "id": "A-4",
+      "doc": "investigation/findings/A-4-optional-diagnosis-columns.md",
+      "title": "Declared-optional diagnosis, procedure and lab columns: complete 18-column fix validated",
+      "status": "fixed",
+      "classification": "production defect against the published contract (INPUTS.md:180; same class as A-2; mechanism mirrored exactly)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix3-a4-complete",
+      "red_commit": "8bc521e",
+      "green_commit": "a6a74e4f1116e096572170551aa44085f84d995c",
+      "final_commit": "f1dca19",
+      "supersedes": "inv/0f462p/fix2-a4 (preserved; diagnosis-only)",
+      "validation": "Red 21 failed/3 passed exit 1; final standalone 24 passed exit 0; labs-enabled quick and discovery each 34 passed exit 0; integration regressions 45 passed exit 0; layout consumers 36 passed exit 0. See investigation/packages/A4-validation.md for commands and outputs.",
+      "witness": "tests/test_optional_claim_columns.py; tests/properties/test_pkg_a_optional_columns.py; investigation/packages/A4-validation.md"
     }
   ],
   "open_questions": [

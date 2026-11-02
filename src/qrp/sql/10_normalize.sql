@@ -155,9 +155,9 @@ SELECT
     CAST(patid AS BIGINT)  AS patid,
     CAST(adate AS DATE)    AS adate,
     CAST(dx AS VARCHAR)    AS code,
-    CAST(dx_codetype AS VARCHAR) AS codetype,
-    upper(COALESCE(CAST(pdx AS VARCHAR), 'X')) AS pdx,
-    upper(COALESCE(CAST(enctype AS VARCHAR), 'XX')) AS enctype
+    CAST({opt_diagnosis_dx_codetype} AS VARCHAR) AS codetype,
+    upper(COALESCE(CAST({opt_diagnosis_pdx} AS VARCHAR), 'X')) AS pdx,
+    upper(COALESCE(CAST({opt_diagnosis_enctype} AS VARCHAR), 'XX')) AS enctype
 FROM {read_diagnosis}
 WHERE adate IS NOT NULL;
 
@@ -202,8 +202,8 @@ SELECT
     CAST(patid AS BIGINT)          AS patid,
     CAST(adate AS DATE)            AS adate,
     CAST(px AS VARCHAR)            AS code,
-    CAST(px_codetype AS VARCHAR)   AS codetype,
-    CAST(enctype AS VARCHAR)       AS enctype
+    CAST({opt_procedure_px_codetype} AS VARCHAR)   AS codetype,
+    CAST({opt_procedure_enctype} AS VARCHAR)       AS enctype
 FROM {read_procedure};
 
 -- enveloped like diagnoses; the procedure table has no principal flag,
@@ -239,21 +239,21 @@ SELECT
     CAST(patid AS BIGINT)                 AS patid,
     CAST(lab_dt AS DATE)                  AS lab_dt,
     -- SAS numeric dates: days since 1960-01-01, stored as DOUBLE.
-    CASE WHEN result_dt IS NULL THEN NULL
-         ELSE DATE '1960-01-01' + CAST(result_dt AS INTEGER) END AS result_dt,
-    CASE WHEN order_dt IS NULL THEN NULL
-         ELSE DATE '1960-01-01' + CAST(order_dt AS INTEGER) END  AS order_dt,
-    CAST(ms_result_n AS DOUBLE)           AS result_num,
-    upper(trim(COALESCE(CAST(ms_result_c AS VARCHAR), ''))) AS result_char,
-    upper(trim(COALESCE(CAST(result_type AS VARCHAR), 'U'))) AS result_type,
-    CAST(loinc AS VARCHAR)                AS loinc,
-    CAST(px AS VARCHAR)                   AS px,
+    CASE WHEN {opt_lab_result_result_dt} IS NULL THEN NULL
+         ELSE DATE '1960-01-01' + CAST({opt_lab_result_result_dt} AS INTEGER) END AS result_dt,
+    CASE WHEN {opt_lab_result_order_dt} IS NULL THEN NULL
+         ELSE DATE '1960-01-01' + CAST({opt_lab_result_order_dt} AS INTEGER) END  AS order_dt,
+    CAST({opt_lab_result_ms_result_n} AS DOUBLE)           AS result_num,
+    upper(trim(COALESCE(CAST({opt_lab_result_ms_result_c} AS VARCHAR), ''))) AS result_char,
+    upper(trim(COALESCE(CAST({opt_lab_result_result_type} AS VARCHAR), 'U'))) AS result_type,
+    CAST({opt_lab_result_loinc} AS VARCHAR)                AS loinc,
+    CAST({opt_lab_result_px} AS VARCHAR)                   AS px,
     -- the LAB01 combination, upcased and trimmed as SAS does
     -- (ms_extractlabs.sas:227-233)
-    upper(trim(COALESCE(CAST(ms_test_name AS VARCHAR), '')))         AS ms_test_name,
-    upper(trim(COALESCE(CAST(ms_test_sub_category AS VARCHAR), ''))) AS ms_test_sub_category,
-    upper(trim(COALESCE(CAST(specimen_source AS VARCHAR), '')))      AS specimen_source,
-    upper(trim(COALESCE(CAST(ms_result_unit AS VARCHAR), '')))       AS ms_result_unit,
-    upper(trim(COALESCE(CAST(fast_ind AS VARCHAR), '')))             AS fast_ind,
-    upper(trim(COALESCE(CAST(pt_loc AS VARCHAR), '')))               AS pt_loc
+    upper(trim(COALESCE(CAST({opt_lab_result_ms_test_name} AS VARCHAR), '')))         AS ms_test_name,
+    upper(trim(COALESCE(CAST({opt_lab_result_ms_test_sub_category} AS VARCHAR), ''))) AS ms_test_sub_category,
+    upper(trim(COALESCE(CAST({opt_lab_result_specimen_source} AS VARCHAR), '')))      AS specimen_source,
+    upper(trim(COALESCE(CAST({opt_lab_result_ms_result_unit} AS VARCHAR), '')))       AS ms_result_unit,
+    upper(trim(COALESCE(CAST({opt_lab_result_fast_ind} AS VARCHAR), '')))             AS fast_ind,
+    upper(trim(COALESCE(CAST({opt_lab_result_pt_loc} AS VARCHAR), '')))               AS pt_loc
 FROM {read_lab_result};

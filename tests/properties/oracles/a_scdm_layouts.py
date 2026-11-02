@@ -46,8 +46,8 @@ import duckdb
 from qrp import run
 
 from ..synth import (
-    SyntheticDataset,
     TABLE_COLUMNS,
+    SyntheticDataset,
     rows_for_table,
 )
 

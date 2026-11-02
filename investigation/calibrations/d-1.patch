@@ -1,0 +1,12 @@
+diff --git a/src/qrp/pipeline.py b/src/qrp/pipeline.py
+--- a/src/qrp/pipeline.py
++++ b/src/qrp/pipeline.py
+@@ -498,7 +498,7 @@
+     return "|".join(str(x) for x in (
+         _enr_cfg_id(c), c.enr_days, c.min_days_supp, c.min_epis_dur,
+         c.req_days_aft_epi, c.req_days_aft_ind, c.blackout_per,
+-        c.wash_per, hashlib.sha1(codes.encode()).hexdigest()[:12],
++        hashlib.sha1(codes.encode()).hexdigest()[:12],
+         # The EXCLUSION rules belong here too: the denominator is
+         # shaved by them (ms_cidadenom.sas:145), so two cohorts with
+         # different exclusions have different eligible time. Omitting
