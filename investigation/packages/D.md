@@ -317,7 +317,7 @@ The old segment-start oracle/tests remain unchanged in age semantics and do
 not validate F2. The earlier broad no-defect statement is not an F2 verdict.
 
 `d_age_days.py` computes attained whole years separately on each calendar
- day, then tests each configured lower/upper bound directly. It never uses
+day, then tests each configured lower/upper bound directly. It never uses
 SQL threshold dates, next-band offsets, or intermediate database results.
 Its input is a sequence of member-day occurrences: member counts deduplicate
 IDs, day counts retain multiplicity. The integration fixtures independently
@@ -365,4 +365,3 @@ to the generated test, and all final commands passed. Neither was a
 production defect. Verdict: F2 agrees with the independent bounded age-day
 oracle on this tested contract; no genuine F2 defect was found. This is not
 an assertion of complete denominator parity or coverage of ambiguous bands.
-
