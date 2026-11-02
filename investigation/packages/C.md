@@ -162,6 +162,50 @@ bug in my package's stages):
    row. `rxsup > 0` always holds in generated data (normalize
    filters), so this is unreachable through SCDM-conformant input.
 
+## Pass 2
+
+Merged discovery at `3dfe463c5be9ecca444ed22b41d8a4accc3f04bb` before this pass. All runs below used that revision plus the package-C changes committed with this section; no production/shared-infrastructure edits were made.
+
+Changes: added the C-1 pre-truncation length-filter characterization with non-strict xfail; added washout/window equality and washout/blackout boundary cases; expanded inclusion generation with RX supply rules and exact-fit events; added pure day-set overlap and enumerated at-risk-day checks. Wildcard care-setting rows remain in use. The merged min==max cfdd pin remains. The merged negative-pre-floor witness now asserts zero, and pure generation also covers empty at-risk spans.
+
+Corrections to pass-1 findings: negative person_days was fixed by fix3-c3; the oracle now floors at zero. C-1 is a SAS/Python ordering parity gap (DB-5), not a resolved comment-only issue: SAS checks inclusion flags after truncation, whereas Python filters before truncation and does not recheck. The new expected-failure test characterizes that shape, not approval of the behavior.
+
+### Recorded runs
+
+Revision for all three records: `3dfe463c5be9ecca444ed22b41d8a4accc3f04bb` + pass-2 package changes. Durations are Bash `time` wall seconds; pytest durations shown separately.
+
+1. Command: `.venv/bin/python -m pytest tests/properties/test_pkg_c_*.py --hypothesis-profile=discovery --hypothesis-show-statistics`
+   Result: **35 passed, 1 xfailed**, pytest 51.40s, wall **51.577s**. Dose/inclusion/follow-up each generated 50 passing examples; pure properties each generated 500.
+2. Command: `.venv/bin/python -m pytest tests/properties/test_pkg_c_pure.py --hypothesis-profile=deep --hypothesis-show-statistics`
+   Result: **2 passed**, pytest 0.82s, wall **1.008s**. Each property generated 2000 passing examples, zero failing/invalid.
+3. Command: `.venv/bin/python -m pytest tests/properties/test_pkg_c_*.py tests/properties/test_harness_stages.py --hypothesis-profile=quick`
+   Result: **42 passed, 1 xfailed**, pytest 25.62s, wall **25.774s**. Replay check repeated the same command: **42 passed, 1 xfailed**, pytest 25.81s, wall **25.964s**.
+
+The earlier discovery launch did not execute pytest because `/usr/bin/time` was absent (exit 1). It was replaced with Bash timing; the successful record above supersedes it.
+
+### Statistics excerpts and gaps
+
+```text
+Discovery dose: 50 passing, 0 failing, 8 invalid
+55.17% distinct-day vs row divergence visible
+32.76% lookback boundary exact hit
+5.17% wash == cum_per degenerate window
+Discovery follow-up: 50 passing, 0 failing, 0 invalid
+8.00% event attribution: some
+16.00% washout-or-blackout drops: some
+Discovery inclusion: 50 passing, 0 failing, 7 invalid
+33.33% window boundary exact hit
+17.54% codedays exact fit
+Discovery pure: 500 passing per property
+40.80% negative pre-floor span; 32.20% coincident starts
+Deep pure: 2000 passing per property, 0 failing, 0 invalid
+47.25% negative pre-floor span; 26.55% coincident starts
+```
+
+RX minrxdays exact-fit instrumentation produced no event in this discovery sample; deterministic RX overlap threshold tests remain, but randomized exact-fit coverage needs improvement. Event attribution also remains sparse. No new lead was found in this pass. C-1 remains open; the non-strict xfail is expected, not a passing parity assertion.
+
+Additional verification: `.venv/bin/python -m pytest tests/test_rewrites.py tests/test_determinism.py` — 15 passed (2.56s); `.venv/bin/python -m ruff check --select E4,E7,E9,F tests/properties` — clean; `.venv/bin/python -m mypy src tests/properties` — success, 73 files (only informational untyped-body notes in package D).
+
 ## Open questions
 
 * **OC-1 (pooled vs per-code "alternatives")**: INCLUSION.md says

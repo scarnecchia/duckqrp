@@ -331,6 +331,46 @@ def test_dose_washout_zero_prior_fill_feeds_second_index() -> None:
 
 
 # ---------------------------------------------------------------------
+# Coincident-bound shapes (pass 2)
+# ---------------------------------------------------------------------
+
+
+def test_dose_washout_equal_to_lookback_window_zeroes_prior_dose() -> None:
+    """COINCIDENT-BOUND shape: wash_per == cum_dose_per degenerates the
+    prior-dose check.
+
+    A claim inside the candidate's lookback window [adate - per,
+    adate - 1] has expiredt >= adate - per == adate - wash, so the
+    running-max washout suppresses any candidate it could dose: on a
+    surviving candidate the window is provably empty and prior dose is
+    always 0 (this is why config validation forbids min_cum_dose with
+    cum_dose_per <= wash_per).
+
+    Fills at -60 (exp -51), -30 (exp -21), index 0: the -30 and 0
+    candidates are washout-suppressed; the lone survivor (-60) has an
+    empty window, so max_cum_dose=1.0 excludes nothing.
+    """
+    dataset = grid_dataset(fills=[(0, "E00001", 4, 2.0),
+                                  (-30, "E00001", 10, 1.0),
+                                  (-60, "E00001", 10, 1.0)],
+                           index_fill=False)
+    run, verdicts = _run_dose(
+        dataset, wash_per=30, cum_dose_per=30,
+        min_cum_dose=None, max_cum_dose=1.0,
+        min_cfdd=None, max_cfdd=None)
+    _assert_dose_matches_model(run, verdicts)
+    expected_lone = GRID_ANCHOR - timedelta(days=60)
+    assert set(verdicts) == {("cohort_a", 1, expected_lone)}, verdicts
+    v = verdicts[("cohort_a", 1, expected_lone)]
+    assert not v.excluded and v.reasons == frozenset(), v
+    # the degeneracy itself: no surviving candidate has an in-window
+    # claim, so the cumdose criterion can never fire at wash == per
+    assert not run.outputs["dose_excluded"], (
+        "prior dose fired although wash == per provably empties the "
+        "window for every surviving candidate")
+
+
+# ---------------------------------------------------------------------
 # Interaction: same logical exposure, different claim sets
 # ---------------------------------------------------------------------
 
@@ -465,3 +505,7 @@ def test_dose_boundaries_match_model(data: Any) -> None:
     ]
     if len(same_day) > 1:
         event("distinct-day vs row divergence visible")
+    if wash == cum_per:
+        # coincident-bound shape: washout == lookback window provably
+        # empties every surviving candidate's prior-dose window
+        event("wash == cum_per degenerate window")

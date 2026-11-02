@@ -23,8 +23,7 @@ Contracts under test (the stage SQL's header comments + 50_episodes):
   days(index -> min(episodeenddt, enr_end)) + 1; episodeenddt_censor
   = min(enr_end, death, query end, censor end) with timetocensor one
   more; person_days spans [atrisindexdt, min(FEventDt or end, end)]
-  with NO floor (can go negative when at_risk_start exceeds the
-  episode -- observed behavior, open question OC-3);
+  floored at zero when at_risk_start exceeds the episode (fix3-c3);
 * exit_reason precedence is the stage's CASE order: event > death >
   disenrollment > study_end > exposure_end.
 
@@ -40,6 +39,7 @@ from typing import Any
 
 from hypothesis import event, given
 from hypothesis import strategies as st
+import pytest
 
 from qrp.config import InclusionRule
 
@@ -329,6 +329,90 @@ def test_followup_zero_length_followup_via_at_risk_start() -> None:
     assert o.episodelength == 1 and o.person_days == 0, o
 
 
+@pytest.mark.xfail(
+    strict=False,
+    reason=(
+        "C-1 family: SAS evaluates the length criteria AFTER dose "
+        "truncation (ms_createptsmasterlist.sas:124 -> :156-185) while "
+        "Python evaluates them in 50_episodes against the PRE-truncation "
+        "end and 55_dose_censor re-checks nothing, so this episode is "
+        "dropped before the censor date is ever computed (observed at "
+        "rev 3dfe463). Characterization, not a blessing: the pin asserts "
+        "the SAS contract and flips to XPASS if the ordering is fixed."),
+)
+def test_dose_censor_order_vs_length_criteria_characterization() -> None:
+    """C-1 SHAPE (decision brief DB-5): an episode that would PASS the
+    length criteria post-truncation but is DROPPED pre-truncation.
+
+    Fixture: index fill Feb 15 (30-day supply), a tipping fill Feb 17
+    whose expiry Feb 20 pushes the running dose over max_cum_dose=100
+    (cum_dose_per=15), and req_days_aft_epi=60 with data ending Apr 30.
+
+    * 50_episodes evaluates min_enr_aft against the PRE-truncation end
+      (Mar 20: the tip chains into the episode): Apr 30 >= Mar 20+60
+      fails -> the episode is deleted BEFORE 55 ever runs.
+    * In the SAS order the truncation comes first: end -> Feb 20,
+      Feb 20+60 = Apr 21 <= Apr 30 -> the episode SURVIVES with 6
+      at-risk days.
+
+    Evidence asserts pin TODAY's behavior (pre-truncation flag false,
+    dose_censor empty, master list and cohort missing the episode);
+    the final assert states the SAS contract and is what fails.
+    """
+    ds = grid_dataset(fills=[(0, "E00001", 30, 2.0),
+                             (2, "E00001", 4, 200.0)],
+                      index_fill=False)
+    cohort = cohort_a(
+        exposure_codes=("E00001",), event_codes=("D00001",),
+        wash_per=10, enr_days=30,
+        req_days_aft_epi=60,
+    )
+    cohort = dc_replace(cohort, max_cum_dose=100.0, cum_dose_per=15)
+    study = single_cohort_study(
+        cohort, code_strength=(("E00001", 1.0),),
+    )
+    run = two_pass_run(
+        study, ds,
+        stop_before="dose censoring",
+        stop_after="follow-up + events",
+        input_tables={},
+        output_tables={
+            "episode_criteria": (
+                "cohortgrp", "patid", "indexdt", "episodeenddt",
+                "min_enr_days_met", "min_enr_aft_met",
+            ),
+            "dose_censor": (
+                "cohortgrp", "patid", "indexdt", "censordate_maxdose",
+            ),
+            "ptsmasterlist": ("cohortgrp", "patid", "indexdt"),
+            "cohort_final": ("cohortgrp", "patid", "indexdt"),
+        },
+    )
+    truncation_date = GRID_ANCHOR + timedelta(days=5)
+
+    # Evidence: TODAY's behavior (these pass on the current tree).
+    crit = [r for r in run.outputs["episode_criteria"]
+            if r["indexdt"] == GRID_ANCHOR]
+    assert crit and crit[0]["min_enr_days_met"], crit
+    # evaluated against the PRE-truncation end (Mar 20) -> fails
+    assert not crit[0]["min_enr_aft_met"], crit
+    assert not run.outputs["dose_censor"], (
+        "dose_censor rows exist: the episode reached 55 after all")
+    assert not run.outputs["ptsmasterlist"], (
+        "episode survived 50: fixture no longer exhibits the C-1 shape")
+    assert not run.outputs["cohort_final"], (
+        "episode reached the final cohort")
+
+    # SAS contract (fails today -> xfail; XPASSes if the order is
+    # fixed): the episode survives with the TRUNCATED end.
+    survivors = [r for r in run.outputs["ptsmasterlist"]
+                 if r["indexdt"] == GRID_ANCHOR]
+    assert survivors, (
+        "C-1: SAS would keep this episode (truncation first, criteria "
+        "second); Python dropped it pre-truncation")
+    assert survivors[0]["episodeenddt"] == truncation_date, survivors
+
+
 def test_followup_same_day_competing_reasons() -> None:
     """Competing censor reasons on the SAME day resolve by the
     documented CASE order: event beats death; death beats
@@ -426,6 +510,49 @@ def test_followup_ioc_claim_disqualifies_like_an_event() -> None:
     _assert_followup_matches_model(run, outcomes)
     index_keys = [k for k in outcomes if k[2] == GRID_ANCHOR]
     assert index_keys and outcomes[index_keys[0]].kept, outcomes
+
+
+# ---------------------------------------------------------------------
+# Coincident-bound shapes (pass 2)
+# ---------------------------------------------------------------------
+
+
+def test_followup_washout_and_blackout_corners_meet() -> None:
+    """COINCIDENT-BOUND shape: fup_wash_per == blackout_per == 3 makes
+    the disqualification windows ADJACENT, covering
+    [index-3, index+2] with no gap and no overlap. Each corner pins
+    one boundary:
+      event at -3: first washout day  -> dropped (incidence)
+      event at -4: one day before it  -> kept, eventless
+      event at +2: last blackout day  -> dropped (blackout)
+      event at +3: first day past it  -> kept AND attributed
+    """
+    cases = (
+        # (event offset, expect_kept); kept episodes expect the event
+        # attributed (dropped episodes still carry computed candidate
+        # fields in first_event -- membership is what the hoi flags
+        # gate, and _assert_followup_matches_model pins that).
+        (-3, False),
+        (-4, True),
+        (2, False),
+        (3, True),
+    )
+    for off, expect_kept in cases:
+        ds = grid_dataset(fills=[(0, "E00001", 30, 2.0)],
+                          dxs=[(off, "D00001", "AV")], index_fill=False)
+        run, outcomes = _run_followup(ds, fup_wash_per=3, blackout_per=3)
+        _assert_followup_matches_model(run, outcomes)
+        o = outcomes[("cohort_a", 1, GRID_ANCHOR)]
+        assert o.kept is expect_kept, (off, o)
+        if expect_kept and off > 0:
+            assert o.exit_reason == "event" and o.numevents == 1, o
+            # followuptime: days(index->event) - blackout_per + 1
+            #   = off - 3 + 1 (episode end +29 does not clamp)
+            assert o.followuptime == off + 1 - 3, (off, o)
+        if expect_kept and off < 0:
+            # the washout-surviving prior event is NOT an outcome
+            # candidate (it precedes the at-risk window)
+            assert o.feventdt is None and o.exit_reason == "exposure_end", o
 
 
 # ---------------------------------------------------------------------
