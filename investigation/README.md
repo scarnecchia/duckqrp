@@ -201,3 +201,85 @@ venv re-synced; hypothesis 6.170.14 now arrives via the dev extra.
 A `inv/0f462p/a-input-contracts`, B `inv/0f462p/b-enrollment-stockpiling`,
 C `inv/0f462p/c-dose-inclusion-followup`. D/E/F queued behind the
 three-concurrent-DuckDB-worker limit.
+
+**2026-11-02 — AC.8/AC.9 campaign-validation machinery (branch
+`inv/0f462p/campaign-infra`).** Manifest completeness validation and
+mutation replay are now machine-checkable. New artifacts:
+`investigation/calibrations/` (normalized seeded-defect patches),
+`investigation/replay_core.py` + `investigation/replay_mutation.py`
+(replay machinery), `tests/properties/test_campaign_manifest_complete.py`
+(runs in the normal quick suite; cheap JSON/filesystem/git checks),
+`tests/properties/test_campaign_mutation_replay.py` (opt-in, skipped
+unless selected), and a `mutation_replay` pytest marker (additive
+registration in pyproject.toml).
+
+### Calibration-record schema (`manifest.json calibrations[]`)
+
+One object per seeded-defect calibration, exactly these fields:
+
+| field | meaning |
+|---|---|
+| `id` | stable record id (`<pkg>-<n>`); names the disposable worktree `replay-<id>`, so `[A-Za-z0-9][A-Za-z0-9._-]*` |
+| `package` | package id from `packages[]` |
+| `base_revision` | commit the replay worktree is created at: the package's pass-1 HEAD (branch point a0d0b93; `src/` and `tools/` are byte-identical from a0d0b93 through every pass-1 HEAD, verified via `git diff a0d0b93 3085eb4 -- src tools` empty). The base is NOT a0d0b93 itself because the package test files the failing command needs do not exist there |
+| `base_note` | optional provenance string for the base revision |
+| `diff_path` | repo-relative path of the seeded-defect patch (under `investigation/calibrations/`) |
+| `failing_command` | the recorded red command, leading with a python interpreter token (`python -m pytest ...`); the replay substitutes the replay venv's interpreter |
+| `expected_failure_pattern` | regex the RED output must match — the recorded reason, not just any failure |
+| `red_evidence` | verbatim red record from the package notes |
+| `green_evidence` | verbatim green record from the package notes |
+| `reverted` | always `true`; every calibration was reverted before commit |
+| `provenance` | `recorded` (diff saved by the worker at calibration time) or `reconstructed` (diff re-derived from the notes by the campaign-infra worker) |
+
+Current records: `a-1` (recorded, copy of
+`investigation/packages/a-calibration-seeded-defect.diff`), `b-1`,
+`c-1`, `e-1`, `f-1` (all reconstructed from the package notes; each
+verified to apply at a0d0b93 via `git apply --check` before replay).
+
+### Mutation replay (AC.8 red/green re-verification)
+
+Per record, fully disposable and always cleaned up (success or failure):
+
+1. `git worktree add --detach …/wt/replay-<id> <base_revision>` —
+   never touches any preexisting worktree; refuses to run at all from
+   a non-`inv/0f462p/*` branch;
+2. `uv venv .venv --python 3.13 && uv pip install --python
+   .venv/bin/python -e '.[dev]'` in that worktree (warm uv cache);
+3. `git apply` the record's diff;
+4. run `failing_command` there — REQUIRED to fail AND to match
+   `expected_failure_pattern`;
+5. `git checkout -- .` (mutation reverted) — REQUIRED: same command
+   passes;
+6. `git worktree remove --force` in a finally block.
+
+Run explicitly (never part of normal runs):
+
+```bash
+python -m pytest tests/properties/test_campaign_mutation_replay.py -m mutation_replay
+# or directly:
+python investigation/replay_mutation.py            # all records
+python investigation/replay_mutation.py --id b-1 --json
+```
+
+Executed evidence (campaign venv, 2026-11-02): all five records proved
+red->green with the worktree removed — a-1 RED "11 failed, 7 passed" /
+GREEN 18 passed; b-1 RED `test_enrollment_matches_day_model` at
+`oracles/b_pkg_fixtures.py:213` (row-count divergence on the
+gap-threshold @example) / GREEN 1 passed; c-1 RED
+`test_followup_washout_boundaries` "cohort_final membership differs
+from the model", generated property still passed (1 failed, 1 passed —
+the recorded red shape exactly) / GREEN 2 passed; e-1 RED both fault
+tests "Failed: DID NOT RAISE RuntimeError" / GREEN 2 passed; f-1 RED
+`test_comparators_detect_targeted_corruption` (`assert code == 1` —
+duplicate_row accepted, exit 0) / GREEN 1 passed.
+
+### Orchestrator action needed (record staleness, not a code issue)
+
+`packages[F].status` is still `"pending"` in this manifest although F
+pass-1 merged at 3085eb4 (F.md, two witnesses, 58-passed quick run on
+the F branch). The campaign-infra worker may only append to
+`calibrations[]`, so the validator tolerates the pending status of
+pass-less packages (D in flight; F stale) with an explicit skip reason
+and FAILS instead if a pending package ever records passes. Once
+packages[F] carries its real status (and F pass rows), the validator
+asserts F strictly and the skip disappears.

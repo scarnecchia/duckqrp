@@ -313,7 +313,73 @@
       "tests/test_ui.py:330 needs 2m dataset"
     ]
   },
-  "calibrations": [],
+  "calibrations": [
+    {
+      "id": "a-1",
+      "package": "A",
+      "base_revision": "2d12750",
+      "base_note": "package A pass-1 HEAD (wave base a0d0b93); src/ and tools/ are identical from a0d0b93 through this HEAD, so the diff applies at both",
+      "diff_path": "investigation/calibrations/a-1.patch",
+      "failing_command": "python -m pytest tests/properties/test_pkg_a_sqlsplit.py --hypothesis-profile=quick",
+      "expected_failure_pattern": "assert \\[\\] == \\[None\\]",
+      "red_evidence": "11 failed, 7 passed while mutated: test_empty_and_degenerate_inputs split_statements(\"SELECT 1\") -> [] == [None] failed (tail push gone); mandatory shapes [] != grammar-authored; final table missing from the sequential run",
+      "green_evidence": "clean tree after git checkout -- src/qrp/sqlsplit.py passed 18/18; git status shows no src/ changes",
+      "reverted": true,
+      "provenance": "recorded"
+    },
+    {
+      "id": "b-1",
+      "package": "B",
+      "base_revision": "1d4dfec",
+      "base_note": "package B pass-1 HEAD (branch base a0d0b93 per B.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
+      "diff_path": "investigation/calibrations/b-1.patch",
+      "failing_command": "python -m pytest tests/properties/test_pkg_b_enrollment.py::test_enrollment_matches_day_model --hypothesis-profile=quick",
+      "expected_failure_pattern": "enrollment_spans: SQL returned \\d+ rows, model \\d+",
+      "red_evidence": "FAILED in 0.39s on the gap-threshold interaction @example: AssertionError: enrollment_spans: SQL returned 4 rows, model 3 — patient 2's adjacent+gap_exact pair wrongly split where the model merges (enrol_gap=1)",
+      "green_evidence": "clean tree after git checkout -- src/qrp/sql/20_enrollment.sql re-verified: 2 passed, 1 xfailed in 1.06s",
+      "reverted": true,
+      "provenance": "reconstructed"
+    },
+    {
+      "id": "c-1",
+      "package": "C",
+      "base_revision": "8645179",
+      "base_note": "package C pass-1 HEAD (branch base a0d0b93 per C.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
+      "diff_path": "investigation/calibrations/c-1.patch",
+      "failing_command": "python -m pytest tests/properties/test_pkg_c_followup.py::test_followup_washout_boundaries tests/properties/test_pkg_c_followup.py::test_followup_and_censoring_match_day_model --hypothesis-profile=quick",
+      "expected_failure_pattern": "cohort_final membership differs from the model",
+      "red_evidence": "test_followup_washout_boundaries FAILED for the expected reason — case (wash=6, event at -7): stage dropped the episode the model kept, assertion cohort_final membership differs from the model; the generated property still passed (boundary rare in generated data)",
+      "green_evidence": "reverted with git checkout -- src/qrp/sql/60_followup.sql; git status shows only new package files; re-run green",
+      "reverted": true,
+      "provenance": "reconstructed"
+    },
+    {
+      "id": "e-1",
+      "package": "E",
+      "base_revision": "0b391e5",
+      "base_note": "package E pass-1 HEAD (branch base a0d0b93 per E.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
+      "diff_path": "investigation/calibrations/e-1.patch",
+      "failing_command": "python -m pytest tests/properties/test_pkg_e_outputs.py::test_output_failure_is_not_reported_complete tests/properties/test_pkg_e_faults.py::test_fault_schedule_terminal_events --hypothesis-profile=quick",
+      "expected_failure_pattern": "DID NOT RAISE",
+      "red_evidence": "both FAIL for the expected reason — Failed: DID NOT RAISE RuntimeError (match 'injected output-write'); adhoc confirmation: RunFinished(ok=True) while manifest.json is ABSENT",
+      "green_evidence": "reverted with git checkout -- src/qrp/pipeline.py; git status shows only package-E files; both properties green again",
+      "reverted": true,
+      "provenance": "reconstructed"
+    },
+    {
+      "id": "f-1",
+      "package": "F",
+      "base_revision": "c4b61a5",
+      "base_note": "package F pass-1 HEAD (branch base a0d0b93 per F.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
+      "diff_path": "investigation/calibrations/f-1.patch",
+      "failing_command": "python -m pytest tests/properties/test_pkg_f_comparators.py::test_comparators_detect_targeted_corruption --hypothesis-profile=quick",
+      "expected_failure_pattern": "duplicate_row on stockpiled exited 0",
+      "red_evidence": "AssertionError: duplicate_row on stockpiled exited 0 — hit the deterministic @example immediately; ROW COUNT was the only detection left and dedupe killed it",
+      "green_evidence": "reverted with git checkout -- tools/parity_compare.py; git status shows only package-F files; comparator family green again (26 passed)",
+      "reverted": true,
+      "provenance": "reconstructed"
+    }
+  ],
   "evidence": [
     {
       "kind": "witness_directory",

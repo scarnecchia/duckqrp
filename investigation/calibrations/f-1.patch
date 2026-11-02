@@ -1,0 +1,24 @@
+# Calibration patch f-1 — reconstructed from investigation/packages/F.md
+# ("Calibration record (mandatory)").
+# Mutation: byte-identical duplicate rows deduplicated right after
+# read_csv in compare_table, so they vanish before the row-count check
+# and duplicate_row corruption is accepted.
+# Recorded base: wave base a0d0b93 (production files identical through
+# the package pass-1 HEAD c4b61a5; verified via `git diff a0d0b93 <head>
+# -- src tools` empty).
+diff --git a/tools/parity_compare.py b/tools/parity_compare.py
+--- a/tools/parity_compare.py
++++ b/tools/parity_compare.py
+@@ -164,7 +164,12 @@
+ def compare_table(name: str, sas: Path, duck: Path,
+                   tol: float, max_examples: int
+                   ) -> tuple[list[str], list[str]]:
+     sas_cols, sas_rows = read_csv(sas)
+     duck_cols, duck_rows = read_csv(duck)
++    # SEEDED DEFECT (calibration, uncommitted): byte-identical duplicate
++    # rows vanish before the row-count check, so duplicate_row corruption
++    # goes undetected (ROW COUNT was the only detector).
++    sas_rows = [dict(t) for t in {tuple(r.items()) for r in sas_rows}]
++    duck_rows = [dict(t) for t in {tuple(r.items()) for r in duck_rows}]
+     table = Path(name).stem
+     ignore = IGNORE.get(table, frozenset())

@@ -1,0 +1,30 @@
+# Calibration patch e-1 — reconstructed from investigation/packages/E.md
+# ("Calibration record (mandatory seeded defect, not committed)").
+# Mutation: pipeline.run() split-layout output write wrapped in a
+# swallowing try/except — a failed write no longer fails the run.
+# Recorded base: wave base a0d0b93 (production files identical through
+# the package pass-1 HEAD 0b391e5; verified via `git diff a0d0b93 <head>
+# -- src tools` empty).
+diff --git a/src/qrp/pipeline.py b/src/qrp/pipeline.py
+--- a/src/qrp/pipeline.py
++++ b/src/qrp/pipeline.py
+@@ -1451,10 +1451,16 @@
+         out = Path(output_dir)
+         tables = tables_for(study, debug=debug)
+ 
+         if layout == "split":
+-            _write_split_layout(eng, study, out, tables, csv=csv,
+-                                text=text,
+-                                names=names)
++            # SEEDED DEFECT (calibration, uncommitted): a failed output
++            # write is swallowed so run() still reports success afterwards
++            # ("retain success status after a failed output write").
++            try:
++                _write_split_layout(eng, study, out, tables, csv=csv,
++                                    text=text,
++                                    names=names)
++            except Exception:
++                pass
+             if verbose:
+                 print(f"\n  outputs -> {out}"
+                       f"  (dplocal = local only, msoc = shareable)")
