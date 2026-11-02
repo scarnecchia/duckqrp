@@ -1,0 +1,17 @@
+diff --git a/src/qrp/sqlsplit.py b/src/qrp/sqlsplit.py
+index 94a4547..d796a42 100644
+--- a/src/qrp/sqlsplit.py
++++ b/src/qrp/sqlsplit.py
+@@ -101,7 +101,11 @@ def split_statements(sql: str) -> list[Statement]:
+         i += 1
+ 
+     tail = "".join(buf)
+-    if tail.strip():
++    # SEEDED DEFECT (calibration, uncommitted): only a tail that self-
++    # terminates is a statement — which never happens, since a trailing
++    # ';' is consumed by the split. The final no-semicolon statement is
++    # silently dropped.
++    if tail.strip() and tail.rstrip().endswith(";"):
+         push(tail)
+     return out
+ 
