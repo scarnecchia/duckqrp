@@ -16,7 +16,6 @@ test_enrollment_overlapping_raw_spans_known_divergence.
 
 from datetime import date, timedelta
 
-import pytest
 from hypothesis import event, example, given, settings
 
 from qrp.config import StudyConfig
@@ -155,37 +154,27 @@ def test_enrollment_matches_day_model(spec: dict) -> None:
 
 
 # ---------------------------------------------------------------------
-# B2 pin (OPERATOR RULED: inherited defect, parity kept — see
+# B1/B2 parity pin (OPERATOR RULED: inherited defect, parity kept — see
 # investigation/findings/B2-overlapping-enrollment-double-count.md).
 # Overlapping raw spans whose inner boundary ruptures mid-episode make
-# the day-model merge the outer span whole, while the shipped SQL
-# breaks against the immediately PREVIOUS span and emits OVERLAPPING
-# episodes; everything downstream then fans out per containing span
-# (the single dispensing below is stockpiled twice, numdispensing=2,
-# supplies 16/46). Verified bug-for-bug against the ORIGINAL SAS
-# source (read-only reference tree): ms_create_enrollment_spans.sas:
-# 109-117 builds the shave reference via %MS_EPISODEREC2, whose
-# lag-break (:67-77) and min/max reconciliation (:79-97) emit the same
-# overlapping episodes; ms_shaveoutside (cartesian claims×spans join)
-# shaves per containing span; ms_cidanum.sas:1299-1308 pre-shaves,
-# ms_stockpiling same-day-sums the copies (N()=NumDispensing), and
-# ms_cidanum.sas:1531-1541 re-shaves through the same join. So the
-# behavior is INHERITED from SAS, and fixing the Python side would
-# diverge from SAS parity — not authorized; the Sentinel model QA
-# Suite is expected to prevent overlapping enrollment spans upstream
-# (mitigation, unverified here). xfail(strict) pins the CURRENT
-# behavior against the day-model expectation; it fails the day any
-# parity policy changes, prompting removal.
+# the shipped SQL emit OVERLAPPING episodes (the lag break compares
+# each span with the immediately PREVIOUS span's end), and everything
+# downstream fans out per containing span (the single dispensing below
+# is stockpiled twice, numdispensing=2, supplies 16/46). Verified
+# bug-for-bug against the ORIGINAL SAS source (read-only reference
+# tree): ms_create_enrollment_spans.sas:109-117 builds the shave
+# reference via %MS_EPISODEREC2, whose lag-break (:67-77) and min/max
+# reconciliation (:79-97) emit the same overlapping episodes;
+# ms_shaveoutside (cartesian claims×spans join) shaves per containing
+# span; ms_cidanum.sas:1299-1308 pre-shaves, ms_stockpiling
+# same-day-sums the copies (N()=NumDispensing), and ms_cidanum.sas:
+# 1531-1541 re-shaves through the same join. So the behavior is
+# INHERITED from SAS; the oracle models it (lag segmentation +
+# containing-span fan-out) and this test pins it — it fails the day
+# any parity policy changes, prompting an oracle revisit.
 # ---------------------------------------------------------------------
 
-@pytest.mark.xfail(
-    reason="B2 (inherited from SAS, operator-ruled): overlapping raw "
-           "spans yield overlapping enrollment episodes and a "
-           "stockpiled double-count; see "
-           "investigation/findings/B2-overlapping-enrollment-"
-           "double-count.md and investigation/packages/ARBITRATION.md",
-    strict=True)
-def test_enrollment_overlapping_raw_spans_known_divergence() -> None:
+def test_enrollment_overlapping_raw_spans_parity() -> None:
     dataset = mini_dataset(
         patients=(patient(1),),
         enrollment=(
@@ -199,19 +188,22 @@ def test_enrollment_overlapping_raw_spans_known_divergence() -> None:
     model_rows = _model_rows(dataset, study)
     with StageHarness(study) as harness:
         harness.attach_dataset(dataset)
-        harness.run_through("episodes + masterlist")
+        harness.run_through("exposure + stockpiling")
         sql = fetch_rows(harness.engine, "enrollment_spans")
         stock = fetch_rows(harness.engine, "stockpiled")
-    # Day-model: ONE episode (2011-01-01 .. 2011-12-31) and ONE
-    # stockpiled record (numdispensing=1, rxsup=30). The SQL instead
-    # emits the two overlapping episodes and TWO stockpiled rows
-    # (numdispensing=2, supplies 16 and 46) — SAS's own output.
-    assert len(sql) == 1 and len(stock) == 1, (
-        f"overlapping raw spans produced {len(sql)} episodes and "
-        f"{len(stock)} stockpiled rows for one dispensing; "
-        f"day-model: {model_rows}")
-    assert model_rows == [
-        ("MD|0|0", 1, 1, date(2011, 1, 1), date(2011, 12, 31))]
+    expected = [
+        ("MD|0|0", 1, 1, date(2011, 1, 1), date(2011, 12, 31)),
+        ("MD|0|0", 1, 2, date(2011, 9, 1), date(2011, 9, 30)),
+    ]
+    assert sorted(sql) == sorted(expected), sql
+    assert model_rows == expected, model_rows
+    # Parity fan-out: the 09-15 fill sits inside BOTH episodes; the
+    # shave joins emit TWO stockpiled rows for ONE dispensing, each
+    # with numdispensing=2 (same-day-summed copies): supply 16 (trimmed
+    # at C's end) and 46 (pushed expiry Oct 30 inside A — untrimmed).
+    assert len(stock) == 2, stock
+    assert sorted(r[6] for r in stock) == [16, 46]
+    assert {r[8] for r in stock} == {2}
 
 
 # ---------------------------------------------------------------------

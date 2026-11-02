@@ -210,31 +210,22 @@ def test_stockpile_matches_sequential_model(spec: dict) -> None:
 
 
 def test_stockpile_fanout_parity_on_overlapping_spans() -> None:
-    """Parity pin (operator ruling on B2): overlapping output episodes
-    make the shave joins fan out — a claim inside several episodes is
-    shaved once per span, and the same-day collapse sums the copies
-    (numdispensing counts fan-out copies, not distinct claims). This is
-    the arbitrated SAS-inherited behavior: production keeps it, so the
-    oracle must reproduce it; if the parity policy ever changes, this
-    test fails and the oracles must be revisited.
-
-    Uses a coverage-flag rupture (YY -> AY) to produce the overlapping
-    episodes: both the day-model and the SQL's lag-based segmentation
-    emit the same two overlapping episodes there, so the oracle sees the
-    same spans the SQL shaves against. Pure spatial overlaps without a
-    flag change split the two models (lead B1, pinned by the enrollment
-    xfail) and cannot be asserted here."""
-    a = START + timedelta(days=6)
+    """Parity pin (operator ruling on B2; segmentation parity per the
+    B1 arbitration): overlapping output episodes make the shave joins
+    fan out — a claim inside several episodes is shaved once per span,
+    and the same-day collapse sums the copies (numdispensing counts
+    fan-out copies, not distinct claims). This is the arbitrated
+    SAS-inherited behavior: production keeps it, so the oracle must
+    reproduce it; if the parity policy ever changes, this test fails
+    and the oracles must be revisited."""
     dataset = mini_dataset(
         patients=(patient(1),),
         enrollment=(
-            span(1, a, a + timedelta(days=34), medcov="Y", drugcov="Y"),
-            span(1, a - timedelta(days=1), a + timedelta(days=14),
-                 medcov="A", drugcov="Y"),
+            span(1, date(2011, 1, 1), date(2011, 12, 31)),   # A
+            span(1, date(2011, 2, 15), date(2011, 6, 15)),   # B nested
+            span(1, date(2011, 9, 1), date(2011, 9, 30)),    # C inside A
         ),
-        # a + 8 = day 14 of the window: inside BOTH episodes
-        # ([a-1 .. a+14] and [a .. a+34])
-        dispensings=(disp(1, a + timedelta(days=8), "E00001", 30, 10.0),),
+        dispensings=(disp(1, date(2011, 9, 15), "E00001", 30, 10.0),),
     )
     study = two_cohort_study()
     with StageHarness(study) as harness:
@@ -243,15 +234,16 @@ def test_stockpile_fanout_parity_on_overlapping_spans() -> None:
         sql = fetch_rows(harness.engine, "stockpiled")
     model = model_stockpiled(dataset, study)
     assert_rows_match(sql, model, STOCKPILED_COLS, "stockpiled")
-    # Fan-out signature: the fill is shaved against both episodes, the
-    # same-day collapse sums the copies (numdispensing=2 from ONE
+    # Fan-out signature: Sep 15 is inside A and C (B's short end breaks
+    # C into its own episode); the 30-day fill is shaved against both,
+    # the same-day collapse sums the copies (numdispensing=2 from ONE
     # claim), and the re-shave trims the pushed supply at each span's
     # own end.
     assert len(sql) == 2, sql
     nums = {r[8] for r in sql}
     assert nums == {2}, (sql, nums)
     sups = sorted(r[6] for r in sql)
-    assert sups == [7, 27], sups
+    assert sups == [16, 46], sups
 
 
 # ---------------------------------------------------------------------

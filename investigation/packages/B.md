@@ -332,3 +332,105 @@ oracle scope boundary under the ruling.
   fresh-database exploration of this family is covered by the
   generated spec strategy (flag-rupture + overlap shapes + twin knobs
   draw independently).
+
+## Pass 2 verification correction — lag-break segmentation and chaining tie order
+
+**Symptom.** After merging 028ebfb into integrated discovery, the main
+checkout's DB failed
+`test_episode_selection_matches_model` deterministically (Hypothesis
+reported 2 distinct failures; a follow-up run surfaced a third). All
+three are patient-2 shapes built from overlapping "overlap"-family
+spans plus exact same-day duplicate fills (sup=1, amt=0.5), mode
+chain_f0, wash 0.
+
+**Reproduction.** Same method as pass 1: READ-ONLY copy of the main
+checkout's `.hypothesis-db/examples/` into my worktree DB; replays in
+~1.4s. My own DB was again example-poor for these shapes.
+
+**Root cause — two layers, both oracle-side (classification (a)).**
+
+1. *Segmentation (B1, arbitrated).* The pass-1 accumulator broke each
+   span against the episode built so far (running max end); the
+   arbitrated contract is the SAS lag formula — each span breaks
+   against the IMMEDIATELY PREVIOUS SPAN's end — so on pure spatial
+   overlaps (no flag change) the SQL emits overlapping episodes where
+   the accumulator merged. Example (sub-failure 2): spans
+   [Jan8,Jan8], [Jan7,Jan9], [Jan10,Jan10] → SQL [Jan7,Jan9] +
+   [Jan10,Jan10]; accumulator merged into [Jan7,Jan10]. The pov1 span
+   of the Jan-7 index therefore had enr_end Jan 9 (SQL) vs Jan 10
+   (model), flowing into dataavail_dt. Sub-failure 1 is the same
+   segmentation divergence surfacing as episodes multiplicity
+   (SQL 4 vs model 1) via the located fan-out. The B1 arbitration
+   already resolved the segmentation as parity-intended
+   (ms_episoderec2.sas:87-93), so the accumulator reading was an
+   oracle bug, not a production divergence.
+2. *Chaining tie order (new, deeper).* With segmentation fixed, the
+   third replayed failure exposed the chaining window's tie behavior:
+   when fan-out copies tie on the WHOLE window key
+   (adate, expiredt, rxsup) — which happens when two output episodes
+   with different starts both contain the same-day-summed fill —
+   `ORDER BY adate, expiredt, rxsup` in 50_episodes.sql is NOT a total
+   order, and DuckDB emits the ties SPAN-MAJOR (all copies of the
+   first span, then the next). Span-major pairs the copies into 2
+   episodes of summed rxsup 4; row-major would break every copy apart
+   into 4 episodes of rxsup 2. The pass-2 oracle inserted copies
+   row-major and produced the latter.
+
+**Classification: (a) oracle bug in both layers, against the arbitrated
+parity semantics.** Production is untouched and behaves as observed and
+ruled. One NEW production robustness lead is recorded below (L-B3):
+the chaining window's ORDER BY is not a total order under fan-out
+ties, so episode pairing depends on DuckDB's join emission order —
+stable in practice on threads=1 for the observed plans, but not
+contract-guaranteed (the repo itself calls non-total tie orders
+"latent parity failures" in 10_normalize.sql's comments).
+
+**Fix (oracle only; production untouched).**
+- `enrollment_episodes` rewritten to the lag break: each span ruptures
+  against the immediately previous span's end and flags; an episode is
+  the min start / max end of its member spans. Output episodes can
+  overlap — that IS the arbitrated segmentation. The pass-1
+  "accumulator cannot overlap" docstring claim is retracted.
+- `model_episodes` builds chain rows SPAN-MAJOR (episode-outer,
+  date-ordered stockpiled rows inner), then a STABLE sort on the
+  window key (adate, expiredt, rxsup) — reproducing the observed tie
+  pairing; NULL-span rows (unreachable for re-shave-surviving RX rows)
+  appended row-major for LEFT-JOIN parity.
+- The strict-xfail enrollment pin is REPLACED by a positive parity pin
+  `test_enrollment_overlapping_raw_spans_parity` (2 overlapping
+  episodes + the 16/46 numdispensing=2 stockpile fan-out, model ==
+  SQL); the B1 xfail is obsolete now that the oracle models the ruled
+  behavior.
+- `test_stockpile_fanout_parity_on_overlapping_spans` now uses the
+  pure-spatial A/B/C shape (assertable since segmentation matches) —
+  sups [16, 46], numdispensing=2.
+- The three replayed examples are pinned as deterministic @examples on
+  `test_episode_selection_matches_model`.
+
+**Verification.**
+- DB-copy replays: all three failing examples PASS with the fixed
+  oracle; the full episodes property (DB examples + random exploration)
+  green.
+- Full package quick set + harness stages run TWICE: 16 passed both
+  times (8.1s / 8.3s; the pass-1 xfail is gone — replaced by the
+  positive parity pin).
+- `ruff --select E4,E7,E9,F tests/properties` clean; `mypy src
+  tests/properties` clean; `tests/test_rewrites.py
+  tests/test_determinism.py` 15 passed.
+
+**New lead L-B3 (production robustness, NOT authorized to fix):** the
+episodes chaining window `ORDER BY s.adate, s.expiredt, s.rxsup`
+(50_episodes.sql) is not a total order when the located fan-out
+produces copies tied on all three columns; the resulting episode
+pairing/count depends on the join's emission order (span-major
+observed). Same input family as the ruled-in fan-out (B2); a fix would
+be a tie-break extension of the window ORDER BY and is a
+SAS-parity-sensitive change — flagged for arbitration, not applied.
+Oracle-side consequence: the span-major tie order is modeled as
+OBSERVED behavior and pinned by @example; a DuckDB plan change could
+flip it, and this suite would flag that immediately.
+
+**Scope note (supersedes pass 1's).** With the lag segmentation and
+span-major chaining modeled, overlapping-span fan-out is assertable for
+ALL shapes; the pass-1 boundary ("pure spatial overlaps cannot be
+asserted") is void.
