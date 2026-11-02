@@ -1187,14 +1187,22 @@ def run(
         # discharge_status marks deaths in hospital (EX = expired); an
         # extract without it simply has no encounter-derived deaths
         ("read_encounter", ("ddate", "discharge_status")),
-        # the diagnosis care-setting trio is OPTIONAL (INPUTS.md:
-        # required is only patid, adate, dx). A missing pdx/enctype
-        # means the claim carries no principal flag or care setting —
-        # the view's COALESCE wildcards 'X'/'XX' — and a missing
-        # dx_codetype means "match any", as with dispensing's codetype
-        ("read_diagnosis", ("dx_codetype", "pdx", "enctype")),
     ):
         optional_cols.update(_optional(key, *cols))
+    for table, cols in (
+        ("diagnosis", ("dx_codetype", "pdx", "enctype")),
+        ("procedure", ("px_codetype", "enctype")),
+        ("lab_result", (
+            "result_dt", "order_dt", "ms_result_n", "ms_result_c",
+            "result_type", "loinc", "px", "ms_test_name",
+            "ms_test_sub_category", "specimen_source", "ms_result_unit",
+            "fast_ind", "pt_loc",
+        )),
+    ):
+        optional_cols.update({
+            f"{table}_{name}": value
+            for name, value in _optional(f"read_{table}", *cols).items()
+        })
     chart_col = optional_cols["chart"]
 
     fmt = {

@@ -8037,9 +8037,11 @@ def test_claim_views_envelope_inpatient_stays():
                               # the diagnosis care-setting trio is resolved
                               # against the extract by run(); this fixture
                               # carries all three, so substitute the columns
-                              .replace("{opt_dx_codetype}", "dx_codetype")
-                              .replace("{opt_pdx}", "pdx")
-                              .replace("{opt_enctype}", "enctype"))
+                              .replace("{opt_diagnosis_dx_codetype}", "dx_codetype")
+                              .replace("{opt_diagnosis_pdx}", "pdx")
+                              .replace("{opt_diagnosis_enctype}", "enctype")
+                              .replace("{opt_procedure_px_codetype}", "px_codetype")
+                              .replace("{opt_procedure_enctype}", "enctype"))
         dxr = {(c, d.day): (e, f) for c, d, e, f in eng.con.execute(
             "SELECT code, adate, enctype, pdx FROM cdm_diagnosis").fetchall()}
         pxr = {d.day: (e, f) for d, e, f in eng.con.execute(
