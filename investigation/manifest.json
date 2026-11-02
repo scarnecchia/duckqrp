@@ -1,0 +1,137 @@
+{
+  "schema": "qrp-investigation-manifest/1",
+  "schema_notes": "Machine-readable run manifest. A later test_campaign_manifest_complete validates: every package in 'packages' has a non-pending status and a branch; every 'passes' entry has command, result, revision and duration; every finding in findings/ has a matching entry under 'evidence' or its own record; calibration records reference real pass ids. Keep ids stable.",
+  "campaign": {
+    "name": "qrp-duckdb property-based correctness investigation",
+    "privacy": "PRIVATE — NOT AUTHORIZED FOR PUBLICATION",
+    "base_sha": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+    "base_note": "discovery HEAD; identical to Testing branch tip at campaign start",
+    "started": "2026-11-02",
+    "ledger": "investigation/README.md"
+  },
+  "environment": {
+    "campaign": {
+      "python": "3.13.13",
+      "duckdb": "2.0.0",
+      "pytest": "9.2.0",
+      "pandas": "3.1.0",
+      "hypothesis": "6.170.14",
+      "mypy": "2.4.1",
+      "ruff": "0.17.3",
+      "note": "worktree .venv created via uv with -e '.[dev]' after hypothesis was added to the dev extra"
+    },
+    "operator_baseline_venv": {
+      "duckdb": "2.0.0",
+      "pytest": "9.1.1",
+      "pandas": "3.0.5",
+      "hypothesis": "6.170.14",
+      "note": "preexisting, ad hoc, unmodified; records the operator's own full-suite baseline concurrently"
+    }
+  },
+  "profiles": {
+    "quick": {"max_examples": 50, "expensive_examples": 10, "deadline_seconds": 1},
+    "discovery": {"max_examples": 500, "expensive_examples": 50, "deadline_seconds": 1},
+    "deep": {"max_examples": 2000, "expensive_examples": 100, "deadline_seconds": 1},
+    "selection": "pytest --hypothesis-profile=<name>; $HYPOTHESIS_PROFILE is the default (quick); expensive stage/pipeline properties use expensive_settings() from tests/properties/conftest.py"
+  },
+  "packages": [
+    {
+      "id": "infra",
+      "branch": "inv/0f462p/infra",
+      "scope": "property-test infrastructure: hypothesis profiles/budgets/witness mechanism, synthetic SCDM builder + StudyConfig builder (tests/properties/synth.py), stage + parquet harnesses (tests/properties/harness.py), harness self-tests, AC.1 acceptance tests",
+      "status": "complete",
+      "deliverables": [
+        "pyproject.toml (hypothesis>=6,<7 in dev extra only)",
+        "tests/properties/ (conftest, synth, harness, strategies, tests)",
+        "investigation/ ledger",
+        "README.md property-suite section"
+      ],
+      "contracts_pinned": [
+        "normalization total-order dedup + demographics_multi exclusion",
+        "exposure query-period-bounded vs index enrollment-bounded",
+        "min_enr_days pre-index enrollment criterion",
+        "stage gates == plan_stages; fmt key set via harness/pipeline agreement"
+      ]
+    },
+    {"id": "A", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"},
+    {"id": "B", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"},
+    {"id": "C", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"},
+    {"id": "D", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"},
+    {"id": "E", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"},
+    {"id": "F", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"}
+  ],
+  "passes": [
+    {
+      "id": "infra-quick-1",
+      "package": "infra",
+      "command": "python -m pytest tests/properties --hypothesis-profile=quick",
+      "revision": "pre-commit (working tree at base_sha + infra changes)",
+      "result": "pass",
+      "detail": "17 passed",
+      "duration_seconds": 9.2
+    },
+    {
+      "id": "infra-discovery-load-1",
+      "package": "infra",
+      "command": "python -m pytest tests/properties/test_ac1_infrastructure.py::test_property_profiles_load --hypothesis-profile=discovery",
+      "revision": "pre-commit (working tree at base_sha + infra changes)",
+      "result": "pass",
+      "detail": "profile selection via CLI verified",
+      "duration_seconds": 0.1
+    },
+    {
+      "id": "infra-rewrites-smoke-1",
+      "package": "infra",
+      "command": "python -m pytest tests/test_rewrites.py",
+      "revision": "pre-commit (working tree at base_sha + infra changes)",
+      "result": "pass",
+      "detail": "11 passed; collection unaffected by the new suite",
+      "duration_seconds": 1.2
+    },
+    {
+      "id": "infra-mypy-1",
+      "package": "infra",
+      "command": "python -m mypy src tests/properties",
+      "revision": "pre-commit (working tree at base_sha + infra changes)",
+      "result": "pass",
+      "detail": "no issues found in 28 source files",
+      "duration_seconds": null
+    },
+    {
+      "id": "infra-ruff-1",
+      "package": "infra",
+      "command": "python -m ruff check --select E4,E7,E9,F tests/properties",
+      "revision": "pre-commit (working tree at base_sha + infra changes)",
+      "result": "pass",
+      "detail": "clean under the repo's ruff>=0.6 default rule set; ruff 0.17.3's expanded defaults add one PYI034 (typing.Self suggestion conflicts with the repo's mypy python_version=3.10 target) — the same expanded-defaults pass reports 100 findings in src/, so this is version drift, not a regression",
+      "duration_seconds": null
+    }
+  ],
+  "calibrations": [],
+  "evidence": [
+    {
+      "kind": "witness_directory",
+      "path": "investigation/witnesses/",
+      "note": "one self-contained text file per falsifying example, written by the conftest hook; committed as findings are confirmed"
+    },
+    {
+      "kind": "harness_fidelity",
+      "path": "tests/properties/test_harness_pipeline.py::test_stage_harness_matches_full_pipeline",
+      "note": "stage harness and real pipeline agree table-for-table on the hand fixture — the trust anchor for every stage-level property"
+    }
+  ],
+  "findings": [],
+  "open_questions": [
+    "demographics QUALIFY tie-break is total only if (birth_date, sex, race, hispanic, postalcode) differ across duplicate rows — full-tie behavior unverified",
+    "tools/gen_synthetic.py writes rxamt as an integer (BIGINT), tripping the pipeline's fractional-amount truncation warning; calibrating oracles against it inherit that semantics",
+    "claims_from scan bound does not apply to enrollment spans (contract intent unconfirmed; low impact)",
+    "encounter tables are never identified by column fingerprint (fingerprint=False); name/table_map only",
+    "denominators table grain is cohort x stratum level, not cohort"
+  ],
+  "follow_up_leads": [
+    "near-tie families for episode/stockpiling properties (amounts differing by epsilon, supplies by 1 day)",
+    "run_envelope with NULL encounter ddate and discharge-status deaths colliding with death-table rows",
+    "utilization dedup when encounter rows share encounterid",
+    "combo covariates referencing later covarnums vs documented one-at-a-time evaluation"
+  ]
+}

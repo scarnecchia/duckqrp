@@ -51,6 +51,33 @@ python tools/gen_synthetic.py --out /tmp/qrp_data/100k --patients 100000
 python tools/bench.py --scales 100k 500k 2m
 ```
 
+### Property-based suite (tests/properties/)
+
+A Hypothesis suite that generates its own tiny synthetic SCDM data —
+no `/tmp/qrp_data` needed — and runs the shipped SQL through the
+production plumbing. It is part of the `dev` extra only (`hypothesis`),
+never the runtime dependency set. Profiles bound the work; the
+database-backed properties that execute real pipeline stages get their
+own smaller budget per profile (10/50/100) and run DuckDB single-threaded.
+
+```bash
+pytest tests/properties --hypothesis-profile=quick --hypothesis-show-statistics
+pytest tests/properties --hypothesis-profile=discovery   # longer search
+pytest tests/properties --hypothesis-profile=deep        # cheap pure properties only, 2000 examples
+```
+
+`deep`'s 2000-example budget is aimed at cheap pure properties; the
+stage/pipeline properties cap themselves at 100 (per-profile budgets in
+`tests/properties/conftest.py::expensive_settings`), so a `deep` run
+stays minutes, not hours. Discovery-only work — long searches meant to
+find new counterexamples, not gate a commit — is any profile past
+`quick`, and anything marked as running the full pipeline is a
+database-backed property by construction. Failing examples are written
+to `investigation/witnesses/` as replayable text files, independent of
+the example database (which lives under `tests/properties/.hypothesis-db/`,
+git-ignored, deliberately separate from any repo-root `.hypothesis/`
+directory a user may own).
+
 `python -m qrp ...` works anywhere `qrp ...` does.
 
 ## What this is and isn't
