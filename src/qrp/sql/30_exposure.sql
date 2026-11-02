@@ -166,25 +166,9 @@ WITH RECURSIVE shaved AS (
         r.cohortgrp IS NOT NULL                                       AS has_rule
     FROM exposure_claims x
     JOIN cfg_cohort cc ON cc.cohortgrp = x.cohortgrp
-    -- A fill must START inside one of the cohort's enrollment spans
-    -- (others are dropped). Overlapping raw spans produce OVERLAPPING
-    -- episodes (documented SAS parity, docs/SAS_PARITY.md "Enrollment
-    -- spans"), so one claim date can sit inside more than one. Joining
-    -- per containing span duplicated the claim and double-prorated its
-    -- amount — one dispensing is one dispensing — so shave against
-    -- exactly ONE containing span: the one running latest, which keeps
-    -- every day enrolled under ANY containing span (the merged-episode
-    -- reading). Deterministic: the shave depends only on enr_end;
-    -- enr_start breaks ties between equal ends. The lateral keeps the
-    -- drop semantics — no containing span, no row.
-    JOIN LATERAL (
-        SELECT e.enr_end
-        FROM enrollment_spans e
-        WHERE e.enr_cfg_id = cc.enr_cfg_id AND e.patid = x.patid
-          AND x.adate BETWEEN e.enr_start AND e.enr_end
-        ORDER BY e.enr_end DESC, e.enr_start DESC
-        LIMIT 1
-    ) e ON TRUE
+    JOIN enrollment_spans e
+      ON e.enr_cfg_id = cc.enr_cfg_id AND e.patid = x.patid
+     AND x.adate BETWEEN e.enr_start AND e.enr_end
     LEFT JOIN cfg_stockpiling r
       ON r.cohortgrp = x.cohortgrp AND r.stockgroup = x.stockgroup
     WHERE x.codecat = 'RX'
@@ -371,18 +355,9 @@ SELECT cohortgrp, stockgroup, patid, adate, expiredt, orig_adate,
        rxsup, rxamt, numdispensing, enr_cfg_id
 FROM pd_stock
 ) r
--- Same one-containing-span rule as the pre-shave above (see the
--- lateral there): overlapping episodes must not fan the re-shave out
--- per containing span either. A record PUSHED outside every span is
--- still dropped — an empty lateral is no match.
-JOIN LATERAL (
-    SELECT e.enr_end
-    FROM enrollment_spans e
-    WHERE e.enr_cfg_id = r.enr_cfg_id AND e.patid = r.patid
-      AND r.adate BETWEEN e.enr_start AND e.enr_end
-    ORDER BY e.enr_end DESC, e.enr_start DESC
-    LIMIT 1
-) e ON TRUE
+JOIN enrollment_spans e
+  ON e.enr_cfg_id = r.enr_cfg_id AND e.patid = r.patid
+ AND r.adate BETWEEN e.enr_start AND e.enr_end
 
 UNION ALL
 
