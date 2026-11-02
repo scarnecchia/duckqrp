@@ -87,8 +87,15 @@ OUTPUT_TABLES = (
     "ptsmasterlist",
 )
 
+# All eight canonical SCDM tables the writer materialises (matching
+# synth.write_parquet, which writes every table even when empty, so
+# table resolution never needs fingerprinting). The first five carry
+# the layout-variant rotation; procedure/encounter/lab_result stay
+# canonically named — name-matched under every kind — and exist so the
+# per-column characterization can omit columns from a PRESENT table
+# rather than omitting the whole table.
 LAYOUT_TABLES = ("enrollment", "demographic", "dispensing", "diagnosis",
-                 "death")
+                 "death", "procedure", "encounter", "lab_result")
 
 
 @contextmanager
@@ -183,6 +190,7 @@ def write_variant(
     code_column: str = "rx",
     permute_seed: int | None = None,
     drop: tuple[str, ...] = (),
+    drop_by_table: dict[str, tuple[str, ...]] | None = None,
 ) -> None:
     """Materialise ``dataset`` under a physical layout variant.
 
@@ -190,7 +198,8 @@ def write_variant(
     ``"null"`` keeps them with NULL values (the matched control);
     ``"present"`` leaves the dataset as generated. ``drop`` removes
     extra named columns everywhere they occur (used to demonstrate the
-    rxamt contract gap).
+    rxamt contract gap); ``drop_by_table`` removes named columns from
+    ONE table only (the per-column characterization surface).
     """
     root = Path(root)
     root.mkdir(parents=True, exist_ok=True)
@@ -207,9 +216,12 @@ def write_variant(
         rows = _transform_rows(dataset, table, optionals=optionals,
                                rng=rng)
         tkind = table_kinds[table]
-        name = {"alias": ALIAS_NAMES[table],
-                "fingerprint": FINGERPRINT_NAMES[table]}.get(
-                    tkind, table)
+        if tkind == "alias":
+            name = ALIAS_NAMES.get(table, table)
+        elif tkind == "fingerprint":
+            name = FINGERPRINT_NAMES.get(table, table)
+        else:
+            name = table
         if tkind == "sharded":
             half = (len(rows) + 1) // 2
             files = [(f"{name}_001.parquet", rows[:half]),
@@ -224,7 +236,10 @@ def write_variant(
             files = [(f"{name}/data.parquet", rows)]
 
         cols = TABLE_COLUMNS[table]
+        drop_set: set[str] = set(drop)
+        drop_set |= set((drop_by_table or {}).get(table, ()))
         if optionals == "absent":
-            drop_set = set(OPTIONAL_COLUMNS.get(table, ())) | set(drop)
+            drop_set |= set(OPTIONAL_COLUMNS.get(table, ()))
+        if drop_set:
             cols = tuple((n, t) for n, t in cols if n not in drop_set)
         _write_table_files(root, table, files, cols, code_column=code_column)

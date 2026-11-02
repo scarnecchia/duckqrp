@@ -379,6 +379,103 @@ SEMANTIC_CASES: list[tuple[str, dict[str, Any], dict[str, Any] | None,
 ]
 
 # ---------------------------------------------------------------------
+# Coincident bounds: min==max shapes pass 1 never generated. Each knob
+# drives one documented knob to a boundary where the two ends of a
+# range meet (or a code list repeats a code). Semantics are hand
+# expectations, per knob.
+# ---------------------------------------------------------------------
+
+COINCIDENT_KNOBS = ("agestrat", "wash_eq_enr", "covar_point", "lab_eq",
+                    "sup_eq", "dup_code")
+
+
+def apply_coincident(payload: dict[str, Any],
+                     knobs: tuple[str, ...]) -> dict[str, Any]:
+    """Re-spell the base payload with the given coincident bounds.
+
+    Deterministic in (payload, knobs); only the named knobs are
+    touched.
+    """
+    import copy
+
+    out = copy.deepcopy(payload)
+    cohortcodes = out[_CODES_NAME]
+    if "agestrat" in knobs:
+        out[_COHORT_A_NAME][0]["AgeStrat"] = "65-65 00-01"
+    if "wash_eq_enr" in knobs:
+        out[_TYPE2_NAME][0]["T2WashPer"] = 200     # == EnrDays 200
+    if "covar_point" in knobs:
+        out["covariatecodes"] = [
+            {"CovarNum": 1, "Code": "410.1", "CodeCat": "DX",
+             "CovFrom": -30, "CovTo": -30},        # a one-day window
+        ]
+    if "lab_eq" in knobs:
+        out["labcodes"] = [
+            {"Group": "cohort_a", "Code": "CREAT", "CodeType": "02N",
+             "LabResult": "7:7",                   # lo == hi
+             "Ms_Test_Name": "creatinine",         # upcased on load
+             "Ms_Test_Sub_Category": "",
+             "Specimen_Source": "sr_pls", "Ms_Result_Unit": "mg/dl",
+             "Result_Type": "n", "Fast_Ind": "x", "Pt_Loc": "o"},
+        ]
+    if "sup_eq" in knobs:
+        out["stockpilingfile"] = [
+            {"Group": "cohort_a", "StockGroup": "ace", "SupRange": "5-5"},
+        ]
+    if "dup_code" in knobs:
+        cohortcodes.append(dict(cohortcodes[0]))   # 00700 twice
+    return out
+
+
+def coincident_expect(knobs: tuple[str, ...]) -> dict[str, Any]:
+    """The hand expectations for the knobs that are ON."""
+    expect: dict[str, Any] = {}
+    if "agestrat" in knobs:
+        expect["cohort:cohort_a.age_strata"] = (
+            (1, "65-65", 65, 65, "years"),
+            (2, "00-01", 0, 1, "years"),
+        )
+    if "wash_eq_enr" in knobs:
+        # wash == enr_days is the accepted edge of the documented rule
+        # (the rule rejects only wash_per > enr_days)
+        expect["cohort:cohort_a.wash_per"] = 200
+    if "covar_point" in knobs:
+        expect["covariates"] = "covar1:from=-30,to=-30,codes=1"
+    if "lab_eq" in knobs:
+        expect["lab_codes"] = ((
+            "cohort_a", "CREAT", "LRO", "02", "N",
+            "CREATININE", "", "SR_PLS", "MG/DL", "N", "X", "O",
+            ":", 7.0, 7.0,
+        ),)
+    if "sup_eq" in knobs:
+        expect["stockpiling"] = ((
+            "cohort_a", "ace", "sum", "sum",
+            ((5.0, False, 5.0, False),),
+            ((0.0, True, float("inf"), False),),
+            None,
+        ),)
+    if "dup_code" in knobs:
+        # duplicate code rows are preserved verbatim in order — the
+        # translation does not dedupe code lists (identity, not set)
+        expect["cohort:cohort_a.exposure_codes"] = (
+            ("00700", "RX", "ND", None),
+            ("070.10", "RX", "", None),
+            ("J1234", "PX", "", 30),
+            ("00700", "RX", "ND", None),
+        )
+    return expect
+
+
+# The all-knobs authored case rides the same parametrization as the
+# other semantic cases; knobs defined above are appended here.
+SEMANTIC_CASES.append((
+    "coincident_bounds_all",
+    apply_coincident(base_payload(), COINCIDENT_KNOBS),
+    None,
+    coincident_expect(COINCIDENT_KNOBS),
+))
+
+# ---------------------------------------------------------------------
 # Boundary cases.
 #   kind "documented": the package's own configuration error; `fragment`
 #       is quoted from the documented rule it enforces.
@@ -443,7 +540,7 @@ BOUNDARY_CASES: list[dict[str, Any]] = [
         # cohortfile rows for one cohortgrp used to fold into a dict
         # (LAST row silently winning) and never reached the validate
         # guard. The loader now raises the documented error at the fold.
-        name="duplicate_cohortgrp_rows_collapse_to_last", payload=_dict_study(
+        name="duplicate_cohortgrp_rejected_at_load", payload=_dict_study(
             cohortfile=[
                 {"cohortgrp": "g1", "enrdays": 30},
                 {"cohortgrp": "g1", "enrdays": 200},
@@ -513,7 +610,7 @@ BOUNDARY_CASES: list[dict[str, Any]] = [
             ]),
         kind="accepts",
         expect={
-            "covariates": "covar1:from=-90,codes=2",   # first row's window
+            "covariates": "covar1:from=-90,to=-30,codes=2",   # first row's window
         },
     ),
     dict(
