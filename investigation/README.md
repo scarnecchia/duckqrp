@@ -166,3 +166,38 @@ a test pass.
 * Combo covariates (codecat 'CC') reference earlier covarnums only —
   generate studies whose CC references a LATER covarnum and compare
   against the documented one-at-a-time semantics.
+
+## Campaign log (orchestrator)
+
+**2026-11-02 — baseline recorded before any campaign change.**
+Campaign venv (session-local, `uv venv` + `-e '.[dev]'` at base SHA
+c3e60db): Python 3.13.13, duckdb 2.0.0, pytest 9.2.0, pandas 3.1.0.
+First run was 15 passed / 327 skipped — the documented fixtures at
+`/tmp/qrp_data/100k` were absent; generated exactly per README
+(`tools/gen_synthetic.py --out /tmp/qrp_data/100k --patients 100000`,
+seed 42; repo untouched). Full baseline then:
+
+- `python -m pytest -q` → **337 passed, 2 failed, 3 skipped, 433 s**.
+- Failures (both deterministic, reproduced identically in the operator's
+  own `.venv` on a quiet machine, so NOT load flakes and NOT campaign
+  artifacts):
+  - `tests/test_pipeline.py::test_spilling_is_attributed_to_the_statement_that_caused_it`
+  - `tests/test_pipeline.py::test_spill_summary_names_the_statement_in_the_log`
+  - Mechanism: `_duckdb.OutOfMemoryException` inside the tests' forced
+    ~286 MiB DuckDB limit (spill path never attributed). Pre-existing
+    on discovery/Testing; classification deferred to Phase 4 — not a
+    campaign discovery.
+- Skips (environmental, documented): production input file unavailable
+  (test_pipeline.py:6050); 2m dataset not generated (test_ui.py:137,330).
+
+**2026-11-02 — infrastructure integrated.**
+`inv/0f462p/infra` (d4ea62e; 3 commits, scope-verified: no `src/qrp/`,
+no existing tests, no requirements.lock) merged to `discovery` as
+387f94b (no-ff, provenance preserved). Independently re-verified:
+`tests/properties --hypothesis-profile=quick` → 17 passed. Campaign
+venv re-synced; hypothesis 6.170.14 now arrives via the dev extra.
+
+**2026-11-02 — wave 1 dispatched** (branch from 387f94b):
+A `inv/0f462p/a-input-contracts`, B `inv/0f462p/b-enrollment-stockpiling`,
+C `inv/0f462p/c-dose-inclusion-followup`. D/E/F queued behind the
+three-concurrent-DuckDB-worker limit.

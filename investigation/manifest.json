@@ -53,12 +53,12 @@
         "stage gates == plan_stages; fmt key set via harness/pipeline agreement"
       ]
     },
-    {"id": "A", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"},
-    {"id": "B", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"},
-    {"id": "C", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"},
-    {"id": "D", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"},
-    {"id": "E", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"},
-    {"id": "F", "branch": null, "scope": "assigned by orchestrator; record here when known", "status": "pending"}
+    {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "in_progress"},
+    {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "in_progress"},
+    {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "in_progress"},
+    {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pending"},
+    {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pending"},
+    {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pending"}
   ],
   "passes": [
     {
@@ -107,6 +107,23 @@
       "duration_seconds": null
     }
   ],
+  "baseline": {
+    "command": "python -m pytest -q",
+    "revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+    "fixtures": "tools/gen_synthetic.py --out /tmp/qrp_data/100k --patients 100000 (seed 42, per README)",
+    "result": "337 passed, 2 failed, 3 skipped",
+    "duration_seconds": 433,
+    "preexisting_failures": [
+      "tests/test_pipeline.py::test_spilling_is_attributed_to_the_statement_that_caused_it",
+      "tests/test_pipeline.py::test_spill_summary_names_the_statement_in_the_log"
+    ],
+    "preexisting_failure_note": "deterministic in campaign venv AND operator .venv (duckdb 2.0.0 both); OutOfMemoryException inside the tests' forced ~286 MiB limit; classified pre-existing, not a campaign finding",
+    "environmental_skips": [
+      "tests/test_pipeline.py:6050 production input file not available",
+      "tests/test_ui.py:137 needs 2m dataset",
+      "tests/test_ui.py:330 needs 2m dataset"
+    ]
+  },
   "calibrations": [],
   "evidence": [
     {
