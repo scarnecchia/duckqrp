@@ -159,19 +159,34 @@ grid AS (
     FROM cfg_cohort c CROSS JOIN skel k
     LEFT JOIN _att_counts n ON n.cohortgrp = c.cohortgrp AND n.level = k.level
 ),
-carried AS (
+counted AS (
     SELECT *,
-           -- a blank row carries the last count before it
-           coalesce(n, last_value(n IGNORE NULLS) OVER w) AS remaining,
-           lag(n) OVER (PARTITION BY cohortgrp, (kind IN ('init', 'excl'))
-                        ORDER BY level)                        AS prev_n
+           -- SAS counts each step's relation and reports 0 when it is
+           -- EMPTY: %ms_attrition_cidacompute fills :remaining with
+           -- count(*) over the step's data, which is 0 for no rows,
+           -- and only SKIP rows carry the previous count forward
+           -- (ms_attrition_cidacompute.sas:77-88, :112-119). A missing
+           -- count row here means the relation was empty, so the count
+           -- is 0 — carrying the last member count through uncounted
+           -- steps made an empty cohort report a nonzero final member
+           -- count at level 27 and hid every episode exclusion.
+           coalesce(n, CASE WHEN kind IN ('init', 'excl', 'final')
+                            THEN 0 END) AS n0
     FROM grid
+),
+carried AS (
+    SELECT cohortgrp, level, kind, claim_level, descr, n0,
+           -- a blank row carries the last count before it
+           coalesce(n0, last_value(n0 IGNORE NULLS) OVER w) AS remaining,
+           lag(n0) OVER (PARTITION BY cohortgrp, (kind IN ('init', 'excl'))
+                         ORDER BY level)                    AS prev_n
+    FROM counted
     WINDOW w AS (PARTITION BY cohortgrp ORDER BY level
                  ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)
 ),
 main AS (
     SELECT cohortgrp, level, claim_level, descr, remaining,
-           CASE kind WHEN 'excl'  THEN prev_n - n
+           CASE kind WHEN 'excl'  THEN prev_n - n0
                      WHEN 'blank' THEN 0 END                   AS excluded
     FROM carried
 ),
