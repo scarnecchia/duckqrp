@@ -495,29 +495,100 @@ JOIN cfg_denom_demog dh ON dh.denom_cfg_id = el.denom_cfg_id
 WHERE mx.patid IS NULL AND ms.patid IS NULL;
 
 
--- Pass 2b: age band. Age is taken at the START of the eligible window,
--- the earliest date an index could occur in it.
--- A view: its one reader (_denom_agg) aggregates it straight to a few
--- rows, so materialising 1.36M rows first (wp307: 0.47s) bought nothing.
+-- Pass 2b: age band. SAS SPLITS the eligible window at the age
+-- thresholds (ms_cidadenom.sas:1036-1057): walking the bands
+-- oldest-first, each threshold date cuts the window, one span per
+-- overlapped band is output with its own member-days, and the window
+-- shrinks to threshdate-1. A member therefore counts in EVERY band
+-- their eligible time touches — which is what makes npts <= dennumpts
+-- hold per cell: the numerator bands each episode at its index date
+-- (ms_createpov1.sas:102-116 -> %ms_agestrat, STARTDT=birth_date,
+-- ENDDT=ADate=IndexDt), and that index date lies inside the window.
+-- Banding the whole window at its start instead put a later band's
+-- episode in a numerator cell whose denominator held nobody.
+--
+-- Band entry = birth + lo units (SAS's threshdate); the band's share
+-- of the window ends the day before the next older band enters
+-- (SAS's AgeDenomEnrEndDt = threshdate - 1) or at the window end for
+-- the top band. The bounds are per-BAND data (offsets from birth), so
+-- a window split into several segments by the shave crosses thresholds
+-- without a per-row window function: a lead() over the segment rows
+-- paired arbitrarily across ties and made the emitted spans depend on
+-- physical row order. A view: its one reader (_denom_agg) aggregates
+-- it straight to a few rows, so materialising the spans first bought
+-- nothing.
 CREATE OR REPLACE TEMP VIEW _denom_strat AS
+WITH next_bands AS (
+    -- each band's nearest older band (SAS walks the thresholds
+    -- oldest-first; ordinals are consecutive from the agestrat parse)
+    SELECT a.denom_cfg_id, a.ordinal, min(b.ordinal) AS next_ordinal
+    FROM cfg_denom_strata a
+    JOIN cfg_denom_strata b
+      ON b.denom_cfg_id = a.denom_cfg_id AND b.ordinal > a.ordinal
+    GROUP BY 1, 2
+),
+bands AS (
+    SELECT
+        a.denom_cfg_id,
+        a.ordinal,
+        a.label,
+        -- birth + these offsets gives the span bounds as TIMESTAMP;
+        -- the span arithmetic below casts back to DATE
+        CASE a.unit
+            WHEN 'years'  THEN to_years(a.lo)
+            WHEN 'months' THEN to_months(a.lo)
+            WHEN 'weeks'  THEN to_weeks(a.lo)
+            ELSE               to_days(a.lo)
+        END AS enter_off,
+        CASE nb2.unit
+            WHEN 'years'  THEN to_years(nb2.lo) - INTERVAL 1 DAY
+            WHEN 'months' THEN to_months(nb2.lo) - INTERVAL 1 DAY
+            WHEN 'weeks'  THEN to_weeks(nb2.lo) - INTERVAL 1 DAY
+            ELSE               to_days(nb2.lo) - INTERVAL 1 DAY
+        END AS thru_off
+    FROM cfg_denom_strata a
+    LEFT JOIN next_bands nb
+           ON nb.denom_cfg_id = a.denom_cfg_id AND nb.ordinal = a.ordinal
+    LEFT JOIN cfg_denom_strata nb2
+           ON nb2.denom_cfg_id = a.denom_cfg_id
+          AND nb2.ordinal = nb.next_ordinal
+),
+spans AS (
+    SELECT
+        d.denom_cfg_id,
+        d.scope,
+        d.patid,
+        d.eligepisode,
+        d.sex,
+        d.race,
+        d.hispanic,
+        b.ordinal,
+        b.label,
+        greatest(d.denom_start,
+                 CAST(d.birth_date + b.enter_off AS DATE))  AS seg_start,
+        least(d.denom_end,
+              coalesce(CAST(d.birth_date + b.thru_off AS DATE),
+                       d.denom_end))                        AS seg_end
+    FROM _denom_demog d
+    JOIN bands b
+      ON b.denom_cfg_id = d.denom_cfg_id
+)
 SELECT
-    d.denom_cfg_id,
-    d.scope,
-    d.patid,
-    d.eligepisode,
-    d.denom_start,
-    d.denom_end,
-    d.memberdays,
-    d.sex,
-    d.race,
-    d.hispanic,
-    a.label                      AS agegroup,
-    a.ordinal                    AS agegroupnum,
-    year(d.denom_start)::VARCHAR AS index_year
-FROM _denom_demog d
-JOIN cfg_denom_strata a
-  ON a.denom_cfg_id = d.denom_cfg_id
- AND age_in_unit(d.birth_date, d.denom_start, a.unit) BETWEEN a.lo AND a.hi;
+    denom_cfg_id,
+    scope,
+    patid,
+    eligepisode,
+    seg_start                                    AS denom_start,
+    seg_end                                      AS denom_end,
+    seg_end - seg_start + 1                      AS memberdays,
+    sex,
+    race,
+    hispanic,
+    label                                        AS agegroup,
+    ordinal                                      AS agegroupnum,
+    year(seg_start)::VARCHAR                     AS index_year
+FROM spans
+WHERE seg_start <= seg_end;
 
 
 -- Two phases, for speed; the counts are identical.
