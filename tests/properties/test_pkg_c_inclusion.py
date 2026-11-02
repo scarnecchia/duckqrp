@@ -508,10 +508,19 @@ def _rule_sets(draw: st.DrawFn) -> list[InclusionRule]:
     that intersect the fixture's claim dates."""
     criteria = draw(st.sampled_from(["INC", "EXC"]))
     shape = draw(st.sampled_from(["single", "two_cond", "two_subcond",
-                                  "sub_exclusion", "multi_code"]))
+                                  "sub_exclusion", "multi_code",
+                                  "rx_supply"]))
     common: dict[str, Any] = dict(criteria=criteria, condfrom=draw(_OFFERS),
                                   condto=draw(_TOFFS),
                                   codedays=draw(_CODEDAYS))
+    if shape == "rx_supply":
+        # RX rules against the index fill (30-day supply from day 0):
+        # windows with condto >= 0 overlap the supply, so minrxdays
+        # exact fits occur at minrxdays == overlap days.
+        return [_inc(cond=1, codecat="RX", codes=("E00001",),
+                     condfrom=draw(_OFFERS), condto=draw(_TOFFS),
+                     codedays=1,
+                     minrxdays=draw(st.sampled_from([1, 2, 3])))]
     if shape == "single":
         return [_inc(cond=1, codes=("D00001",), **common)]
     if shape == "two_cond":
@@ -565,19 +574,32 @@ def test_inclusion_matches_condition_model(
     for spec in rules_by_key(rules).values():
         w_from = GRID_ANCHOR + timedelta(days=spec.condfrom)
         w_to = GRID_ANCHOR + timedelta(days=spec.condto)
-        for r in run.inputs["cohort_claims"]:
+        matched = [
+            r for r in run.inputs["cohort_claims"]
             if (r["code"] in spec.codes and r["codecat"] == spec.codecat
-                    and r["adate"] <= w_to and r["expiredt"] >= w_from):
-                if r["adate"] in (w_from, w_to):
-                    event("window boundary exact hit")
-                same_day_rows = [
-                    s for s in run.inputs["cohort_claims"]
-                    if s["code"] in spec.codes
-                    and s["codecat"] == spec.codecat
-                    and s["adate"] == r["adate"]
-                ]
-                if len(same_day_rows) > 1:
-                    event("distinct-day vs row divergence visible")
+                and r["adate"] <= w_to and r["expiredt"] >= w_from)
+        ]
+        for r in matched:
+            if r["adate"] in (w_from, w_to):
+                event("window boundary exact hit")
+        days = {r["adate"] for r in matched}
+        if len(days) == spec.codedays and matched:
+            event("codedays exact fit")
+        if spec.codecat == "RX" and matched:
+            supply = sum(
+                max(0, (min(r["expiredt"], w_to)
+                        - max(r["adate"], w_from)).days + 1)
+                for r in matched)
+            if supply == spec.minrxdays:
+                # coincident-bound shape: minrxdays == available supply
+                # exactly (the >= boundary's pass side)
+                event("minrxdays exact fit")
+        for r in matched:
+            same_day_rows = [
+                s for s in matched if s["adate"] == r["adate"]
+            ]
+            if len(same_day_rows) > 1:
+                event("distinct-day vs row divergence visible")
                 break
 
 
