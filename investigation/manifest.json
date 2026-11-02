@@ -55,12 +55,39 @@
     },
     {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "pass1-complete", "head": "2d12750", "merged_to_discovery": "462c7bb", "notes": "findings: A-1 duplicate-ID rejection guards unreachable from files (last-row-wins / setdefault merge), A-2 documented-optional dispensing.rxamt crashes 10_normalize (xfail pinned), A-3 demographics full-tie survivor is insert-order dependent but contained (evidence: investigation/witnesses/a-demographics-full-tie-evidence.txt); open contract questions logged for Phase 4"},
     {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "confirmed finding B2 (overlapping raw enrollment spans double-count a dispensing through stockpile joins; independently reproduced by orchestrator via investigation/probes/b_overlap_probe.py); strict-xfail witness test committed; fix-location ambiguity B1 (SAS-parity lag segmentation vs shave-join fix) open for Phase 4"},
-    {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "in_progress"},
+    {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "pass1-complete", "head": "8645179", "merged_to_discovery": "5c8b237", "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"},
     {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pending"},
     {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pending"},
     {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pending"}
   ],
   "passes": [
+    {
+      "id": "pkg-c-quick-1",
+      "package": "C",
+      "command": "python -m pytest tests/properties/test_pkg_c_* tests/properties/test_harness_stages.py --hypothesis-profile=quick",
+      "revision": "8645179",
+      "result": "pass",
+      "detail": "38 passed after oracle correction (was 35 claimed at afb31f9; orchestrator replay exposed an oracle corner bug, fixed + pinned)",
+      "duration_seconds": null
+    },
+    {
+      "id": "orchestrator-c-replay-1",
+      "package": "C",
+      "command": "python -m pytest tests/properties/test_pkg_c_dose.py::test_dose_boundaries_match_model --hypothesis-profile=quick",
+      "revision": "afb31f9 then 8645179",
+      "result": "red then green",
+      "detail": "orchestrator caught a deterministic oracle divergence at afb31f9 (min_cfdd vs max_cfdd at equal bounds); verified fixed at 8645179 by direct replay",
+      "duration_seconds": 1.7
+    },
+    {
+      "id": "orchestrator-merge-c-1",
+      "package": "C",
+      "command": "python -m pytest tests/properties --hypothesis-profile=quick",
+      "revision": "5c8b237 (discovery merge)",
+      "result": "pass",
+      "detail": "144 passed, 2 xfailed in campaign venv after merge",
+      "duration_seconds": 61.0
+    },
     {
       "id": "pkg-a-quick-1",
       "package": "A",
