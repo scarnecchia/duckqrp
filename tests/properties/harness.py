@@ -252,6 +252,10 @@ class StageHarness:
             return {n: (n if n in have else "NULL") for n in names}
 
         optional_cols: dict[str, str] = {}
+        # one declared type across both loops: every column tuple here is
+        # a variable-length str tuple, and mypy would otherwise pin `cols`
+        # to the first loop's per-literal union and reject the second's.
+        cols: tuple[str, ...]
         for key, cols in (
             ("read_enrollment", ("chart",)),
             ("read_demographic", ("race", "hispanic",
