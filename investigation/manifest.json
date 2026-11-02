@@ -78,10 +78,10 @@
       "id": "B",
       "branch": "inv/0f462p/b-enrollment-stockpiling",
       "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models",
-      "status": "pass1-complete",
-      "head": "028ebfb",
+      "status": "pass2-complete",
+      "head": "4891dfa (inv/0f462p/b-final; integrated into this branch's base 3709ab2; pass-1 head 028ebfb on the branch above)",
       "merged_to_discovery": "a085f8b",
-      "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended). PASS 2 (oracle-only, integrated at 88edf91): enrollment segmentation rewritten to the arbitrated SAS lag break and the chaining window's span-major tie order modeled as OBSERVED behavior; strict B2 xfail replaced by positive parity pins; full quick set 16 passed twice (B.md Pass 2 verification correction). Pass-2 coverage record + unresolved chaining witness (d63a8fb, inv/0f462p/b-tie-review) and the independent episode tie review (0f76539: B-independent-review.md + tests/properties/test_pkg_b_independent_review.py) are NOT merged, deliberately: real overlap-tie nondeterminism (lead L-B3 below) and oracle overspecification of the observed span-major tie order. B2 ruling unchanged: doc-only, SAS inherited, QA-expected"
+      "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; question B1 resolved (segmentation is parity-intended). PASS 2 (oracle-only, integrated at 88edf91): enrollment segmentation rewritten to the arbitrated SAS lag break and the chaining window's span-major tie order modeled as OBSERVED behavior; the pass-1 strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence was REPLACED by positive parity pins (current pins listed below); full quick set 16 passed twice (B.md Pass 2 verification correction). The tie-review branches (d63a8fb pass-2 coverage record + unresolved chaining witness, inv/0f462p/b-tie-review; 0f76539 independent episode tie review: B-independent-review.md + tests/properties/test_pkg_b_independent_review.py) were historically unmerged by operator decision (real overlap-tie nondeterminism, lead L-B3 below; oracle overspecification of the observed span-major tie order); FINAL-AUDIT section 4 then resolved both via 3436d92 with 4891dfa's doc-accuracy repair (both integrated here): the flaky exact overlap pairing pin was REJECTED (three distinct fixed-order decompositions reproduced: (3,3,3), (3,6), (6,3)) and the standing-red broad comparison was REJECTED, replaced by exact checks on the supported nonoverlap domain (tests/properties/test_pkg_b_pass2.py + tests/properties/oracles/b_day_sets.py: day-set property, exhaustive 128-mask x 3-gap sweep of 384 cases, 128-case shipped-SQL twin) and order-agnostic overlap invariants (tests/properties/test_pkg_b_independent_review.py: upstream multiset stability, supply conservation, 492-decomposition allowed set, bounded 24-run permutation x threads x optimizer grid). PASS 3 / FINAL BATTERY (B.md pass records 1-6; worktree inv/0f462p/b-final, base 132fa87, fresh .venv via uv, serial pytest, StageHarness threads=1; integrated into this branch's base at 4891dfa): quick 21 passed twice (20.48s / 20.36s, exit 0), discovery 14 passed with statistics (37.35s: enrollment nonempty 96.15%, overlapping raw spans 30.77%, B2 fan-out family drawn at 3.77%), deep 14 passed (57.62s), ruff clean, mypy 3 errors all pre-existing at 132fa87 outside B ownership; recorded in passes[] as pkg-b-pass2-* (B.md's manifest note: this section closes AUDIT-2's missing B pass-2 record; the campaign's pass-2 completion evidence is the final battery, which subsumes the integrated pass-2 correction). CURRENT PARITY PINS (witness repair, replaces the pass-1 strict-xfail references): tests/properties/test_pkg_b_enrollment.py::test_enrollment_overlapping_raw_spans_parity (positive pin with explicit B2 witness asserts: one dispensing, supply 46 > 30, numdispensing 2 > 1) + tests/properties/test_pkg_b_stockpile.py::test_stockpile_fanout_parity_on_overlapping_spans; detail in B.md Properties table. CAVEAT (legacy overlap exact characterization, B.md pass-3 scope note): the legacy generated row-for-row episode checks and deterministic @examples in tests/properties/test_pkg_b_episodes.py (overlap fan-out 3.77% of discovery draws) characterize the OBSERVED DuckDB 2.0 threads=1 span-major ordering only — the model reproduces that ordering by construction, so these checks can fail on legal engine drift and are NOT independent correctness evidence for the overlap domain; non-span-major decompositions reproduce under input permutation at threads=1 and run-varying decompositions at threads=4 (B-independent-review.md); the durable order-independent overlap evidence is test_pkg_b_independent_review.py, and the only correctness-endorsed pins elsewhere are the arbitrated B2 defect witnesses, labeled as such. B2 ruling unchanged: doc-only, SAS inherited, QA-expected"
     },
     {
       "id": "C",
@@ -96,10 +96,10 @@
       "id": "D",
       "branch": "inv/0f462p/d-denominators-outputs",
       "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy",
-      "status": "pass1-complete",
-      "head": "cbd1038",
+      "status": "pass2-complete",
+      "head": "cc4945d (inv/0f462p/d-final-check; NOT merged into this branch at this record's time — independent review pending; pass-1 head cbd1038 on the branch above)",
       "merged_to_discovery": "0006b8c",
-      "notes": "no production defect in oracle scope (denominator day-enumeration oracle matches exactly; together==separate on 7 dimensions); D1 (moderate, SAS-cited parity gap): Python lacks SAS's incl-window restriction and dose restriction in CIDA denominators (ms_cidadenom.sas L145-165, L380-430, L307-322) \u2014 decision brief needed; D2: 92_cidadenom.sql header comment demonstrably wrong (says exclusion shave NOT included; it is, and SAS confirms) \u2014 doc fix; D3: documented window-clip deviation, no action; D4: build_study care-setting wildcard trap confirmed (cross-package, infra debt for pass 2). PASS 2 (status as of this reconciliation): underway by a separate worker on inv/0f462p/d-final-check (22fad19/917e75d/af8021a, NOT merged); this integrated branch still carries one preserved executable-red test, tests/properties/test_pkg_d_optional_stages.py::test_optional_stage_matches_reference[attrition_person_time] (optional-stage oracle expects pre-F1 semantics, 2 person-time members on an empty counted step; production/F1 contract counts 0) — verified red at d5fb14b by the final-records reconciliation run; the full integrated suite is therefore not green until the D worker reconciles that oracle"
+      "notes": "no production defect in oracle scope (denominator day-enumeration oracle matches exactly; together==separate on 7 dimensions); D1 (moderate, SAS-cited parity gap): Python lacks SAS's incl-window restriction and dose restriction in CIDA denominators (ms_cidadenom.sas L145-165, L380-430, L307-322) — decision brief needed; D2: 92_cidadenom.sql header comment demonstrably wrong (says exclusion shave NOT included; it is, and SAS confirms) — doc fix; D3: documented window-clip deviation, no action; D4: build_study care-setting wildcard trap confirmed (cross-package, infra debt for pass 2). PASS 2 COMPLETE on inv/0f462p/d-final-check — final battery at cc4945d, recorded at e5d4dd4; the branch is NOT merged into this integrated tree (independent review pending; the parent merges D final separately), so these runs were executed on the d-final-check worktree and are recorded here without claiming integration: complete-D quick 46 passed twice (119.56s / 121.08s, exit 0), complete-D discovery+statistics 46 passed (593.40s, exit 0), labs-case discovery counterexample fixed by the order-immune exact-decimal oracle mean (1 passed, 12.6s at cc4945d parent f1eb9c4), ruff clean, mypy 3 errors all pre-existing outside D ownership; recorded in passes[] as pkg-d-pass2-*. Pass-2 content (D.md pass-2 sections): anti-vacuity fixture yield (nonempty asserted before comparison; real rejection rates 6-21% instead of silent vacuity), gapped-enrollment RX piece-per-span witness (day-by-day enumeration against hand-derived literal intervals), distindex rxdate and covariates DISTINCT oracle corrections, exact-decimal lab summary mean. The preserved executable-red test tests/properties/test_pkg_d_optional_stages.py::test_optional_stage_matches_reference[attrition_person_time] (optional-stage oracle expected pre-F1 semantics; verified red at d5fb14b on this branch) is RECONCILED on d-final-check (final battery 46 passed, exit 0), but the reconciling oracle changes are NOT in this tree — that single test remains executable-red here until the parent merges D final. Residual leads recorded in follow_up_leads: lab DOUBLE-mean rounding boundary; RX DISTINCT-before-sum SAS parity nuance"
     },
     {
       "id": "E",
@@ -480,6 +480,69 @@
       "result": "pass",
       "detail": "78 passed, 4 xfailed, run twice (41.63s/42.16s); existing rewrites+determinism 15 passed; ruff clean; mypy clean (73 files)",
       "duration_seconds": 41.9
+    },
+    {
+      "id": "pkg-b-pass2-quick-1",
+      "package": "B",
+      "command": ".venv/bin/python -m pytest tests/properties/test_pkg_b_enrollment.py tests/properties/test_pkg_b_stockpile.py tests/properties/test_pkg_b_index.py tests/properties/test_pkg_b_episodes.py tests/properties/test_pkg_b_pass2.py tests/properties/test_pkg_b_independent_review.py tests/properties/test_harness_stages.py --hypothesis-profile=quick -q",
+      "revision": "4891dfa (inv/0f462p/b-final head; battery tree recorded in B.md pass 3)",
+      "result": "pass",
+      "detail": "B.md pass-3 FINAL BATTERY quick pass 1: 21 passed, 20.48s, exit 0 (the pass-1 xfail is gone, replaced by the positive parity pin; fresh .venv via uv venv --python 3.13 + -e '.[dev]', hypothesis 6.170.14, serial pytest, no xdist, StageHarness threads=1). Full record: investigation/packages/B.md pass records 1-6",
+      "duration_seconds": 20.48
+    },
+    {
+      "id": "pkg-b-pass2-quick-2",
+      "package": "B",
+      "command": ".venv/bin/python -m pytest tests/properties/test_pkg_b_enrollment.py tests/properties/test_pkg_b_stockpile.py tests/properties/test_pkg_b_index.py tests/properties/test_pkg_b_episodes.py tests/properties/test_pkg_b_pass2.py tests/properties/test_pkg_b_independent_review.py tests/properties/test_harness_stages.py --hypothesis-profile=quick -q",
+      "revision": "4891dfa (inv/0f462p/b-final head; battery tree recorded in B.md pass 3)",
+      "result": "pass",
+      "detail": "B.md pass-3 FINAL BATTERY quick pass 2 (repeat run of the same command): 21 passed, 20.36s, exit 0. Full record: investigation/packages/B.md pass records 1-6",
+      "duration_seconds": 20.36
+    },
+    {
+      "id": "pkg-b-pass2-discovery-1",
+      "package": "B",
+      "command": ".venv/bin/python -m pytest tests/properties/test_pkg_b_enrollment.py tests/properties/test_pkg_b_stockpile.py tests/properties/test_pkg_b_index.py tests/properties/test_pkg_b_episodes.py tests/properties/test_pkg_b_pass2.py tests/properties/test_pkg_b_independent_review.py --hypothesis-profile=discovery --hypothesis-show-statistics -q",
+      "revision": "4891dfa (inv/0f462p/b-final head; battery tree recorded in B.md pass 3)",
+      "result": "pass",
+      "detail": "B.md pass-3 FINAL BATTERY discovery statistics: 14 passed, 37.35s, exit 0 (statistics runs omit test_harness_stages). Coverage: enrollment nonempty output 96.15%, overlapping raw spans 30.77%; stockpile nonempty 83.02%/empty 11.32%; episodes nonempty 35.29%, same-day tie pairs 0-10 (17.65% zero); nonoverlap day-set property nonempty 69.23%/empty 7.69%; episodes-only re-run (fresh DB draw, exit 0): all 8 episode modes covered, 'dispensing inside multiple episodes (B2 fan-out family)' 3.77%. Full record: investigation/packages/B.md pass records 1-6",
+      "duration_seconds": 37.35
+    },
+    {
+      "id": "pkg-b-pass2-deep-1",
+      "package": "B",
+      "command": ".venv/bin/python -m pytest tests/properties/test_pkg_b_enrollment.py tests/properties/test_pkg_b_stockpile.py tests/properties/test_pkg_b_index.py tests/properties/test_pkg_b_episodes.py tests/properties/test_pkg_b_pass2.py tests/properties/test_pkg_b_independent_review.py --hypothesis-profile=deep -q",
+      "revision": "4891dfa (inv/0f462p/b-final head; battery tree recorded in B.md pass 3)",
+      "result": "pass",
+      "detail": "B.md pass-3 FINAL BATTERY cheap deep bounded serial (one thread): 14 passed, 57.62s, exit 0 (expensive budget 100 examples/property; the 384+128 exhaustive and 24-run grid cases run identically at every profile). Static checks in the same battery: ruff --select E4,E7,E9,F clean on all five touched/new test+oracle files; mypy src tests/properties 3 errors, all pre-existing at 132fa87 outside B ownership (harness.py:262 x2, test_property_builder_events.py:251). Instrumented tie-signature observation (grid helpers, not committed): fixed-order signatures across the 12-run threads x optimizer grid all inside the allowed 492-decomposition set; invariants held in all 24 runs. Full record: investigation/packages/B.md pass records 1-6",
+      "duration_seconds": 57.62
+    },
+    {
+      "id": "pkg-d-pass2-quick-1",
+      "package": "D",
+      "command": "timeout 300 uv run --offline --extra dev pytest tests/properties/test_pkg_d_age_days.py tests/properties/test_pkg_d_config_sharing.py tests/properties/test_pkg_d_denominators.py tests/properties/test_pkg_d_optional_stages.py --hypothesis-profile=quick -q",
+      "revision": "cc4945d (inv/0f462p/d-final-check; NOT merged into this branch — review pending)",
+      "result": "pass",
+      "detail": "D.md final battery (recorded at e5d4dd4), complete-D quick pass 1: 46 passed, exit 0 (serial pytest, threads=1 default). Run on the d-final-check worktree, not on this integrated branch. Full record: investigation/packages/D.md run records",
+      "duration_seconds": 119.56
+    },
+    {
+      "id": "pkg-d-pass2-quick-2",
+      "package": "D",
+      "command": "timeout 300 uv run --offline --extra dev pytest tests/properties/test_pkg_d_age_days.py tests/properties/test_pkg_d_config_sharing.py tests/properties/test_pkg_d_denominators.py tests/properties/test_pkg_d_optional_stages.py --hypothesis-profile=quick -q",
+      "revision": "cc4945d (inv/0f462p/d-final-check; NOT merged into this branch — review pending)",
+      "result": "pass",
+      "detail": "D.md final battery (recorded at e5d4dd4), complete-D quick pass 2 (repeat run of the same command): 46 passed, exit 0 (serial pytest, threads=1 default). Run on the d-final-check worktree, not on this integrated branch. Full record: investigation/packages/D.md run records",
+      "duration_seconds": 121.08
+    },
+    {
+      "id": "pkg-d-pass2-discovery-1",
+      "package": "D",
+      "command": "timeout 900 uv run --offline --extra dev pytest tests/properties/test_pkg_d_age_days.py tests/properties/test_pkg_d_config_sharing.py tests/properties/test_pkg_d_denominators.py tests/properties/test_pkg_d_optional_stages.py --hypothesis-profile=discovery --hypothesis-show-statistics -q --tb=short",
+      "revision": "cc4945d (inv/0f462p/d-final-check; NOT merged into this branch — review pending)",
+      "result": "pass",
+      "detail": "D.md final battery (recorded at e5d4dd4), complete-D discovery + statistics: 46 passed, exit 0, 593.40s (serial pytest, threads=1 default; command per D.md's documented complete-D battery convention). Battery ancestry: earlier rounds at af8021a/f1eb9c4 surfaced two counterexamples, diagnosed and fixed (distindex rxdate, covariates DISTINCT), plus one labs float-order boundary fixed by the order-immune exact-decimal mean at cc4945d (labs-case discovery re-run 1 passed, 12.6s at cc4945d parent f1eb9c4). Run on the d-final-check worktree, not on this integrated branch. Full record: investigation/packages/D.md run records",
+      "duration_seconds": 593.4
     }
   ],
   "baseline": {
@@ -583,7 +646,7 @@
       "classification": "production defect, INHERITED from SAS (verified against the original SAS source, /home/scarndp/dev/Sentinel/qrp, package 14.5.0); mitigation expected upstream via the Sentinel model QA Suite (unverified here)",
       "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
       "fix_branch": "none \u2014 join-side lateral one-containing-span fix described in the finding doc as NOT APPLIED; a validated prototype (inv/0f462p/fix-b2, red f4d2e6a / green c87dc0b) was removed per the operator parity ruling, results in passes arb-red-b2-1/arb-green-b2-1",
-      "witness": "investigation/probes/b_overlap_probe.py + strict-xfail pin tests/properties/test_pkg_b_enrollment.py::test_enrollment_overlapping_raw_spans_known_divergence"
+      "witness": "investigation/probes/b_overlap_probe.py + positive parity pins tests/properties/test_pkg_b_enrollment.py::test_enrollment_overlapping_raw_spans_parity and tests/properties/test_pkg_b_stockpile.py::test_stockpile_fanout_parity_on_overlapping_spans with explicit B2 witness asserts (one dispensing, supply 46 > 30, numdispensing 2 > 1 — witness, not endorsement); these replaced the pass-1 strict-xfail pin test_enrollment_overlapping_raw_spans_known_divergence at B pass 2 (88edf91; b-final head 4891dfa)"
     },
     {
       "id": "A-1",
@@ -717,14 +780,17 @@
     "claims_from scan bound does not apply to enrollment spans (contract intent unconfirmed; low impact)",
     "encounter tables are never identified by column fingerprint (fingerprint=False); name/table_map only",
     "denominators table grain is cohort x stratum level, not cohort",
-    "D optional-stage attrition_person_time oracle still expects pre-F1 semantics (2 person-time members on an empty counted step) while production and the F1 fix count 0: tests/properties/test_pkg_d_optional_stages.py::test_optional_stage_matches_reference[attrition_person_time] is executable-red on the integrated branch (verified at d5fb14b); reconciliation is owned by the separate D pass-2 worker, not altered here"
+    "D optional-stage attrition_person_time oracle still expects pre-F1 semantics (2 person-time members on an empty counted step) while production and the F1 fix count 0: tests/properties/test_pkg_d_optional_stages.py::test_optional_stage_matches_reference[attrition_person_time] is executable-red on this integrated branch (verified at d5fb14b); the D pass-2 worker reconciled the oracle on inv/0f462p/d-final-check (final battery 46 passed, exit 0, at cc4945d, recorded at e5d4dd4) but that reconciliation is NOT merged into this branch — this item stays open on the integrated tree until the parent merges D final"
   ],
   "follow_up_leads": [
     "near-tie families for episode/stockpiling properties (amounts differing by epsilon, supplies by 1 day)",
     "run_envelope with NULL encounter ddate and discharge-status deaths colliding with death-table rows",
     "utilization dedup when encounter rows share encounterid",
     "combo covariates referencing later covarnums vs documented one-at-a-time evaluation",
-    "B lead L-B3 (production robustness, NOT authorized to fix): the 50_episodes.sql chaining window ORDER BY s.adate, s.expiredt, s.rxsup is not a total order when the located fan-out emits copies tied on all three columns, so episode pairing/count depends on DuckDB join emission order (span-major observed on threads=1); a tie-break extension is SAS-parity-sensitive and flagged for arbitration, not applied (B.md Pass 2 verification correction; unmerged d63a8fb preserves the witness)"
+    "B lead L-B3 (production robustness, NOT authorized to fix): the 50_episodes.sql chaining window ORDER BY s.adate, s.expiredt, s.rxsup is not a total order when the located fan-out emits copies tied on all three columns, so episode pairing/count depends on DuckDB join emission order (span-major observed on threads=1); a tie-break extension is SAS-parity-sensitive and flagged for arbitration, not applied (B.md Pass 2 verification correction; unmerged d63a8fb preserves the witness)",
+    "D lead (production, unresolved; NOT edited by D): lab_summary.mean_result computes round(avg(result_num), 3) over DOUBLEs whose float sum order/ulp can land on either side of an exact .0005 rounding boundary — observed once on a patients=5/seed=1363 draw (four identical rows on both sides, true exact mean 134.0825; production 134.083 vs oracle 134.082 purely by summation order); no semantic defect on either side; the D oracle was made order-immune (exact decimals, matching the documented decimal half-away contract) at cc4945d, but the production DOUBLE mean is unchanged; a DECIMAL-based production mean would be deterministic and SAS-decimal-exact; classify any future boundary draw by recomputing the exact decimal mean before treating it as a rounding-mode bug (D.md lab-summary mean boundary; fix branch NOT merged at this record's time — review pending)",
+    "D parity nuance (UNVERIFIED, asserted neither way): 80_covariates.sql's clipped CTE is SELECT DISTINCT, so a duplicate dispensing with the same shape contributes once BEFORE the same-day sum (the same_supply_ties knob found this sensitivity); the shipped SQL documents DISTINCT-before-sum as an output-preserving performance rewrite, NOT as a SAS contract statement — whether SAS's stockpile dedupes identical dispensing rows before chaining is UNVERIFIED, and the gapped-RX piece-per-span witness pins only the shipped stage's documented behavior from its documented inputs (D.md pass-2 classification honesty)",
+    "B legacy overlap exact-characterization caveat (recorded limitation, not a fix lead): the legacy generated row-for-row episode checks and deterministic @examples in tests/properties/test_pkg_b_episodes.py (overlap fan-out 3.77% of discovery draws) characterize the OBSERVED DuckDB 2.0 threads=1 span-major ordering only — the model reproduces that ordering by construction, so these checks can fail on legal engine drift and are NOT independent correctness evidence for the overlap domain; the b-final grid reproduced non-span-major decompositions under input permutation at threads=1 and run-varying decompositions at threads=4; the durable order-independent overlap evidence is tests/properties/test_pkg_b_independent_review.py (B.md pass-3 scope note; production-side thread is lead L-B3 above)"
   ],
   "reconciliation": {
     "report": "investigation/packages/FINAL-RECORDS.md",
@@ -732,7 +798,13 @@
     "reconciled_at": "inv/0f462p/final-records (branch base d5fb14b) plus this manifest update",
     "scope": "final records reconciliation: package statuses refreshed against package reports and git ancestry (A/C/E/F pass2-complete; B pass1-complete with integrated pass-2 oracle verification and deliberately unmerged pass-2 record + independent review; D pass1-complete, pass-2 underway by its own worker); pass-2 run records appended for C/E/F; L-B3 lead and the preserved D attrition oracle divergence recorded; all pre-existing entries preserved verbatim",
     "ac8_state": "machinery complete and manifest validator green; 6/6 calibration records carry executed red-then-green replay evidence (a-1/b-1/c-1/e-1/f-1 recorded in investigation/README.md from the 2026-11-02 campaign-venv run; d-1-pass2-20261102 recorded in its calibration record from replay_mutation.py offline run); machine-verdict artifacts for the mutation replay are not committed; D second pass incomplete; B pass-2 record unmerged by operator decision",
-    "ac9_state": "complete: 7 replay groups over 8 fixed findings, 16 executed per-revision pytest runs, committed logs + verdicts.json, always-on validator green (42 checks)"
+    "ac9_state": "complete: 7 replay groups over 8 fixed findings, 16 executed per-revision pytest runs, committed logs + verdicts.json, always-on validator green (42 checks)",
+    "closing_update": {
+      "date": "2026-11-02",
+      "at": "inv/0f462p/closing-records (base 3709ab2, which already integrates b-final 4891dfa and the strict AC.8 validator 2c936f0)",
+      "scope": "closing records update only: appended the genuine B final-battery records (pkg-b-pass2-quick-1/2, pkg-b-pass2-discovery-1, pkg-b-pass2-deep-1 — from B.md pass records 1-6 at inv/0f462p/b-final, head 4891dfa, integrated into this base) and the genuine D final-battery records (pkg-d-pass2-quick-1/2, pkg-d-pass2-discovery-1 — from D.md run records at cc4945d on inv/0f462p/d-final-check, battery recorded at e5d4dd4; the branch is NOT merged at recording time, independent review pending, and the records cite the d-final-check revisions without claiming integration); repaired the stale pass-1 strict-xfail B2 witness references in packages[B].notes and findings[B2].witness to the current positive parity pins; refreshed package B/D statuses to pass2-complete with honest heads; recorded the unresolved D lab DOUBLE-mean rounding lead, the RX DISTINCT-before-sum parity nuance, and the B legacy overlap exact-characterization caveat; updated the D attrition_person_time open question to its reconciled-on-d-final-check / not-merged-here state. Every historical record and calibration preserved verbatim; no policy changes; no invented evidence; narrative in investigation/packages/CLOSING-RECORDS.md",
+      "ac8_state_after_closing": "manifest validator green including the strict completion tier after this update — the B/D pass-2 completion evidence is now recorded from executed batteries; verdict coverage over the 6/6 calibration ids is unchanged; D code integration remains pending on the parent (review of d-final-check), and the D pass-2 records say so"
+    }
   },
   "open_decisions": [
     {
