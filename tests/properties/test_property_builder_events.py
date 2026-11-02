@@ -248,8 +248,9 @@ def test_hand_fixture_event_attribution_through_stages() -> None:
         harness.run_through("follow-up + events")
 
         # The care-setting rows the builder now emits, as registered.
-        assert harness.engine.con.execute(
-            "SELECT count(*) FROM cfg_care_setting").fetchone()[0] == 4
+        n_settings = harness.engine.con.execute(
+            "SELECT count(*) FROM cfg_care_setting").fetchone()
+        assert n_settings is not None and int(n_settings[0]) == 4
 
         claims = harness.engine.con.execute(
             "SELECT cohortgrp, patid, adate, code, codetype "
