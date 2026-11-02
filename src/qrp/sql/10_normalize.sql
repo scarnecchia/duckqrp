@@ -80,7 +80,10 @@ SELECT
     CAST({dispensing_code} AS VARCHAR) AS code,
     CAST({dispensing_codetype} AS VARCHAR) AS codetype,
     CAST(rxsup AS INTEGER)         AS rxsup,
-    CAST(rxamt AS DOUBLE)          AS rxamt
+    -- rxamt is OPTIONAL (INPUTS.md: dose only); an extract without the
+    -- column gets NULL, resolved like every other declared-optional
+    -- column. NULL here is "no amount recorded", not "amount 0".
+    CAST({dispensing_rxamt} AS DOUBLE) AS rxamt
 FROM {read_dispensing}
 WHERE rxdate IS NOT NULL
   AND rxsup IS NOT NULL AND rxsup > 0
@@ -91,7 +94,10 @@ WHERE rxdate IS NOT NULL
   -- syringes) to 0. With real amounts there are no zeros at all and
   -- this filter changes nothing on that study; it stays because it is
   -- SAS's rule and a true zero amount is not a dispensing.
-  AND rxamt IS NOT NULL AND rxamt > 0;
+  -- Resolved with the extract's real column when it has one; an
+  -- extract WITHOUT rxamt carries no amounts to test, so the rule is
+  -- resolved out rather than dropping every dispensing.
+  AND {dispensing_amt_rule};
 
 -- ------------------------------------------------------------------
 -- ENVELOPING (ms_envelope.sas). A diagnosis or procedure claim dated
