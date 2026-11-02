@@ -1,0 +1,19 @@
+# Calibration patch c-1 — reconstructed from investigation/packages/C.md
+# ("Calibration record (seeded defect)").
+# Mutation: follow-up washout horizon boundary off by one day —
+# a prior event exactly at indexdt - fup_wash_per now disqualifies.
+# Recorded base: wave base a0d0b93 (production files identical through
+# the package pass-1 HEAD 8645179; verified via `git diff a0d0b93 <head>
+# -- src tools` empty).
+diff --git a/src/qrp/sql/60_followup.sql b/src/qrp/sql/60_followup.sql
+--- a/src/qrp/sql/60_followup.sql
++++ b/src/qrp/sql/60_followup.sql
+@@ -64,7 +64,7 @@
+     CASE
+         WHEN c.fup_wash_per IS NULL THEN pe.adate IS NULL
+         WHEN c.fup_wash_per <= 0    THEN TRUE
+-        ELSE pe.adate IS NULL OR pe.adate < m.indexdt - c.fup_wash_per
++        ELSE pe.adate IS NULL OR pe.adate <= m.indexdt - c.fup_wash_per
+     END                                                    AS hoi_incidence_met,
+     -- Blackout: SAS builds _EventsInBlackout and drops those episodes
+     -- outright (`if a and not b and not c and not d`,

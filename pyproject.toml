@@ -59,7 +59,8 @@ testpaths = ["tests"]
 #       or anchor or separate_conds or codedays"
 #   -k "thread_count or risk or geography or cida or denominator
 #       or utilization or attrition or person_time or invariant"
-markers = ["slow: runs the pipeline end to end"]
+markers = ["slow: runs the pipeline end to end",
+           "mutation_replay: AC.8 mutation replay — one disposable git worktree + uv venv per manifest calibration record, red required then green required; minutes per record, never part of normal runs. Run explicitly: python -m pytest tests/properties/test_campaign_mutation_replay.py -m mutation_replay (see investigation/replay_mutation.py)"]
 
 [tool.mypy]
 python_version = "3.10"

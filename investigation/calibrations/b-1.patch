@@ -1,0 +1,19 @@
+# Calibration patch b-1 — reconstructed from investigation/packages/B.md
+# ("Calibration record (seeded defect, REVERTED, never committed)").
+# Mutation: gap-threshold off-by-one in the enrollment break test —
+# spans exactly at enrol_gap wrongly rupture.
+# Recorded base: wave base a0d0b93 (production files identical through
+# the package pass-1 HEAD 1d4dfec; verified via `git diff a0d0b93 <head>
+# -- src tools` empty).
+diff --git a/src/qrp/sql/20_enrollment.sql b/src/qrp/sql/20_enrollment.sql
+--- a/src/qrp/sql/20_enrollment.sql
++++ b/src/qrp/sql/20_enrollment.sql
+@@ -64,7 +64,7 @@
+         *,
+         CASE
+             WHEN prev_end IS NULL THEN 1
+-            WHEN date_diff('day', prev_end, enr_start) - 1 > enrol_gap THEN 1
++            WHEN date_diff('day', prev_end, enr_start) - 1 >= enrol_gap THEN 1
+             WHEN coverage = 'MD'
+                  AND (medcov <> prev_medcov OR drugcov <> prev_drugcov) THEN 1
+             WHEN coverage = 'M' AND medcov  <> prev_medcov  THEN 1
