@@ -250,6 +250,10 @@ def main(argv: list[str] | None = None) -> int:
         runlog = RunLog(a.log_dir, run_id="qrp",
                         write_jsonl=not a.no_jsonl).capture()
 
+    # The engine handle exists the moment Engine() succeeds; failures can
+    # happen before it is ever bound (a bad study), so the finally below
+    # needs the name bound regardless.
+    eng: Engine | None = None
     try:
         study = load_study(a.study)
         if runlog is not None:
@@ -290,7 +294,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  parity dump: {len(files)} file(s) under {a.parity_dump}")
         if runlog is not None:
             runlog.stage_summary(eng)
-        eng.close()
     except Exception as exc:
         # The runbook promises actionable errors. That promise has to
         # hold on the CLI, not only in the UI.
@@ -300,6 +303,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nFailed:\n  {message}", file=sys.stderr)
         return 1
     finally:
+        # Release the engine on the failure path too: a failed stage or a
+        # bad table map used to return 1 with the DuckDB connection still
+        # open. The success path closed it here anyway, so nothing moves
+        # for a completed run — the close just no longer depends on the
+        # run having succeeded.
+        if eng is not None:
+            eng.close()
         if runlog is not None:
             runlog.close()
             for pth in runlog.paths():
