@@ -54,7 +54,7 @@
       ]
     },
     {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "pass1-complete", "head": "2d12750", "merged_to_discovery": "462c7bb", "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity); new lead: diagnosis optionals dx_codetype/pdx/enctype referenced unconditionally in 10_normalize.sql (same class as A-2, unfixed)"},
-    {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "finding B2 + question B1 ARBITRATED against the original SAS source (see investigation/packages/ARBITRATION.md, decision brief DB-1): the overlapping-span double-count is SAS parity, NOT a defect; strict-xfail witness replaced by test_enrollment_overlapping_raw_spans_sas_parity; optional one-containing-span shave divergence built on inv/0f462p/fix-b2 (not merged, operator decision)"},
+    {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended)"},
     {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "pass1-complete", "head": "8645179", "merged_to_discovery": "5c8b237", "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"},
     {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pending"},
     {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pending"},
@@ -211,7 +211,7 @@
       "command": "python -m pytest tests/test_regression_b2.py tests/test_determinism.py tests/test_rewrites.py -q; python -m pytest tests/test_pipeline.py -q",
       "revision": "inv/0f462p/fix-b2 c87dc0b",
       "result": "pass",
-      "detail": "regression 1 passed; determinism+rewrites 15 passed; full pipeline 287 passed, 2 failed (the two pre-existing exempt spill-attribution OOM tests), 1 skipped in 6:53. Branch NOT merged — SAS parity ruled, branch kept as optional divergence",
+      "detail": "regression 1 passed; determinism+rewrites 15 passed; full pipeline 287 passed, 2 failed (the two pre-existing exempt spill-attribution OOM tests), 1 skipped in 6:53. Prototype divergence branch validated then REMOVED per the operator's parity ruling on B2 (documented as an inherited defect; see investigation/findings/B2-overlapping-enrollment-double-count.md)",
       "duration_seconds": 413.7
     },
     {
@@ -276,12 +276,12 @@
     {
       "id": "B2",
       "doc": "investigation/findings/B2-overlapping-enrollment-double-count.md",
-      "title": "One dispensing inside overlapping enrollment episodes is stockpiled twice — SAS parity, not a defect",
-      "status": "resolved-not-a-defect",
-      "classification": "SAS parity (verified against the original SAS source, /home/scarndp/dev/Sentinel/qrp, package 14.5.0); sane-arithmetic divergence confirmed",
-      "first_failing_revision": "n/a — parity with SAS at c3e60db",
-      "fix_branch": "inv/0f462p/fix-b2 (OPTIONAL deliberate divergence, red f4d2e6a / green c87dc0b, NOT merged — operator decision DB-1 in investigation/packages/ARBITRATION.md)",
-      "witness": "investigation/probes/b_overlap_probe.py + tests/properties/test_pkg_b_enrollment.py::test_enrollment_overlapping_raw_spans_sas_parity"
+      "title": "One dispensing inside overlapping enrollment episodes is stockpiled twice — inherited bug-for-bug from the SAS original",
+      "status": "open-inherited (operator-ruled: document as defect, SAS parity kept, no fix branch)",
+      "classification": "production defect, INHERITED from SAS (verified against the original SAS source, /home/scarndp/dev/Sentinel/qrp, package 14.5.0); mitigation expected upstream via the Sentinel model QA Suite (unverified here)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none — join-side lateral one-containing-span fix described in the finding doc as NOT APPLIED; a validated prototype (inv/0f462p/fix-b2, red f4d2e6a / green c87dc0b) was removed per the operator parity ruling, results in passes arb-red-b2-1/arb-green-b2-1",
+      "witness": "investigation/probes/b_overlap_probe.py + strict-xfail pin tests/properties/test_pkg_b_enrollment.py::test_enrollment_overlapping_raw_spans_known_divergence"
     },
     {
       "id": "B1",

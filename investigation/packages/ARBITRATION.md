@@ -18,8 +18,8 @@ A-2-optional-rxamt-binder.md, A-3-demographics-full-tie-comment.md).
 
 | id | classification | shipped fix | fix branch |
 |---|---|---|---|
-| B2 | SAS parity — NOT a production defect (sane-arithmetic divergence confirmed) | none (no parity-preserving fix exists) | inv/0f462p/fix-b2 built as an OPTIONAL divergence; not merged |
-| B1 (question) | RESOLVED by SAS source: SAS sees overlapping spans AND double-counts | — | — (decision brief DB-1 below) |
+| B2 | DEFECT — inherited bug-for-bug from the SAS original; parity kept by operator ruling | none (documented; strict-xfail pin kept) | none (prototype validated then removed per ruling) |
+| B1 (question) | RESOLVED by SAS source, closed by operator ruling: segmentation is parity-intended; the double-count is inherited | — | — (DB-1 below, answered) |
 | A-1 | production defect (cohortgrp side); covarnum merge intended | YES | inv/0f462p/fix-a1, red f971710 → green 5bbc4ff |
 | A-2 | production defect (published contract violated) | YES | inv/0f462p/fix-a2, red 1577f83 → green 564eb7a |
 | A-3 | documentation defect (comment false; behavior is SAS parity) | none (comment wording proposed in the finding doc) | — |
@@ -101,28 +101,26 @@ choice is a policy decision, not a bug fix.
   shipped behavior is parity and the branch is a policy option, not a
   repair.
 
-**What the operator is asked to decide (verbatim):**
+**Outcome (operator ruling, final):** B2 is documented as a DEFECT —
+inherited bug-for-bug from the SAS original. No fix branch; the
+Python-side fix would diverge from SAS parity, which is not authorized.
+The Sentinel model QA Suite is expected to prevent overlapping
+enrollment spans upstream (mitigation context, unverified in this
+campaign). The strict-xfail witness
+`test_enrollment_overlapping_raw_spans_known_divergence` remains in
+`tests/properties/test_pkg_b_enrollment.py` as the pin documenting
+current behavior. The full defect report is
+investigation/findings/B2-overlapping-enrollment-double-count.md. The
+prototype divergence branch inv/0f462p/fix-b2 was validated
+(red f4d2e6a / green c87dc0b; determinism+rewrites 15 passed;
+tests/test_pipeline.py 287 passed with only the two pre-existing exempt
+spill failures — manifest passes arb-red-b2-1 / arb-green-b2-1) and
+then removed per this ruling; its results are the record of what the
+join-side fix would look like.
 
-> On extracts with overlapping raw enrollment rows, qrp-duckdb
-> currently reproduces SAS exactly, including counting one dispensing
-> twice (numdispensing=2, supplies 16 and 46 for a single 30-day fill)
-> whenever its fill date sits in overlapping enrollment episodes. This
-> is verified bug-for-bug against the SAS source (ms_episoderec2 /
-> ms_shaveoutside / ms_stockpiling chain, citations in
-> investigation/findings/B2-overlapping-enrollment-double-count.md).
-> Options:
-> (a) keep bug-for-bug parity — no code change (current state; the
->     property suite now pins the behavior with the SAS citations);
-> (b) merge inv/0f462p/fix-b2 — shave each claim against exactly one
->     containing span (latest enr_end), a deliberate, documented,
->     regression-tested divergence from SAS in the direction of sane
->     arithmetic;
-> (c) keep parity but add a data-quality WARNING when a dispensing is
->     shaved against more than one containing span, so affected
->     studies are told their numbers carry SAS's own double-count.
-> The arbiter's recommendation is (c) if parity is the governing
-> contract, (b) if internal-arithmetic sanity outranks parity for
-> messy extracts; (a) is the default and matches SAS either way.
+**Evidence the ruling rests on (all paths under the read-only SAS
+reference tree /home/scarndp/dev/Sentinel/qrp/, quoting verified by the
+arbiter):**
 
 ## Surprises found during independent review
 
@@ -161,9 +159,12 @@ choice is a policy decision, not a bug fix.
 
 ## Branch inventory
 
-- `inv/0f462p/arb-findings` (this branch): revert of the fix-b2 merge,
-  SAS-parity witness, A-1/A-2 fix merges, property-suite updates,
+- `inv/0f462p/arb-findings` (this branch): B2 strict-xfail pin restored
+  with the ruling context, A-1/A-2 fix merges, property-suite updates,
   finding docs, this file, manifest updates.
-- `inv/0f462p/fix-b2`: OPTIONAL one-containing-span shave divergence
-  (not merged; decision brief DB-1).
 - `inv/0f462p/fix-a1`, `inv/0f462p/fix-a2`: shipped fixes, merged.
+- `inv/0f462p/fix-b2`: REMOVED per the operator's B2 parity ruling —
+  no fix branch for B2. The validated prototype's results (red
+  f4d2e6a / green c87dc0b, 287-passed pipeline run) are preserved in
+  the manifest passes and summarized in the B2 finding doc's
+  not-applied minimal-fix section.

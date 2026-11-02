@@ -155,32 +155,37 @@ def test_enrollment_matches_day_model(spec: dict) -> None:
 
 
 # ---------------------------------------------------------------------
-# Overlapping raw spans (findings B1/B2 — RESOLVED as SAS parity).
-# Verified against the original SAS source (read-only reference tree):
-#
-#   * ms_episoderec2.sas:67-77 breaks each span against the immediately
-#     PREVIOUS span (`&ENRSTART.-lag(&ENREND.)-1 > &ENROLGAP.`) and
-#     :79-97 reconciles min/max per (PatId, episode) — overlapping
-#     episodes SURVIVE into the shave reference (worktemp.enr_&num),
-#     with no overlap dedup anywhere.
-#   * ms_shaveoutside (macro body, `proc sql` cartesian join
-#     `ref.Enr_Start <= claim_end and claim_start <= ref.Enr_End`)
-#     fans the claim out per overlapping span and shaves EACH pair.
-#   * ms_cidanum.sas:1299-1308 runs that pre-shave, ms_stockpiling
-#     then same-day-sums the fanned rows (ms_stockpiling.sas proc
-#     means, `N(&CLMSUP.)=NumDispensing`), and ms_cidanum.sas:1531-1541
-#     re-shaves through the same fanning join.
-#
-# So SAS itself, on the input below, produces TWO stockpiled records
-# for the one dispensing — supplies 16 and 46, each numdispensing=2 —
-# exactly what the shipped SQL does. The day-model accumulator (one
-# merged episode, one count) is a sane-arithmetic reading, not the
-# project's SAS-parity contract; the divergence is real but it is a
-# divergence from the SANE model, not from SAS. Pinning the SAS-parity
-# semantics here (was xfail(strict) before that reading was settled).
+# B2 pin (OPERATOR RULED: inherited defect, parity kept — see
+# investigation/findings/B2-overlapping-enrollment-double-count.md).
+# Overlapping raw spans whose inner boundary ruptures mid-episode make
+# the day-model merge the outer span whole, while the shipped SQL
+# breaks against the immediately PREVIOUS span and emits OVERLAPPING
+# episodes; everything downstream then fans out per containing span
+# (the single dispensing below is stockpiled twice, numdispensing=2,
+# supplies 16/46). Verified bug-for-bug against the ORIGINAL SAS
+# source (read-only reference tree): ms_create_enrollment_spans.sas:
+# 109-117 builds the shave reference via %MS_EPISODEREC2, whose
+# lag-break (:67-77) and min/max reconciliation (:79-97) emit the same
+# overlapping episodes; ms_shaveoutside (cartesian claims×spans join)
+# shaves per containing span; ms_cidanum.sas:1299-1308 pre-shaves,
+# ms_stockpiling same-day-sums the copies (N()=NumDispensing), and
+# ms_cidanum.sas:1531-1541 re-shaves through the same join. So the
+# behavior is INHERITED from SAS, and fixing the Python side would
+# diverge from SAS parity — not authorized; the Sentinel model QA
+# Suite is expected to prevent overlapping enrollment spans upstream
+# (mitigation, unverified here). xfail(strict) pins the CURRENT
+# behavior against the day-model expectation; it fails the day any
+# parity policy changes, prompting removal.
 # ---------------------------------------------------------------------
 
-def test_enrollment_overlapping_raw_spans_sas_parity() -> None:
+@pytest.mark.xfail(
+    reason="B2 (inherited from SAS, operator-ruled): overlapping raw "
+           "spans yield overlapping enrollment episodes and a "
+           "stockpiled double-count; see "
+           "investigation/findings/B2-overlapping-enrollment-"
+           "double-count.md and investigation/packages/ARBITRATION.md",
+    strict=True)
+def test_enrollment_overlapping_raw_spans_known_divergence() -> None:
     dataset = mini_dataset(
         patients=(patient(1),),
         enrollment=(
@@ -191,41 +196,22 @@ def test_enrollment_overlapping_raw_spans_sas_parity() -> None:
         dispensings=(disp(1, date(2011, 9, 15), "E00001", 30, 10.0),),
     )
     study = two_cohort_study()
+    model_rows = _model_rows(dataset, study)
     with StageHarness(study) as harness:
         harness.attach_dataset(dataset)
         harness.run_through("episodes + masterlist")
         sql = fetch_rows(harness.engine, "enrollment_spans")
         stock = fetch_rows(harness.engine, "stockpiled")
-        cand = fetch_rows(harness.engine, "index_candidates")
-    # C ruptures from B (77 blank days) while sitting inside A, so the
-    # two episodes overlap — same as SAS's reconciled output.
-    assert sorted((r[3], r[4]) for r in sql) == [
-        (date(2011, 1, 1), date(2011, 12, 31)),
-        (date(2011, 9, 1), date(2011, 9, 30)),
-    ]
-    # The fill lands in both episodes; each shaved copy stockpiles, and
-    # the same-day sum (sup 16+30) pushes one record out to 46 days.
-    # numdispensing=2 on BOTH rows is SAS's own `N(RxSup)` count of the
-    # two fanned copies of one physical claim.
-    assert len(stock) == 2
-    by_sup = {r[6]: r for r in stock}
-    assert sorted(by_sup) == [16, 46]
-    short, long = by_sup[16], by_sup[46]
-    assert (short[3], short[4], short[8]) == (
-        date(2011, 9, 15), date(2011, 9, 30), 2), f"short row: {short}"
-    assert short[7] == pytest.approx(10.0 * 16 / 30), (
-        f"short amount not prorated: {short}")
-    assert (long[3], long[4], long[8]) == (
-        date(2011, 9, 15), date(2011, 10, 30), 2), f"long row: {long}"
-    # the pipeline sums the two prorated copies (16/30 + 30/30 of the
-    # amount) before the re-shave prorates again, so compare loosely
-    assert long[7] == pytest.approx(10.0 * 46 / 30), (
-        f"long amount not prorated: {long}")
-    # The inflated payload reaches the index candidates (longest supply
-    # wins the per-day dedupe), again matching SAS's washout input.
-    assert len(cand) == 1
-    assert (cand[0][5], cand[0][7]) == (46, 2), (
-        f"index_candidates row: {cand}")
+    # Day-model: ONE episode (2011-01-01 .. 2011-12-31) and ONE
+    # stockpiled record (numdispensing=1, rxsup=30). The SQL instead
+    # emits the two overlapping episodes and TWO stockpiled rows
+    # (numdispensing=2, supplies 16 and 46) — SAS's own output.
+    assert len(sql) == 1 and len(stock) == 1, (
+        f"overlapping raw spans produced {len(sql)} episodes and "
+        f"{len(stock)} stockpiled rows for one dispensing; "
+        f"day-model: {model_rows}")
+    assert model_rows == [
+        ("MD|0|0", 1, 1, date(2011, 1, 1), date(2011, 12, 31))]
 
 
 # ---------------------------------------------------------------------
