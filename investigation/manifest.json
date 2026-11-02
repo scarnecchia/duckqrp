@@ -56,7 +56,7 @@
     {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "pass1-complete", "head": "2d12750", "merged_to_discovery": "462c7bb", "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity); new lead: diagnosis optionals dx_codetype/pdx/enctype referenced unconditionally in 10_normalize.sql (same class as A-2, unfixed)"},
     {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended)"},
     {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "pass1-complete", "head": "8645179", "merged_to_discovery": "5c8b237", "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"},
-    {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pending"},
+    {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pass1-complete", "head": "cbd1038", "merged_to_discovery": "0006b8c", "notes": "no production defect in oracle scope (denominator day-enumeration oracle matches exactly; together==separate on 7 dimensions); D1 (moderate, SAS-cited parity gap): Python lacks SAS's incl-window restriction and dose restriction in CIDA denominators (ms_cidadenom.sas L145-165, L380-430, L307-322) — decision brief needed; D2: 92_cidadenom.sql header comment demonstrably wrong (says exclusion shave NOT included; it is, and SAS confirms) — doc fix; D3: documented window-clip deviation, no action; D4: build_study care-setting wildcard trap confirmed (cross-package, infra debt for pass 2)"},
     {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pass1-complete", "head": "0b391e5", "merged_to_discovery": "82e4364", "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md"},
     {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pass1-complete", "head": "c4b61a5", "merged_to_discovery": "3085eb4", "notes": "leads: F1 (high) attrition L27 forward-fill reports final-cohort members that do not exist (cohort_final AND ptsmasterlist empty, remaining=2; NULL excluded forward-filled), F2 (medium) CIDA numerator exceeds denominator in stratified cells (75+ cell: npts=1, dennumpts=0); comparator semantics documented (duplicates only via ROW COUNT — calibration proved load-bearing); open questions incl. undocumented cohorts-together-vs-separate promise; witnesses pkg-f-lead-f1/f2"}
   ],
@@ -123,6 +123,24 @@
       "result": "pass",
       "detail": "223 passed, 6 xfailed in campaign venv after merge (xfails: B2, A-2 strict; F1 x2, F2 x2 non-strict)",
       "duration_seconds": 179.1
+    },
+    {
+      "id": "pkg-d-quick-1",
+      "package": "D",
+      "command": "python -m pytest tests/properties/test_pkg_d_* tests/properties/test_harness_pipeline.py tests/test_rewrites.py --hypothesis-profile=quick",
+      "revision": "cbd1038",
+      "result": "pass",
+      "detail": "41 passed; denominator family discovery-profile 50/50 with washout-shave-hit 50/50, exclusion-hit 50/50, death-clipping 22%, output-nonempty 82%",
+      "duration_seconds": 111
+    },
+    {
+      "id": "orchestrator-merge-d-1",
+      "package": "D",
+      "command": "python -m pytest tests/properties --hypothesis-profile=quick",
+      "revision": "c79d58d (discovery merge + __init__ resolution)",
+      "result": "pass",
+      "detail": "250 passed, 5 xfailed in campaign venv after merge",
+      "duration_seconds": 217.3
     },
     {
       "id": "pkg-a-quick-1",
