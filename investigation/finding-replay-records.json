@@ -1,0 +1,528 @@
+{
+  "schema": "qrp-finding-replay-records/1",
+  "schema_notes": "Machine-readable AC.9 red/green replay evidence. Every sha is a full 40-hex immutable commit id resolved from the finding documents and fix branches and verified by ancestry (base -> red -> green -> [final]) before any replay runs. replay_groups[] = findings WITH a minimal local fix; each carries an execution record proving the standalone regression failed at the red revision for the recorded reason and passed at every later revision. non_fixed_findings[] = findings with NO fix evidence (operator parity ruling, comment-only doc fixes, pending contract decisions) documented separately so they are never counted as fix evidence. Validated by tests/properties/test_finding_evidence_complete.py; replayed by investigation/finding_regression_replay.py (opt-in wrapper: tests/properties/test_finding_regression_replay.py).",
+  "privacy": "PRIVATE — NOT AUTHORIZED FOR PUBLICATION",
+  "campaign_base_sha": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+  "campaign_base_note": "pre-investigation discovery HEAD, identical to the Testing tip at campaign start; every fix branch is rooted here",
+  "replay_tool": "investigation/finding_regression_replay.py",
+  "replay_environment_note": "Each revision runs in a disposable detached git worktree fr-<group> with a fresh uv-built .venv from '.[dev]' (pytest+pandas+textual+hypothesis+mypy+ruff; textual is required by the E-1/E-2 regression, Hypothesis is not needed by any red regression but belongs to the campaign dev environment). Revisions of one group run strictly sequentially in one worktree; the venv is deleted and rebuilt at every revision boundary. One DuckDB default-thread setting is used by the regressions themselves (they were not rewritten); the replay harness adds no parallelism.",
+  "replay_groups": [
+    {
+      "id": "a1",
+      "findings": [
+        "A-1"
+      ],
+      "package": "A",
+      "branch": "inv/0f462p/fix-a1",
+      "base_sha": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "revisions": [
+        {
+          "role": "red",
+          "sha": "f97171090206ba3cafd19822b65925b986512427",
+          "command": "python -m pytest tests/test_regression_a1.py -q",
+          "expect": "fail",
+          "expected_patterns": [
+            "DID NOT RAISE"
+          ]
+        },
+        {
+          "role": "green",
+          "sha": "5bbc4ffd8dbfcb0d940c93b350fba8b3d34de871",
+          "command": "python -m pytest tests/test_regression_a1.py -q",
+          "expect": "pass",
+          "expected_patterns": []
+        }
+      ],
+      "regression_node_ids": [
+        "tests/test_regression_a1.py::test_duplicate_cohortgrp_rows_are_rejected",
+        "tests/test_regression_a1.py::test_distinct_cohortgrp_rows_still_accepted"
+      ],
+      "minimality": {
+        "red_test_only": true,
+        "max_commits_after_base": 2,
+        "shared_test_file": false,
+        "note": "red commit adds only tests/test_regression_a1.py; green commit touches only src/qrp/config.py (11 insertions, 1 deletion)"
+      },
+      "doc": "investigation/findings/A-1-duplicate-cohortgrp-guard-unreachable.md",
+      "note": "red evidence per finding doc: 'DID NOT RAISE ValueError' in test_duplicate_cohortgrp_rows_are_rejected",
+      "branch_note": "branch head == green sha",
+      "execution": {
+        "tool": "investigation/finding_regression_replay.py",
+        "executed_at": "2026-11-02T21:08:04Z",
+        "worktree_removed": true,
+        "results": [
+          {
+            "role": "red",
+            "sha": "f97171090206ba3cafd19822b65925b986512427",
+            "exit_code": 1,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 0.35,
+            "log_path": "investigation/replays/a1-red.log"
+          },
+          {
+            "role": "green",
+            "sha": "5bbc4ffd8dbfcb0d940c93b350fba8b3d34de871",
+            "exit_code": 0,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 0.34,
+            "log_path": "investigation/replays/a1-green.log"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a2",
+      "findings": [
+        "A-2"
+      ],
+      "package": "A",
+      "branch": "inv/0f462p/fix-a2",
+      "base_sha": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "revisions": [
+        {
+          "role": "red",
+          "sha": "1577f8385b88785b34ea89f1e2e3ef356beff095",
+          "command": "python -m pytest tests/test_regression_a2.py -q",
+          "expect": "fail",
+          "expected_patterns": [
+            "Referenced column \\\"?rxamt\\\"? not found"
+          ]
+        },
+        {
+          "role": "green",
+          "sha": "564eb7a4c9cc38240903ea96a0957fdcd017ca7c",
+          "command": "python -m pytest tests/test_regression_a2.py -q",
+          "expect": "pass",
+          "expected_patterns": []
+        }
+      ],
+      "regression_node_ids": [
+        "tests/test_regression_a2.py::test_optional_rxamt_absent_runs",
+        "tests/test_regression_a2.py::test_rxamt_present_zero_amount_still_excluded"
+      ],
+      "minimality": {
+        "red_test_only": true,
+        "max_commits_after_base": 2,
+        "shared_test_file": false,
+        "note": "red commit adds only tests/test_regression_a2.py; green commit touches src/qrp/pipeline.py (+18) and src/qrp/sql/10_normalize.sql (+8/-2)"
+      },
+      "doc": "investigation/findings/A-2-optional-rxamt-binder.md",
+      "note": "red evidence per finding doc: BinderException 'Referenced column \"rxamt\" not found' in test_optional_rxamt_absent_runs",
+      "branch_note": "branch head == green sha",
+      "execution": {
+        "tool": "investigation/finding_regression_replay.py",
+        "executed_at": "2026-11-02T21:08:04Z",
+        "worktree_removed": true,
+        "results": [
+          {
+            "role": "red",
+            "sha": "1577f8385b88785b34ea89f1e2e3ef356beff095",
+            "exit_code": 1,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 0.88,
+            "log_path": "investigation/replays/a2-red.log"
+          },
+          {
+            "role": "green",
+            "sha": "564eb7a4c9cc38240903ea96a0957fdcd017ca7c",
+            "exit_code": 0,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 1.0,
+            "log_path": "investigation/replays/a2-green.log"
+          }
+        ]
+      }
+    },
+    {
+      "id": "a4",
+      "findings": [
+        "A-4"
+      ],
+      "package": "A",
+      "branch": "inv/0f462p/fix3-a4-complete",
+      "base_sha": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "revisions": [
+        {
+          "role": "red",
+          "sha": "8bc521e84053d7ade69247e741fdef02f2be0af2",
+          "command": "python -m pytest tests/test_optional_claim_columns.py -q --tb=short",
+          "expect": "fail",
+          "expected_patterns": [
+            "Referenced column \\\"?\\w+\\\"? not found"
+          ]
+        },
+        {
+          "role": "green",
+          "sha": "a6a74e4f1116e096572170551aa44085f84d995c",
+          "command": "python -m pytest tests/test_optional_claim_columns.py -q --tb=short",
+          "expect": "pass",
+          "expected_patterns": []
+        },
+        {
+          "role": "final",
+          "sha": "f1dca19f7db1027206292e711ddd6094a43335c9",
+          "command": "python -m pytest tests/test_optional_claim_columns.py -q --tb=short",
+          "expect": "pass",
+          "expected_patterns": []
+        }
+      ],
+      "regression_node_ids": [
+        "tests/test_optional_claim_columns.py"
+      ],
+      "minimality": {
+        "red_test_only": true,
+        "max_commits_after_base": 3,
+        "shared_test_file": false,
+        "note": "recorded allowance: red adds tests/test_optional_claim_columns.py; green resolves the 18-column family (pipeline.py +14, 10_normalize.sql rewrite); final is a 2-line follow-up isolating tuple inference (pipeline.py only). Every post-base commit touches at least one src/ path"
+      },
+      "doc": "investigation/findings/A-4-optional-diagnosis-columns.md",
+      "note": "red evidence per investigation/packages/A4-validation.md: 21 failed / 3 passed exit 1 (Binder family on omitted optional columns); final standalone 24 passed exit 0",
+      "branch_note": "clean final branch; superseded obsolete inv/0f462p/fix2-a4 (preserved, diagnosis-only) — the replay uses THIS branch only",
+      "execution": {
+        "tool": "investigation/finding_regression_replay.py",
+        "executed_at": "2026-11-02T21:08:04Z",
+        "worktree_removed": true,
+        "results": [
+          {
+            "role": "red",
+            "sha": "8bc521e84053d7ade69247e741fdef02f2be0af2",
+            "exit_code": 1,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 11.42,
+            "log_path": "investigation/replays/a4-red.log"
+          },
+          {
+            "role": "green",
+            "sha": "a6a74e4f1116e096572170551aa44085f84d995c",
+            "exit_code": 0,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 15.96,
+            "log_path": "investigation/replays/a4-green.log"
+          },
+          {
+            "role": "final",
+            "sha": "f1dca19f7db1027206292e711ddd6094a43335c9",
+            "exit_code": 0,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 15.89,
+            "log_path": "investigation/replays/a4-final.log"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e1e2",
+      "findings": [
+        "E-1",
+        "E-2"
+      ],
+      "package": "E",
+      "branch": "inv/0f462p/fix3-e1",
+      "base_sha": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "revisions": [
+        {
+          "role": "red",
+          "sha": "323b2313503892035842d667319543a0ef65199e",
+          "command": "python -m pytest tests/test_regression_e1.py -v",
+          "expect": "fail",
+          "expected_patterns": [
+            "the TUI never released the run's engine after completion",
+            "the CLI closed the engine 0 times on the failure path"
+          ]
+        },
+        {
+          "role": "green",
+          "sha": "0a2657316139588c7ae956271811aa4cecb7bf48",
+          "command": "python -m pytest tests/test_regression_e1.py -v",
+          "expect": "pass",
+          "expected_patterns": []
+        }
+      ],
+      "regression_node_ids": [
+        "tests/test_regression_e1.py::test_tui_run_closes_the_run_engine",
+        "tests/test_regression_e1.py::test_cli_failure_closes_the_engine"
+      ],
+      "minimality": {
+        "red_test_only": true,
+        "max_commits_after_base": 2,
+        "shared_test_file": true,
+        "note": "recorded allowance: green touches src/qrp/cli.py (+11/-1) and src/qrp/tui.py (+13/-3) — both frontend leak paths, the identical try/finally fix shape that justified one branch for two findings — plus a 2-line tweak to the regression test itself"
+      },
+      "doc": "investigation/findings/E-1-tui-leaks-run-engine.md",
+      "fixture_dependency": "/tmp/qrp_data/100k synthetic input created by tools/gen_synthetic.py --out /tmp/qrp_data/100k (seed 42, README recipe). The regression module pytest.skip()s entirely when it is absent; the replay's green rule refuses a skip-only exit 0, so a missing fixture fails the replay loudly instead of passing it falsely. Synthetic data only; no clinical dataset is accessed.",
+      "note": "red evidence per finding docs: 2 failed (TUI engine never released; CLI closed engine 0 times); green 2 passed. Both expected_patterns must match the single red output",
+      "branch_note": "one branch and one standalone test file cover both frontend leak findings; executed as ONE group",
+      "execution": {
+        "tool": "investigation/finding_regression_replay.py",
+        "executed_at": "2026-11-02T21:08:04Z",
+        "worktree_removed": true,
+        "results": [
+          {
+            "role": "red",
+            "sha": "323b2313503892035842d667319543a0ef65199e",
+            "exit_code": 1,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 10.66,
+            "log_path": "investigation/replays/e1e2-red.log"
+          },
+          {
+            "role": "green",
+            "sha": "0a2657316139588c7ae956271811aa4cecb7bf48",
+            "exit_code": 0,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 2.9,
+            "log_path": "investigation/replays/e1e2-green.log"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c3",
+      "findings": [
+        "C-3"
+      ],
+      "package": "C",
+      "branch": "inv/0f462p/fix3-c3",
+      "base_sha": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "revisions": [
+        {
+          "role": "red",
+          "sha": "26ddf87c2880bbd41b8dcd9a61907bf337fcd4fb",
+          "command": "python -m pytest tests/test_regression_c3.py -q",
+          "expect": "fail",
+          "expected_patterns": [
+            "person_days is not floored at 0"
+          ]
+        },
+        {
+          "role": "green",
+          "sha": "1a810a2a65152d29b07c1cf97e4470ebe9eaca76",
+          "command": "python -m pytest tests/test_regression_c3.py -q",
+          "expect": "pass",
+          "expected_patterns": []
+        }
+      ],
+      "regression_node_ids": [
+        "tests/test_regression_c3.py::test_person_days_never_goes_negative"
+      ],
+      "minimality": {
+        "red_test_only": true,
+        "max_commits_after_base": 2,
+        "shared_test_file": false,
+        "note": "red commit adds only tests/test_regression_c3.py; green commit touches only src/qrp/sql/60_followup.sql (+12/-3)"
+      },
+      "doc": "investigation/findings/C-3-person-days-no-floor.md",
+      "note": "red evidence per finding doc: 'person_days is not floored at 0 ... [(2014-07-31, 2014-06-30, -30)]'",
+      "branch_note": "branch head == green sha",
+      "execution": {
+        "tool": "investigation/finding_regression_replay.py",
+        "executed_at": "2026-11-02T21:08:04Z",
+        "worktree_removed": true,
+        "results": [
+          {
+            "role": "red",
+            "sha": "26ddf87c2880bbd41b8dcd9a61907bf337fcd4fb",
+            "exit_code": 1,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 0.7,
+            "log_path": "investigation/replays/c3-red.log"
+          },
+          {
+            "role": "green",
+            "sha": "1a810a2a65152d29b07c1cf97e4470ebe9eaca76",
+            "exit_code": 0,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 0.69,
+            "log_path": "investigation/replays/c3-green.log"
+          }
+        ]
+      }
+    },
+    {
+      "id": "f1",
+      "findings": [
+        "F1"
+      ],
+      "package": "F",
+      "branch": "inv/0f462p/fix2-f1",
+      "base_sha": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "revisions": [
+        {
+          "role": "red",
+          "sha": "0bcb1a88f09bc6e1a90877017a771c6b8bdd4fab",
+          "command": "python -m pytest tests/test_regression_f1.py -q",
+          "expect": "fail",
+          "expected_patterns": [
+            "_attrition\\(con, .c2., 6\\.0\\) == \\(0, 2\\)"
+          ]
+        },
+        {
+          "role": "green",
+          "sha": "3001086383294e0f7f1767e9dfe7e18c3ef16a56",
+          "command": "python -m pytest tests/test_regression_f1.py -q",
+          "expect": "pass",
+          "expected_patterns": []
+        }
+      ],
+      "regression_node_ids": [
+        "tests/test_regression_f1.py::test_cohort_with_no_claims_counts_zero_not_carried",
+        "tests/test_regression_f1.py::test_cohort_with_surviving_episode_counts_real_values"
+      ],
+      "minimality": {
+        "red_test_only": true,
+        "max_commits_after_base": 2,
+        "shared_test_file": false,
+        "note": "red commit adds only tests/test_regression_f1.py; green commit touches only src/qrp/sql/70_outputs.sql (+21/-6)"
+      },
+      "doc": "investigation/findings/F1-attrition-empty-step-forward-fill.md",
+      "note": "red evidence per finding doc: 1 failed — the first counted step over an empty relation (level 6) forward-fills 2 members instead of counting 0; pattern anchors on the failing assert source line",
+      "branch_note": "branch head == green sha",
+      "execution": {
+        "tool": "investigation/finding_regression_replay.py",
+        "executed_at": "2026-11-02T21:08:04Z",
+        "worktree_removed": true,
+        "results": [
+          {
+            "role": "red",
+            "sha": "0bcb1a88f09bc6e1a90877017a771c6b8bdd4fab",
+            "exit_code": 1,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 1.04,
+            "log_path": "investigation/replays/f1-red.log"
+          },
+          {
+            "role": "green",
+            "sha": "3001086383294e0f7f1767e9dfe7e18c3ef16a56",
+            "exit_code": 0,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 1.01,
+            "log_path": "investigation/replays/f1-green.log"
+          }
+        ]
+      }
+    },
+    {
+      "id": "f2",
+      "findings": [
+        "F2"
+      ],
+      "package": "F",
+      "branch": "inv/0f462p/fix2-f2",
+      "base_sha": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "revisions": [
+        {
+          "role": "red",
+          "sha": "0e7eeee9147bd6ea6dc3befae7878dc7e311b3f7",
+          "command": "python -m pytest tests/test_regression_f2.py -q",
+          "expect": "fail",
+          "expected_patterns": [
+            "denominator must split the window at the age threshold"
+          ]
+        },
+        {
+          "role": "green",
+          "sha": "37e3d89c6be648ee77b4b10d456c521d2c555ae5",
+          "command": "python -m pytest tests/test_regression_f2.py -q",
+          "expect": "pass",
+          "expected_patterns": []
+        }
+      ],
+      "regression_node_ids": [
+        "tests/test_regression_f2.py::test_denominator_covers_every_band_the_window_spans"
+      ],
+      "minimality": {
+        "red_test_only": true,
+        "max_commits_after_base": 2,
+        "shared_test_file": false,
+        "note": "red commit adds only tests/test_regression_f2.py; green commit touches only src/qrp/sql/92_cidadenom.sql (+92/-21)"
+      },
+      "doc": "investigation/findings/F2-denominator-age-band-split.md",
+      "note": "red evidence per finding doc: 1 failed — denominator emits only the 65-74 band; the assertion message names the split contract",
+      "branch_note": "branch head == green sha (37e3d89 amended the original green 80208b1 with the deterministic offset-join rewrite; the amended head is the recorded green/final)",
+      "execution": {
+        "tool": "investigation/finding_regression_replay.py",
+        "executed_at": "2026-11-02T21:08:04Z",
+        "worktree_removed": true,
+        "results": [
+          {
+            "role": "red",
+            "sha": "0e7eeee9147bd6ea6dc3befae7878dc7e311b3f7",
+            "exit_code": 1,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 0.79,
+            "log_path": "investigation/replays/f2-red.log"
+          },
+          {
+            "role": "green",
+            "sha": "37e3d89c6be648ee77b4b10d456c521d2c555ae5",
+            "exit_code": 0,
+            "pattern_matched": true,
+            "ok": true,
+            "duration_seconds": 0.76,
+            "log_path": "investigation/replays/f2-green.log"
+          }
+        ]
+      }
+    }
+  ],
+  "non_fixed_findings": [
+    {
+      "id": "B2",
+      "doc": "investigation/findings/B2-overlapping-enrollment-double-count.md",
+      "disposition": "parity ruling: operator-ruled inherited defect — bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain); SAS parity kept, no fix branch; a validated prototype fix (inv/0f462p/fix-b2, red f4d2e6a / green c87dc0b) was REMOVED per the operator's ruling, so no red/green pair is replayed and this finding is NOT fix evidence",
+      "evidence_note": "strict-xfail pin tests/properties/test_pkg_b_enrollment.py::test_enrollment_overlapping_raw_spans_known_divergence + probe investigation/probes/b_overlap_probe.py; prototype replay recorded in manifest passes arb-red-b2-1 / arb-green-b2-1"
+    },
+    {
+      "id": "A-3",
+      "doc": "investigation/findings/A-3-demographics-full-tie-comment.md",
+      "disposition": "comment-only doc fix: behavior kept (SAS parity, strictly more deterministic than SAS's unstable proc sort); inv/0f462p/fix3-docs commit b0be77e applies the replacement comment verbatim — zero executable changes, so no red/green pair exists or applies",
+      "evidence_note": "investigation/witnesses/a-demographics-full-tie-evidence.txt"
+    },
+    {
+      "id": "D2",
+      "doc": "investigation/findings/D2-cidadenom-header-comment.md",
+      "disposition": "comment-only doc fix: 92_cidadenom.sql header contradicted the stage's own WHERE criteria='EXC' and the SAS original; inv/0f462p/fix3-docs commit 34f84e7 corrects the comment — zero executable changes, so no red/green pair exists or applies",
+      "evidence_note": "investigation/packages/D.md finding D2 + git show 34f84e7"
+    },
+    {
+      "id": "C-1",
+      "doc": "investigation/findings/C-1-dose-censor-no-post-truncation-recheck.md",
+      "disposition": "lead-open, decision brief DB-5: silent divergence from SAS for maxcumdose+cumdoseper studies whose censor pushes an episode below a length criterion; magnitude unmeasured (needs a witness study); only the false comment half was corrected in fix3-docs — the behavior question awaits the operator, so it is NOT fix evidence",
+      "evidence_note": "investigation/witnesses/c1-dose-censor-recheck-sas-evidence.txt"
+    },
+    {
+      "id": "E-3",
+      "doc": "investigation/findings/E-3-E4-sigint-and-failure-terminal-contracts.md",
+      "disposition": "open-contract-choice, decision brief DB-3: CLI SIGINT mid-run is unhandled (exit -2, JSONL without terminal record, no manifest); the exit/diagnostics/terminal-record contract is unspecified and no fix is authorized by charter; the resource half is clean since the E-2 fix",
+      "evidence_note": "package E characterization test test_cli_sigint_mid_run_is_characterized (discovery branch)"
+    },
+    {
+      "id": "E-4",
+      "doc": "investigation/findings/E-3-E4-sigint-and-failure-terminal-contracts.md",
+      "disposition": "open-contract-choice, decision brief DB-4: direct pipeline.run() failures emit no RunFinished; who owns the failure terminal event is unspecified and no fix is authorized by charter; nothing claims ok on failure (safe direction asserted)",
+      "evidence_note": "package E characterization test test_direct_run_sql_fault_propagates_without_ok (discovery branch)"
+    },
+    {
+      "id": "D1",
+      "doc": "investigation/packages/D.md",
+      "disposition": "open-contract-choice, decision brief DB-2: CIDA denominators omit SAS's INCLUSION-subcondition window restriction and dose restriction under excl_incl=Y (parity gap confirmed against ms_cidadenom.sas:146, 413-417, 265/359); behavior change awaits the operator, so it is NOT fix evidence",
+      "evidence_note": "investigation/packages/D.md with SAS citations; re-verified by arbiter 3"
+    }
+  ],
+  "execution_note": "execution blocks are filled ONLY from actual replay runs of investigation/finding_regression_replay.py; log_path values are repository-relative files under investigation/replays/ written by the tool",
+  "generated_by": "AC.9 machinery package (inv/0f462p/finding-replay)"
+}

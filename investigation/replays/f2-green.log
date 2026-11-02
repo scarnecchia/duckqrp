@@ -1,0 +1,12 @@
+# group f2 revision green 37e3d89c6be648ee77b4b10d456c521d2c555ae5
+# command: python -m pytest tests/test_regression_f2.py -q
+# exit: 0 duration: 0.8s ok: True
+
+.                                                                        [100%]
+=============================== warnings summary ===============================
+tests/test_regression_f2.py::test_denominator_covers_every_band_the_window_spans
+  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-f2/tests/test_regression_f2.py:108: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.
+    result = run(_study(), str(indata), verbose=False)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1 passed, 1 warning in 0.53s

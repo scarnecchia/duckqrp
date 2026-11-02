@@ -1,0 +1,62 @@
+# group a2 revision red 1577f8385b88785b34ea89f1e2e3ef356beff095
+# command: python -m pytest tests/test_regression_a2.py -q
+# exit: 1 duration: 0.9s ok: True
+
+F.                                                                       [100%]
+=================================== FAILURES ===================================
+_______________________ test_optional_rxamt_absent_runs ________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-scarndp/pytest-256/test_optional_rxamt_absent_run0')
+
+    def test_optional_rxamt_absent_runs(tmp_path: Path):
+        """An extract with every required column but no rxamt must run, not
+        die with a BinderException at the first stage."""
+        indata = _write_extract(
+            tmp_path,
+            BASE_SCHEMA,
+            [(1, date(2011, 9, 15), "E00001", 30)],
+        )
+>       result = run(_study(), str(indata), verbose=False)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_regression_a2.py:110: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/qrp/pipeline.py:1264: in run
+    _stage("normalize")
+src/qrp/pipeline.py:1261: in _stage
+    eng.script_stage(st.name, st.script, **_stage_params(name))
+src/qrp/engine.py:499: in script_stage
+    self._run_with_progress(name, run_all)
+src/qrp/engine.py:362: in _run_with_progress
+    fn()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def run_all() -> None:
+        for stmt in split_statements(sql):
+            self.raise_if_cancelled()
+            # Reset the per-statement high-water mark so the peak
+            # is attributed to this statement, not the run.
+            before = self._spill_total()
+            self._stmt_peak = 0
+            s0 = time.perf_counter()
+>           self.con.execute(stmt.sql)
+E           _duckdb.BinderException: Binder Error: Referenced column "rxamt" not found in FROM clause!
+E           Candidate bindings: "rxdate", "rx", "rxsup"
+E           
+E           LINE 13:   -- (ms_cidanum.sas:617). This was once applied, measured worse...
+E                            ^^^^^
+
+src/qrp/engine.py:483: BinderException
+=============================== warnings summary ===============================
+tests/test_regression_a2.py::test_optional_rxamt_absent_runs
+  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-a2/tests/test_regression_a2.py:110: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.
+    result = run(_study(), str(indata), verbose=False)
+
+tests/test_regression_a2.py::test_rxamt_present_zero_amount_still_excluded
+  /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/fr-a2/tests/test_regression_a2.py:136: UserWarning: no encounter table found: medical visit counts (NumAV, NumOA, NumIP, NumED) come from diagnosis claims, which miss encounters that carry no diagnosis. If the extract has an encounter table under another name, map it with table_map.
+    result = run(_study(), str(indata), verbose=False)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_regression_a2.py::test_optional_rxamt_absent_runs - _duckdb...
+1 failed, 1 passed, 2 warnings in 0.63s

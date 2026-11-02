@@ -1,0 +1,50 @@
+# group c3 revision red 26ddf87c2880bbd41b8dcd9a61907bf337fcd4fb
+# command: python -m pytest tests/test_regression_c3.py -q
+# exit: 1 duration: 0.7s ok: True
+
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________________ test_person_days_never_goes_negative _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-scarndp/pytest-263/test_person_days_never_goes_ne0')
+
+    def test_person_days_never_goes_negative(tmp_path):
+        """at_risk_start past the episode end means zero days at risk — the
+        row must carry person_days 0 (like followuptime), not a negative
+        span that the denominators table then sums."""
+        import warnings
+    
+        _write_scdm(tmp_path)
+        study = _study()
+    
+        eng = Engine(verbose=False)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                run(study, str(tmp_path), engine=eng, verbose=False)
+            rows = eng.con.execute("""
+                SELECT atriskindexdt, episodeenddt, followuptime, person_days
+                FROM cohort_final
+            """).fetchall()
+        finally:
+            eng.close()
+    
+        assert rows, "witness episode did not survive to cohort_final"
+        # Witness shape: the at-risk window really does start after the
+        # episode is over (otherwise this fixture proves nothing).
+        assert all(arsk > end for arsk, end, _, _ in rows), rows
+        # followuptime is already floored at 0 (SAS parity); the same span
+        # expressed as person_days must be too.
+        assert all(fup == 0 for _, _, fup, _ in rows), rows
+        bad = [(arsk, end, pd) for arsk, end, _, pd in rows if pd != 0]
+>       assert not bad, (
+            f"person_days is not floored at 0 for episodes whose at-risk "
+            f"window starts after the episode end: {bad}"
+        )
+E       AssertionError: person_days is not floored at 0 for episodes whose at-risk window starts after the episode end: [(datetime.date(2014, 7, 31), datetime.date(2014, 6, 30), -30)]
+E       assert not [(datetime.date(2014, 7, 31), datetime.date(2014, 6, 30), -30)]
+
+tests/test_regression_c3.py:133: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_regression_c3.py::test_person_days_never_goes_negative - As...
+1 failed in 0.48s
