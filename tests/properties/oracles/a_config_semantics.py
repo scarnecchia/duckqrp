@@ -439,18 +439,16 @@ BOUNDARY_CASES: list[dict[str, Any]] = [
         kind="documented", fragment="start_date is after end_date",
     ),
     dict(
-        # CHARACTERIZED, not the documented rejection: duplicate
-        # cohortfile rows cannot reach the "duplicate cohortgrp" guard.
-        # cohortfile is folded into a dict keyed by cohortgrp, so the
-        # LAST row silently wins. A doubled row with differing
-        # parameters is silently resolved, never rejected.
+        # DOCUMENTED rejection (fixed by inv/0f462p/fix-a1): duplicate
+        # cohortfile rows for one cohortgrp used to fold into a dict
+        # (LAST row silently winning) and never reached the validate
+        # guard. The loader now raises the documented error at the fold.
         name="duplicate_cohortgrp_rows_collapse_to_last", payload=_dict_study(
             cohortfile=[
                 {"cohortgrp": "g1", "enrdays": 30},
                 {"cohortgrp": "g1", "enrdays": 200},
             ]),
-        kind="accepts",
-        expect={"cohort:g1.enr_days": 200},   # last row wins, silently
+        kind="documented", fragment="duplicate cohortgrp",
     ),
     dict(
         name="no_cohorts", payload=_dict_study(cohortfile=[]),

@@ -240,6 +240,9 @@ class StageHarness:
         ct_col = next(
             (c for c in ("rx_codetype", "codetype", "ndc_codetype")
              if c in disp_cols), None)
+        # mirror of the production rxamt resolution (10_normalize reads
+        # {dispensing_rxamt} / {dispensing_amt_rule} since fix-a2)
+        rxamt_col = "rxamt" if "rxamt" in disp_cols else None
 
         def _optional(read_key: str, *names: str) -> dict[str, str]:
             src = fmt.get(read_key, "")
@@ -261,6 +264,11 @@ class StageHarness:
         fmt.update({
             "dispensing_code": code_col,
             "dispensing_codetype": ct_col or "NULL",
+            "dispensing_rxamt": rxamt_col or "NULL",
+            "dispensing_amt_rule": (
+                f"({rxamt_col}) IS NOT NULL AND ({rxamt_col}) > 0"
+                if rxamt_col else "TRUE"
+            ),
             "enrollment_chart": optional_cols["chart"],
             **{f"opt_{k}": v for k, v in optional_cols.items()},
             # No files on disk here; only warning text ever sees it.
