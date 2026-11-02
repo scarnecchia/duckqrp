@@ -69,18 +69,18 @@
       "id": "A",
       "branch": "inv/0f462p/a-input-contracts",
       "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence",
-      "status": "pass1-complete",
-      "head": "2d12750",
-      "merged_to_discovery": "462c7bb",
-      "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity); new lead: diagnosis optionals dx_codetype/pdx/enctype referenced unconditionally in 10_normalize.sql (same class as A-2, unfixed)"
+      "status": "pass2-complete",
+      "head": "f5a2a85",
+      "merged_to_discovery": "f69b958",
+      "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity). PASS 2 (f5a2a85): optional-column sweep property across all 27 declared-optional columns (14 resolve-and-run, 18-crash family pinned non-strict — the A-4 family is diagnosis trio + procedure px_codetype/enctype + all 13 lab_result optionals); coincident-bound generators (63-77% hit rates); recorded discovery (107 passed, 18 xfailed, 74.3s) + deep (38 passed, knob space exhausted) passes in investigation/packages/A.md"
     },
     {
       "id": "B",
       "branch": "inv/0f462p/b-enrollment-stockpiling",
       "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models",
       "status": "pass1-complete",
-      "head": "1d4dfec",
-      "merged_to_discovery": "58d7efa",
+      "head": "028ebfb",
+      "merged_to_discovery": "a085f8b",
       "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended)"
     },
     {
@@ -121,6 +121,33 @@
     }
   ],
   "passes": [
+    {
+      "id": "a-pass2-discovery-1",
+      "package": "A",
+      "command": "python -m pytest tests/properties/test_pkg_a_config.py tests/properties/test_pkg_a_sqlsplit.py tests/properties/test_pkg_a_scdm.py tests/properties/test_pkg_a_tiebreak.py tests/properties/test_pkg_a_optional_columns.py --hypothesis-profile=discovery --hypothesis-show-statistics",
+      "revision": "f5a2a85",
+      "result": "pass",
+      "detail": "107 passed, 18 xfailed (A-4 family pins); coincident knobs 62.7-68.3%; sqlsplit hazards comment_only 62%/tail-no-semicolon 50%/;in-string 46%; optional-column crash-surface 26.3% of generated omission sets",
+      "duration_seconds": 74.3
+    },
+    {
+      "id": "a-pass2-deep-1",
+      "package": "A",
+      "command": "python -m pytest tests/properties/test_pkg_a_config.py --hypothesis-profile=deep --hypothesis-show-statistics",
+      "revision": "f5a2a85",
+      "result": "pass",
+      "detail": "38 passed; representation metamorphic 2000/2000; coincident-bound knob space exhausted (63 subsets, nothing left to do)",
+      "duration_seconds": 2.8
+    },
+    {
+      "id": "a-pass2-quick-gate-1",
+      "package": "A",
+      "command": "python -m pytest tests/properties/test_pkg_a_* --hypothesis-profile=quick",
+      "revision": "f5a2a85",
+      "result": "pass",
+      "detail": "107 passed, 18 xfailed; companions: rewrites+determinism 15 passed; ruff+mypy clean",
+      "duration_seconds": 40.4
+    },
     {
       "id": "pkg-c-quick-1",
       "package": "C",
