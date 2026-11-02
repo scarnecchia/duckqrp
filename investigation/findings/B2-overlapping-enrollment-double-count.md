@@ -32,14 +32,18 @@
 - **witness/repro command:** `investigation/probes/b_overlap_probe.py` —
   `python investigation/probes/b_overlap_probe.py` (repo root on
   sys.path); independently reproduced by the orchestrator (manifest
-  pass `orchestrator-b2-repro-1`). Pinned in the suite as the
-  strict-xfail witness `tests/properties/test_pkg_b_enrollment.py::
-  test_enrollment_overlapping_raw_spans_known_divergence`:
+  pass `orchestrator-b2-repro-1`). Pinned in the suite as positive
+  parity pins — the original strict-xfail witness
+  `tests/properties/test_pkg_b_enrollment.py::
+  test_enrollment_overlapping_raw_spans_known_divergence` was replaced
+  at 88edf91 (commands naming it now fail with pytest exit 4, node not
+  found; use the current names):
   `python -m pytest
-  'tests/properties/test_pkg_b_enrollment.py::
-  test_enrollment_overlapping_raw_spans_known_divergence'
-  --hypothesis-profile=quick` → xfailed (pin documenting current
-  behavior).
+  'tests/properties/test_pkg_b_enrollment.py::test_enrollment_overlapping_raw_spans_parity'
+  'tests/properties/test_pkg_b_stockpile.py::test_stockpile_fanout_parity_on_overlapping_spans'
+  --hypothesis-profile=quick` → `2 passed` (pins asserting the
+  double-count behavior, including the explicit one-claim / 46-day /
+  numdispensing-2 witness asserts).
 - **expected vs actual:** Expected (one-dispensing-is-one-dispensing):
   ONE enrollment episode [2011-01-01..2011-12-31]; the single 30-day /
   10.0 fill stockpiles to ONE row, numdispensing=1, rxsup=30, rxamt=10.
@@ -135,20 +139,43 @@
     46/15.333...), each numdispensing=2; index_candidates rxsup=46,
     numdispensing=2. Reproduced at c3e60db (src identical to discovery
     HEAD).
-  - pin: `python -m pytest
-    'tests/properties/test_pkg_b_enrollment.py::
-    test_enrollment_overlapping_raw_spans_known_divergence'
-    --hypothesis-profile=quick` → `1 xfailed` (strict; would FAIL the
-    day parity policy changes).
+  - pin (current): `python -m pytest
+    'tests/properties/test_pkg_b_enrollment.py::test_enrollment_overlapping_raw_spans_parity'
+    'tests/properties/test_pkg_b_stockpile.py::test_stockpile_fanout_parity_on_overlapping_spans'
+    --hypothesis-profile=quick` → `2 passed` (positive pins of the
+    defect behavior; they fail the day any parity policy changes). The
+    arbitration-close record `1 xfailed` referred to the strict-xfail
+    witness `test_enrollment_overlapping_raw_spans_known_divergence`,
+    removed at 88edf91 — repro commands naming it now exit 4.
 - **broader validation:** package B quick suites
   (test_pkg_b_enrollment/stockpile/index/episodes, quick profile) pass
-  with the pin in place (7 passed, 1 xfailed at arbitration close); the
+  with the then-current pin in place (7 passed, 1 xfailed at
+  arbitration close; the xfail was the strict pin since replaced — see
+  above); the
   discovery-profile generators' overlapping-span events (69% of
   enrollment examples) never place a claim in two containing spans,
   which is why the double-count required the hand probe; package A/C
   quick sets and determinism/rewrites pass on the merged arb branch
   (109 + 38 passed) confirming the A-side fixes did not disturb this
   behavior.
+- **addendum — episode peer ordering under fan-out is engine-defined
+  (doc-only; FINAL-AUDIT §4):** when the `located` fan-out produces
+  rows tied on the whole chaining window key (adate, expiredt, rxsup),
+  `ORDER BY s.adate, s.expiredt, s.rxsup` (50_episodes.sql) is not a
+  total order, and the episode pairing/count depends on join emission
+  order: observed (3,6) at threads 1, (3,3,3)/(6,3) at threads 4 on the
+  nine-row witness (analysis and probes:
+  investigation/packages/B-independent-review.md; in-suite invariant
+  tests: tests/properties/test_pkg_b_independent_review.py). SAS `BY`
+  keys do not pin this order; tied differently-flagged raw enrollment
+  rows meet the same non-total ordering in 20_enrollment.sql. The suite
+  therefore asserts only order-agnostic invariants in the overlap
+  domain (upstream multiset stability, episode/located supply
+  conservation, membership in the enumerated allowed decompositions)
+  and asserts exact episode pairing NOWHERE — no observed ordering is
+  endorsed. Any production ordering/rejection policy is a precondition
+  for a future fix and remains operator-gated; upstream Sentinel QA
+  rejection of overlapping spans remains expected-but-unverified.
 - **related findings:** B1 — RESOLVED: the segmentation is parity-
   intended (docs/SAS_PARITY.md "Enrollment spans" verified against
   ms_episoderec2.sas:67-77), so the fix location question collapsed
