@@ -113,15 +113,12 @@ def test_totals_reconcile_across_outputs(
                     f"{remaining}, demographics has {demographics} "
                     f"members")
 
-            # Level 27 vs cohort_final MOVED to
-            # test_attrition_final_count_matches_cohort_final below:
-            # the documented contract (the row's own descr: "Unique
-            # number of members in final cohort") is violated on
-            # minimal fixtures — every episode-level count comes back
-            # NULL and `remaining` forward-fills the last member count
-            # all the way to level 27. Kept as a visible
-            # expected-failure with a deterministic pin, not dropped.
-            # Lead F1, see investigation/packages/F.md.
+            # Level 27 vs cohort_final now ASSERTED below
+            # (test_attrition_final_count_matches_cohort_final): fixed
+            # by fix2-f1 — a counted step whose relation is empty
+            # counts 0 (SAS's count(*) semantics,
+            # ms_attrition_cidacompute.sas:77-88), so the funnel can no
+            # longer forward-fill member counts into level 27.
 
             # ---- funnel monotonicity, no negative exclusions ---------
             rows = con.execute(
@@ -189,12 +186,12 @@ def test_totals_reconcile_across_outputs(
             assert wrong_num == 0, (
                 f"{wrong_num} t2_cida rows disagree with numcounts on "
                 f"npts at the same key")
-            # npts <= dennumpts MOVED to
-            # test_numerator_never_exceeds_denominator below: violated
-            # on minimal fixtures where the numerator's age stratum for
-            # a member differs from the denominator's (a 75+ episode
-            # counts against a denominator that has no 75+ members).
-            # Lead F2, see investigation/packages/F.md.
+            # npts <= dennumpts now ASSERTED below
+            # (test_numerator_never_exceeds_denominator): fixed by
+            # fix2-f2 — the denominator splits each eligible window at
+            # the age thresholds (ms_cidadenom.sas:1036-1057), so an
+            # episode's index-date band always has its members in the
+            # denominator too.
             event("reconciled:true")
         finally:
             con.close()
@@ -276,12 +273,6 @@ def _l27_vs_final(out: Path, eng: Any) -> list[str]:
         con.close()
 
 
-@pytest.mark.xfail(reason="Lead F1: attrition level 27 forward-fills "
-                          "the last member count through uncounted "
-                          "episode levels; empty cohort_final coexists "
-                          "with a nonzero final member count "
-                          "(investigation/packages/F.md)",
-                   strict=False)
 @given(ds=DATASETS)
 @expensive_settings()
 def test_attrition_final_count_matches_cohort_final(
@@ -289,7 +280,10 @@ def test_attrition_final_count_matches_cohort_final(
         ds: SyntheticDataset) -> None:
     """attrition level 27's own descr DECLARES the contract: 'Unique
     number of members in final cohort'. Reconcile it against
-    cohort_final membership."""
+    cohort_final membership. FIXED (fix2-f1): a counted step whose
+    relation is empty counts 0 (SAS's count(*) semantics,
+    ms_attrition_cidacompute.sas:77-88), so the funnel cannot
+    forward-fill member counts into the final row."""
     out = tmp_path_factory.mktemp("l27") / "out"
     with full_pipeline_run(ds, _study(ds), output_dir=out) as result:
         problems = _l27_vs_final(out, result.engine)
@@ -297,16 +291,12 @@ def test_attrition_final_count_matches_cohort_final(
         assert not problems, "\n".join(problems)
 
 
-@pytest.mark.xfail(reason="Lead F1 deterministic pin: attrition level 27 "
-                          "reports 2 final members against an empty "
-                          "cohort_final on generate(patients=1, seed=0) "
-                          "(investigation/packages/F.md)",
-                   strict=False)
 def test_attrition_final_count_pin_f1(tmp_path: Path) -> None:
-    """Deterministic pin for Lead F1: one patient, seed 0 — the funnel
-    ends at 2 'final members' while cohort_final and ptsmasterlist are
-    both EMPTY. XFAIL until the funnel counts (or stops
-    forward-filling) the empty-episode case."""
+    """Deterministic pin for the FIXED F1 semantics: one patient, seed 0
+    — the funnel ends at the actual cohort_final size (0 members: both
+    index candidates die downstream and their exclusion lands on the
+    first empty counted step), not at a forward-filled member count.
+    Was xfail before fix2-f1."""
     ds = generate(patients=1, seed=0,
                   options=GenerateOptions(include_labs=True))
     out = tmp_path / "out"
@@ -342,19 +332,16 @@ def _num_gt_den_rows(out: Path) -> list[tuple[Any, ...]]:
         con.close()
 
 
-@pytest.mark.xfail(reason="Lead F2: numerator cells can exceed their "
-                          "denominator (npts > dennumpts) when the "
-                          "numerator's age stratum for a member differs "
-                          "from the denominator's "
-                          "(investigation/packages/F.md)",
-                   strict=False)
 @given(ds=DATASETS)
 @expensive_settings()
 def test_numerator_never_exceeds_denominator(
         tmp_path_factory: pytest.TempPathFactory,
         ds: SyntheticDataset) -> None:
     """A numerator counts members of the population the denominator
-    counts: npts <= dennumpts at every shared key."""
+    counts: npts <= dennumpts at every shared key. FIXED (fix2-f2): the
+    denominator splits each eligible window at the age thresholds
+    (ms_cidadenom.sas:1036-1057), so an episode's index-date band is
+    always one of the bands the member contributes to."""
     out = tmp_path_factory.mktemp("numden") / "out"
     with full_pipeline_run(ds, _study(ds), output_dir=out):
         rows = _num_gt_den_rows(out)
@@ -364,15 +351,11 @@ def test_numerator_never_exceeds_denominator(
             f"{rows[:3]}")
 
 
-@pytest.mark.xfail(reason="Lead F2 deterministic pin: npts=1 in a 75+ "
-                          "numerator cell whose denominator holds 0 "
-                          "members, generate(patients=4, seed=0) "
-                          "(investigation/packages/F.md)",
-                   strict=False)
 def test_numerator_denominator_pin_f2(tmp_path: Path) -> None:
-    """Deterministic pin for Lead F2: four patients, seed 0 — one
-    member's episode lands in a 75+ numerator cell whose denominator
-    holds 0 members."""
+    """Deterministic pin for the FIXED F2 semantics: four patients,
+    seed 0 — every numerator cell is backed by its denominator (the
+    threshold-crossing member contributes to BOTH bands, so the 75+
+    cell exists with dennumpts >= 1). Was xfail before fix2-f2."""
     ds = generate(patients=4, seed=0,
                   options=GenerateOptions(include_labs=True))
     out = tmp_path / "out"

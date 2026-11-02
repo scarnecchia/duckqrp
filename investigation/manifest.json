@@ -53,12 +53,12 @@
         "stage gates == plan_stages; fmt key set via harness/pipeline agreement"
       ]
     },
-    {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "pass1-complete", "head": "2d12750", "merged_to_discovery": "462c7bb", "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity); new lead: diagnosis optionals dx_codetype/pdx/enctype referenced unconditionally in 10_normalize.sql (same class as A-2, unfixed)"},
+    {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "pass1-complete", "head": "2d12750", "merged_to_discovery": "462c7bb", "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity); new lead: diagnosis optionals dx_codetype/pdx/enctype referenced unconditionally in 10_normalize.sql (same class as A-2) — FIXED wave-2 on inv/0f462p/fix2-a4 (A-4)"},
     {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended)"},
     {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "pass1-complete", "head": "8645179", "merged_to_discovery": "5c8b237", "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"},
     {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pending"},
     {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pass1-complete", "head": "0b391e5", "merged_to_discovery": "82e4364", "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md"},
-    {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pass1-complete", "head": "c4b61a5", "merged_to_discovery": "3085eb4", "notes": "leads: F1 (high) attrition L27 forward-fill reports final-cohort members that do not exist (cohort_final AND ptsmasterlist empty, remaining=2; NULL excluded forward-filled), F2 (medium) CIDA numerator exceeds denominator in stratified cells (75+ cell: npts=1, dennumpts=0); comparator semantics documented (duplicates only via ROW COUNT — calibration proved load-bearing); open questions incl. undocumented cohorts-together-vs-separate promise; witnesses pkg-f-lead-f1/f2"}
+    {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pass1-complete", "head": "c4b61a5", "merged_to_discovery": "3085eb4", "notes": "leads ARBITRATED wave-2 (see investigation/packages/ARBITRATION.md): F1 FIXED on inv/0f462p/fix2-f1 (attrition counted empty relations as carried member counts; SAS counts 0 on empty, ms_attrition_cidacompute.sas:77-88), F2 FIXED on inv/0f462p/fix2-f2 (denominator bands a whole window at denom_start; SAS splits windows per age band, ms_cidadenom.sas:1036-1057); both xfail pins flipped to passing; comparator semantics documented (duplicates only via ROW COUNT — calibration proved load-bearing); open questions incl. undocumented cohorts-together-vs-separate promise; witnesses pkg-f-lead-f1/f2"}
   ],
   "passes": [
     {
@@ -355,6 +355,36 @@
       "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
       "fix_branch": "none — replacement comment wording proposed verbatim in the finding doc",
       "witness": "investigation/witnesses/a-demographics-full-tie-evidence.txt"
+    },
+    {
+      "id": "F1",
+      "doc": "investigation/findings/F1-attrition-empty-step-forward-fill.md",
+      "title": "Attrition forward-fills the last member count through empty counted steps; level 27 reports members that do not exist",
+      "status": "fixed",
+      "classification": "production defect (SAS parity: ms_attrition_cidacompute.sas:77-88 counts each step's relation, 0 on empty; only SKIP rows carry forward)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix2-f1 (red 0bcb1a8 / green 3001086), merged to arb2",
+      "witness": "investigation/witnesses/pkg-f-lead-f1-attrition-l27-forward-fill.txt; tests/test_regression_f1.py; pins test_pkg_f_totals.py test_attrition_final_count_pin_f1 / test_attrition_final_count_matches_cohort_final (flipped to passing)"
+    },
+    {
+      "id": "F2",
+      "doc": "investigation/findings/F2-denominator-age-band-split.md",
+      "title": "CIDA numerator exceeds denominator in stratified cells: denominator bands a whole eligible window at its start instead of splitting at age thresholds",
+      "status": "fixed",
+      "classification": "production defect (SAS parity: ms_cidadenom.sas:1036-1057 splits each window per overlapped band; numerator bands at indexdt, ms_createpov1.sas:102-116)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix2-f2 (red 0e7eeee / green 37e3d89, amended with the deterministic offset-join rewrite after a lead()-tie nondeterminism was proven on frozen input), merged to arb2",
+      "witness": "investigation/witnesses/pkg-f-lead-f2-num-gt-den.txt; tests/test_regression_f2.py; pins test_pkg_f_totals.py test_numerator_denominator_pin_f2 / test_numerator_never_exceeds_denominator (flipped to passing)"
+    },
+    {
+      "id": "A-4",
+      "doc": "investigation/findings/A-4-optional-diagnosis-columns.md",
+      "title": "Declared-optional diagnosis, procedure and lab columns crash SQL binding; diagnosis subset fixed",
+      "status": "partially-fixed",
+      "classification": "production defect against the published contract (INPUTS.md:180; same class as A-2; mechanism mirrored exactly)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix2-a4 (red 054faf1 / green 7285bec), merged to arb2",
+      "witness": "tests/test_regression_a4.py; investigation/probes/arb2_a4_probe.py (reproduced at base c3e60db and discovery HEAD 2a71a0c)"
     }
   ],
   "open_questions": [

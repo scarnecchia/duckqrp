@@ -257,6 +257,9 @@ class StageHarness:
             ("read_demographic", ("race", "hispanic",
                                   "postalcode", "postalcode_date")),
             ("read_encounter", ("ddate", "discharge_status")),
+            # mirror of the production diagnosis resolution (10_normalize
+            # reads {opt_dx_codetype}/{opt_pdx}/{opt_enctype} since A-4)
+            ("read_diagnosis", ("dx_codetype", "pdx", "enctype")),
         ):
             optional_cols.update(_optional(key, *cols))
 
