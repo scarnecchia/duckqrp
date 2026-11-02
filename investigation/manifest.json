@@ -3,7 +3,7 @@
   "schema_notes": "Machine-readable run manifest. A later test_campaign_manifest_complete validates: every package in 'packages' has a non-pending status and a branch; every 'passes' entry has command, result, revision and duration; every finding in findings/ has a matching entry under 'evidence' or its own record; calibration records reference real pass ids. Keep ids stable.",
   "campaign": {
     "name": "qrp-duckdb property-based correctness investigation",
-    "privacy": "PRIVATE — NOT AUTHORIZED FOR PUBLICATION",
+    "privacy": "PRIVATE \u2014 NOT AUTHORIZED FOR PUBLICATION",
     "base_sha": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
     "base_note": "discovery HEAD; identical to Testing branch tip at campaign start",
     "started": "2026-11-02",
@@ -29,9 +29,21 @@
     }
   },
   "profiles": {
-    "quick": {"max_examples": 50, "expensive_examples": 10, "deadline_seconds": 1},
-    "discovery": {"max_examples": 500, "expensive_examples": 50, "deadline_seconds": 1},
-    "deep": {"max_examples": 2000, "expensive_examples": 100, "deadline_seconds": 1},
+    "quick": {
+      "max_examples": 50,
+      "expensive_examples": 10,
+      "deadline_seconds": 1
+    },
+    "discovery": {
+      "max_examples": 500,
+      "expensive_examples": 50,
+      "deadline_seconds": 1
+    },
+    "deep": {
+      "max_examples": 2000,
+      "expensive_examples": 100,
+      "deadline_seconds": 1
+    },
     "selection": "pytest --hypothesis-profile=<name>; $HYPOTHESIS_PROFILE is the default (quick); expensive stage/pipeline properties use expensive_settings() from tests/properties/conftest.py"
   },
   "packages": [
@@ -53,12 +65,60 @@
         "stage gates == plan_stages; fmt key set via harness/pipeline agreement"
       ]
     },
-    {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "pass1-complete", "head": "2d12750", "merged_to_discovery": "462c7bb", "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity); new lead: diagnosis optionals dx_codetype/pdx/enctype referenced unconditionally in 10_normalize.sql (same class as A-2, unfixed)"},
-    {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended)"},
-    {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "pass1-complete", "head": "8645179", "merged_to_discovery": "5c8b237", "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"},
-    {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pass1-complete", "head": "cbd1038", "merged_to_discovery": "0006b8c", "notes": "no production defect in oracle scope (denominator day-enumeration oracle matches exactly; together==separate on 7 dimensions); D1 (moderate, SAS-cited parity gap): Python lacks SAS's incl-window restriction and dose restriction in CIDA denominators (ms_cidadenom.sas L145-165, L380-430, L307-322) — decision brief needed; D2: 92_cidadenom.sql header comment demonstrably wrong (says exclusion shave NOT included; it is, and SAS confirms) — doc fix; D3: documented window-clip deviation, no action; D4: build_study care-setting wildcard trap confirmed (cross-package, infra debt for pass 2)"},
-    {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pass1-complete", "head": "0b391e5", "merged_to_discovery": "82e4364", "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md"},
-    {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pass1-complete", "head": "c4b61a5", "merged_to_discovery": "3085eb4", "notes": "leads: F1 (high) attrition L27 forward-fill reports final-cohort members that do not exist (cohort_final AND ptsmasterlist empty, remaining=2; NULL excluded forward-filled), F2 (medium) CIDA numerator exceeds denominator in stratified cells (75+ cell: npts=1, dennumpts=0); comparator semantics documented (duplicates only via ROW COUNT — calibration proved load-bearing); open questions incl. undocumented cohorts-together-vs-separate promise; witnesses pkg-f-lead-f1/f2"}
+    {
+      "id": "A",
+      "branch": "inv/0f462p/a-input-contracts",
+      "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence",
+      "status": "pass1-complete",
+      "head": "2d12750",
+      "merged_to_discovery": "462c7bb",
+      "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity); new lead: diagnosis optionals dx_codetype/pdx/enctype referenced unconditionally in 10_normalize.sql (same class as A-2, unfixed)"
+    },
+    {
+      "id": "B",
+      "branch": "inv/0f462p/b-enrollment-stockpiling",
+      "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models",
+      "status": "pass1-complete",
+      "head": "1d4dfec",
+      "merged_to_discovery": "58d7efa",
+      "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended)"
+    },
+    {
+      "id": "C",
+      "branch": "inv/0f462p/c-dose-inclusion-followup",
+      "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model",
+      "status": "pass1-complete",
+      "head": "8645179",
+      "merged_to_discovery": "5c8b237",
+      "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"
+    },
+    {
+      "id": "D",
+      "branch": "inv/0f462p/d-denominators-outputs",
+      "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy",
+      "status": "pass1-complete",
+      "head": "cbd1038",
+      "merged_to_discovery": "0006b8c",
+      "notes": "no production defect in oracle scope (denominator day-enumeration oracle matches exactly; together==separate on 7 dimensions); D1 (moderate, SAS-cited parity gap): Python lacks SAS's incl-window restriction and dose restriction in CIDA denominators (ms_cidadenom.sas L145-165, L380-430, L307-322) \u2014 decision brief needed; D2: 92_cidadenom.sql header comment demonstrably wrong (says exclusion shave NOT included; it is, and SAS confirms) \u2014 doc fix; D3: documented window-clip deviation, no action; D4: build_study care-setting wildcard trap confirmed (cross-package, infra debt for pass 2)"
+    },
+    {
+      "id": "E",
+      "branch": "inv/0f462p/e-runtime-lifecycle",
+      "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states",
+      "status": "pass1-complete",
+      "head": "0b391e5",
+      "merged_to_discovery": "82e4364",
+      "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md"
+    },
+    {
+      "id": "F",
+      "branch": "inv/0f462p/f-comparators-metamorphic",
+      "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation",
+      "status": "pass1-complete",
+      "head": "c4b61a5",
+      "merged_to_discovery": "3085eb4",
+      "notes": "leads: F1 (high) attrition L27 forward-fill reports final-cohort members that do not exist (cohort_final AND ptsmasterlist empty, remaining=2; NULL excluded forward-filled), F2 (medium) CIDA numerator exceeds denominator in stratified cells (75+ cell: npts=1, dennumpts=0); comparator semantics documented (duplicates only via ROW COUNT \u2014 calibration proved load-bearing); open questions incl. undocumented cohorts-together-vs-separate promise; witnesses pkg-f-lead-f1/f2"
+    }
   ],
   "passes": [
     {
@@ -247,7 +307,7 @@
       "command": "python -m ruff check --select E4,E7,E9,F tests/properties",
       "revision": "pre-commit (working tree at base_sha + infra changes)",
       "result": "pass",
-      "detail": "clean under the repo's ruff>=0.6 default rule set; ruff 0.17.3's expanded defaults add one PYI034 (typing.Self suggestion conflicts with the repo's mypy python_version=3.10 target) — the same expanded-defaults pass reports 100 findings in src/, so this is version drift, not a regression",
+      "detail": "clean under the repo's ruff>=0.6 default rule set; ruff 0.17.3's expanded defaults add one PYI034 (typing.Self suggestion conflicts with the repo's mypy python_version=3.10 target) \u2014 the same expanded-defaults pass reports 100 findings in src/, so this is version drift, not a regression",
       "duration_seconds": null
     },
     {
@@ -256,7 +316,7 @@
       "command": "python -m pytest tests/test_regression_b2.py -q",
       "revision": "inv/0f462p/fix-b2 f4d2e6a (test) on c3e60db",
       "result": "red",
-      "detail": "AssertionError: one dispensing produced 2 rows — claimed double-count reproduced by the standalone regression test at the base",
+      "detail": "AssertionError: one dispensing produced 2 rows \u2014 claimed double-count reproduced by the standalone regression test at the base",
       "duration_seconds": null
     },
     {
@@ -335,7 +395,7 @@
       "diff_path": "investigation/calibrations/b-1.patch",
       "failing_command": "python -m pytest tests/properties/test_pkg_b_enrollment.py::test_enrollment_matches_day_model --hypothesis-profile=quick",
       "expected_failure_pattern": "enrollment_spans: SQL returned \\d+ rows, model \\d+",
-      "red_evidence": "FAILED in 0.39s on the gap-threshold interaction @example: AssertionError: enrollment_spans: SQL returned 4 rows, model 3 — patient 2's adjacent+gap_exact pair wrongly split where the model merges (enrol_gap=1)",
+      "red_evidence": "FAILED in 0.39s on the gap-threshold interaction @example: AssertionError: enrollment_spans: SQL returned 4 rows, model 3 \u2014 patient 2's adjacent+gap_exact pair wrongly split where the model merges (enrol_gap=1)",
       "green_evidence": "clean tree after git checkout -- src/qrp/sql/20_enrollment.sql re-verified: 2 passed, 1 xfailed in 1.06s",
       "reverted": true,
       "provenance": "reconstructed"
@@ -348,7 +408,7 @@
       "diff_path": "investigation/calibrations/c-1.patch",
       "failing_command": "python -m pytest tests/properties/test_pkg_c_followup.py::test_followup_washout_boundaries tests/properties/test_pkg_c_followup.py::test_followup_and_censoring_match_day_model --hypothesis-profile=quick",
       "expected_failure_pattern": "cohort_final membership differs from the model",
-      "red_evidence": "test_followup_washout_boundaries FAILED for the expected reason — case (wash=6, event at -7): stage dropped the episode the model kept, assertion cohort_final membership differs from the model; the generated property still passed (boundary rare in generated data)",
+      "red_evidence": "test_followup_washout_boundaries FAILED for the expected reason \u2014 case (wash=6, event at -7): stage dropped the episode the model kept, assertion cohort_final membership differs from the model; the generated property still passed (boundary rare in generated data)",
       "green_evidence": "reverted with git checkout -- src/qrp/sql/60_followup.sql; git status shows only new package files; re-run green",
       "reverted": true,
       "provenance": "reconstructed"
@@ -361,7 +421,7 @@
       "diff_path": "investigation/calibrations/e-1.patch",
       "failing_command": "python -m pytest tests/properties/test_pkg_e_outputs.py::test_output_failure_is_not_reported_complete tests/properties/test_pkg_e_faults.py::test_fault_schedule_terminal_events --hypothesis-profile=quick",
       "expected_failure_pattern": "DID NOT RAISE",
-      "red_evidence": "both FAIL for the expected reason — Failed: DID NOT RAISE RuntimeError (match 'injected output-write'); adhoc confirmation: RunFinished(ok=True) while manifest.json is ABSENT",
+      "red_evidence": "both FAIL for the expected reason \u2014 Failed: DID NOT RAISE RuntimeError (match 'injected output-write'); adhoc confirmation: RunFinished(ok=True) while manifest.json is ABSENT",
       "green_evidence": "reverted with git checkout -- src/qrp/pipeline.py; git status shows only package-E files; both properties green again",
       "reverted": true,
       "provenance": "reconstructed"
@@ -374,7 +434,7 @@
       "diff_path": "investigation/calibrations/f-1.patch",
       "failing_command": "python -m pytest tests/properties/test_pkg_f_comparators.py::test_comparators_detect_targeted_corruption --hypothesis-profile=quick",
       "expected_failure_pattern": "duplicate_row on stockpiled exited 0",
-      "red_evidence": "AssertionError: duplicate_row on stockpiled exited 0 — hit the deterministic @example immediately; ROW COUNT was the only detection left and dedupe killed it",
+      "red_evidence": "AssertionError: duplicate_row on stockpiled exited 0 \u2014 hit the deterministic @example immediately; ROW COUNT was the only detection left and dedupe killed it",
       "green_evidence": "reverted with git checkout -- tools/parity_compare.py; git status shows only package-F files; comparator family green again (26 passed)",
       "reverted": true,
       "provenance": "reconstructed"
@@ -389,26 +449,19 @@
     {
       "kind": "harness_fidelity",
       "path": "tests/properties/test_harness_pipeline.py::test_stage_harness_matches_full_pipeline",
-      "note": "stage harness and real pipeline agree table-for-table on the hand fixture — the trust anchor for every stage-level property"
+      "note": "stage harness and real pipeline agree table-for-table on the hand fixture \u2014 the trust anchor for every stage-level property"
     }
   ],
   "findings": [
     {
       "id": "B2",
       "doc": "investigation/findings/B2-overlapping-enrollment-double-count.md",
-      "title": "One dispensing inside overlapping enrollment episodes is stockpiled twice — inherited bug-for-bug from the SAS original",
+      "title": "One dispensing inside overlapping enrollment episodes is stockpiled twice \u2014 inherited bug-for-bug from the SAS original",
       "status": "open-inherited (operator-ruled: document as defect, SAS parity kept, no fix branch)",
       "classification": "production defect, INHERITED from SAS (verified against the original SAS source, /home/scarndp/dev/Sentinel/qrp, package 14.5.0); mitigation expected upstream via the Sentinel model QA Suite (unverified here)",
       "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
-      "fix_branch": "none — join-side lateral one-containing-span fix described in the finding doc as NOT APPLIED; a validated prototype (inv/0f462p/fix-b2, red f4d2e6a / green c87dc0b) was removed per the operator parity ruling, results in passes arb-red-b2-1/arb-green-b2-1",
+      "fix_branch": "none \u2014 join-side lateral one-containing-span fix described in the finding doc as NOT APPLIED; a validated prototype (inv/0f462p/fix-b2, red f4d2e6a / green c87dc0b) was removed per the operator parity ruling, results in passes arb-red-b2-1/arb-green-b2-1",
       "witness": "investigation/probes/b_overlap_probe.py + strict-xfail pin tests/properties/test_pkg_b_enrollment.py::test_enrollment_overlapping_raw_spans_known_divergence"
-    },
-    {
-      "id": "B1",
-      "doc": "investigation/packages/ARBITRATION.md",
-      "title": "Fix-location question: lag-break segmentation vs shave joins — RESOLVED by SAS source",
-      "status": "resolved",
-      "resolution": "SAS emits overlapping episodes (ms_episoderec2.sas:67-97) and its own shaves fan out per containing span and same-day-sum (ms_shaveoutside macro body; ms_cidanum.sas:1299-1308, 1531-1541; ms_stockpiling.sas proc means N()=NumDispensing) — SAS double-counts, so neither candidate fix preserves parity; decision brief DB-1 for the operator"
     },
     {
       "id": "A-1",
@@ -425,7 +478,7 @@
       "doc": "investigation/findings/A-2-optional-rxamt-binder.md",
       "title": "Documented-optional dispensing.rxamt crashes normalize with a BinderException",
       "status": "fixed",
-      "classification": "production defect (published INPUTS.md contract violated); SAS itself requires the column — nuance documented",
+      "classification": "production defect (published INPUTS.md contract violated); SAS itself requires the column \u2014 nuance documented",
       "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
       "fix_branch": "inv/0f462p/fix-a2 (red 1577f83 / green 564eb7a), merged to arb",
       "witness": "tests/test_regression_a2.py::test_optional_rxamt_absent_runs (+ zero-amount exclusion pin)"
@@ -433,16 +486,16 @@
     {
       "id": "A-3",
       "doc": "investigation/findings/A-3-demographics-full-tie-comment.md",
-      "title": "'TOTAL order' comment false for full-tie duplicate demographics — doc-only; behavior is SAS parity and strictly more deterministic than SAS",
+      "title": "'TOTAL order' comment false for full-tie duplicate demographics \u2014 doc-only; behavior is SAS parity and strictly more deterministic than SAS",
       "status": "resolved-doc-only",
       "classification": "documentation defect (behavior kept; SAS dedupes by PatId alone with an unstable sort, ms_create_enrollment_spans.sas:198-201)",
       "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
-      "fix_branch": "none — replacement comment wording proposed verbatim in the finding doc",
+      "fix_branch": "none \u2014 replacement comment wording proposed verbatim in the finding doc",
       "witness": "investigation/witnesses/a-demographics-full-tie-evidence.txt"
     }
   ],
   "open_questions": [
-    "demographics QUALIFY tie-break is total only if (birth_date, sex, race, hispanic, postalcode) differ across duplicate rows — full-tie behavior unverified",
+    "demographics QUALIFY tie-break is total only if (birth_date, sex, race, hispanic, postalcode) differ across duplicate rows \u2014 full-tie behavior unverified",
     "tools/gen_synthetic.py writes rxamt as an integer (BIGINT), tripping the pipeline's fractional-amount truncation warning; calibrating oracles against it inherit that semantics",
     "claims_from scan bound does not apply to enrollment spans (contract intent unconfirmed; low impact)",
     "encounter tables are never identified by column fingerprint (fingerprint=False); name/table_map only",

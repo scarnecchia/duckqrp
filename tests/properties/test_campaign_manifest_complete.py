@@ -55,6 +55,10 @@ CALIBRATIONS_DIR = REPO_ROOT / "investigation" / "calibrations"
 
 MANIFEST_SCHEMA = "qrp-investigation-manifest/1"
 PACKAGE_IDS = ("infra", "A", "B", "C", "D", "E", "F")
+# Arbitration, campaign-infra and orchestrator records reference these
+# worker ids in passes[].package; they are campaign participants, not
+# property packages, so they need no manifest packages[] entry.
+CAMPAIGN_WORKER_IDS = ("arb", "arb2", "arb3", "campaign-infra", "orchestrator")
 # 'red'/'green' record single-leg prototype evidence (e.g. a validated fix
 # prototype that was later removed by an operator ruling); 'red then green'
 # records a complete committed fix branch.
@@ -173,7 +177,7 @@ def test_pass_entries_are_complete() -> None:
         assert "duration_seconds" in entry, (
             f"pass {pass_id!r}: duration_seconds key missing (None allowed)")
         package = entry.get("package")
-        assert package in PACKAGE_IDS, (
+        assert package in PACKAGE_IDS or package in CAMPAIGN_WORKER_IDS, (
             f"pass {pass_id!r}: unknown package {package!r}")
 
 
