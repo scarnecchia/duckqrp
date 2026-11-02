@@ -29,7 +29,7 @@ from qrp.config import CohortConfig, StudyConfig
 from qrp.pipeline import _enr_cfg_id
 
 from ..synth import SyntheticDataset
-from .b_enrollment_model import containing_episode, enrollment_episodes
+from .b_enrollment_model import containing_episodes, enrollment_episodes
 
 EPISODES_COLS = ("cohortgrp", "patid", "episode", "episodestartdt",
                  "episodeenddt", "episode_rxsup")
@@ -84,11 +84,18 @@ def model_episodes(dataset: SyntheticDataset, study: StudyConfig,
             if row[0] != cohort.cohortgrp:
                 continue
             patid = row[2]
-            ep = containing_episode(
-                enrollment.get((cfg, patid), ()), row[3])
-            rows.setdefault(patid, []).append(_ChainRow(
-                adate=row[3], expiredt=row[4], rxsup=row[6],
-                claim_enr_start=ep.enr_start if ep else None))
+            # Parity (B2 ruling): `located` LEFT JOINs enrollment_spans
+            # per containing span, so a record inside several episodes
+            # chains once PER span (each copy carrying that span's
+            # start; the span-change break then separates them). A
+            # record outside every span keeps NULL (LEFT JOIN) — not
+            # reachable for reshave-surviving RX rows, kept for parity.
+            hits = containing_episodes(enrollment.get((cfg, patid), ()),
+                                       row[3])
+            for ep in hits or (None,):
+                rows.setdefault(patid, []).append(_ChainRow(
+                    adate=row[3], expiredt=row[4], rxsup=row[6],
+                    claim_enr_start=ep.enr_start if ep else None))
         for patid, recs in rows.items():
             recs.sort(key=lambda r: (r.adate, r.expiredt, r.rxsup))
             episode_no = 0
@@ -150,42 +157,42 @@ def model_episode_criteria(dataset: SyntheticDataset, study: StudyConfig,
     for cohort in study.cohorts:
         if cohort.trunc_codes:
             raise AssertionError("oracle covers studies without FUT codes")
-    episode_by_start: dict[tuple[str, int, date], tuple] = {}
+    episode_by_start: dict[tuple[str, int, date], list[tuple]] = {}
     for e in episodes:
-        key = (e[0], e[1], e[3])
-        if key in episode_by_start:
-            raise AssertionError("two episodes start on the same index date")
-        episode_by_start[key] = e
+        episode_by_start.setdefault((e[0], e[1], e[3]), []).append(e)
     criteria: list[tuple] = []
     for cohort in study.cohorts:
         for p in pov1:
             if p[0] != cohort.cohortgrp:
                 continue
-            ep = episode_by_start.get((cohort.cohortgrp, p[1], p[2]))
-            if ep is None:
-                continue  # an index date that does not START an episode
-            death = p[18]
-            raw_end: date = ep[4]
-            death_cap = (death if cohort.censor_death and death is not None
-                         else FAR_FUTURE)
-            dur_cap = (p[2] + timedelta(days=cohort.max_epis_dur - 1)
-                       if cohort.max_epis_dur > 0 else FAR_FUTURE)
-            end = min(raw_end, study.effective_censor_date, p[8], death_cap,
-                      dur_cap)
-            dataavail = min(p[8], study.effective_censor_date, death_cap)
-            if p[2] > end or not (
-                    study.start_date <= p[2] <= study.end_date):
-                continue
-            flags = _master_flags(cohort, p, ep, end, dataavail)
-            atrisk = (p[2] + timedelta(days=cohort.at_risk_start)
-                      if cohort.at_risk_start > 0 else p[2])
-            row = (
-                cohort.cohortgrp, p[1], p[2], ep[2], p[2], end, raw_end,
-                None, atrisk, dataavail, (end - p[2]).days + 1,
-                p[15], p[16], p[17], p[10], p[11], p[12], p[13], p[14],
-                p[9], death, p[7], p[8], p[4], p[5], p[6], ep[5],
-            ) + flags
-            criteria.append(row)
+            # POV1 rows and episodes BOTH fan out per containing span,
+            # so several episodes can start on one index date; the SQL
+            # joins pov1 x episodes on episodestartdt = indexdt (a
+            # cartesian over that group, each pov1 row with each
+            # episode).
+            for ep in episode_by_start.get((cohort.cohortgrp, p[1], p[2]), []):
+                death = p[18]
+                raw_end: date = ep[4]
+                death_cap = (death if cohort.censor_death and death is not None
+                             else FAR_FUTURE)
+                dur_cap = (p[2] + timedelta(days=cohort.max_epis_dur - 1)
+                           if cohort.max_epis_dur > 0 else FAR_FUTURE)
+                end = min(raw_end, study.effective_censor_date, p[8],
+                          death_cap, dur_cap)
+                dataavail = min(p[8], study.effective_censor_date, death_cap)
+                if p[2] > end or not (
+                        study.start_date <= p[2] <= study.end_date):
+                    continue
+                flags = _master_flags(cohort, p, ep, end, dataavail)
+                atrisk = (p[2] + timedelta(days=cohort.at_risk_start)
+                          if cohort.at_risk_start > 0 else p[2])
+                row = (
+                    cohort.cohortgrp, p[1], p[2], ep[2], p[2], end, raw_end,
+                    None, atrisk, dataavail, (end - p[2]).days + 1,
+                    p[15], p[16], p[17], p[10], p[11], p[12], p[13], p[14],
+                    p[9], death, p[7], p[8], p[4], p[5], p[6], ep[5],
+                ) + flags
+                criteria.append(row)
     master = [r for r in criteria if all(r[-5:])]
     criteria.sort(key=lambda r: (r[0], r[1], r[2]))
     master.sort(key=lambda r: (r[0], r[1], r[2]))

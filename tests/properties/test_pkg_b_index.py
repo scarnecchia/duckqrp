@@ -57,6 +57,49 @@ def _spec(**over: object) -> dict:
     return base
 
 
+@example(_spec(  # regression pin (98197f2 replay): overlapping spans with
+    # a coverage-flag rupture emit overlapping episodes; the day-8 fill
+    # sits in BOTH, so it fans out per containing span (parity, B2
+    # ruling) and the exact-duplicate day-0 triple rides in exposure
+    patients=[
+        {"spans": [("overlap", 1, "YY")],
+         "fills": [{"code": "E00002", "day": 7, "sup": 1, "amt": 0.5,
+                    "twin": False, "twin_sup_delta": 0,
+                    "twin_amt_epsilon": 0.0}],
+         "death_day": None},
+        {"spans": [("overlap", 1, "YY"), ("overlap", 2, "AY")],
+         "fills": [
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 5, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+         ],
+         "death_day": None},
+    ],
+))
+@example(_spec(  # same shape, EXACT-QUADRUPLE on day 0: fan-out parity
+    # must survive four identical claims, not just three
+    patients=[
+        {"spans": [("overlap", 1, "YY"), ("overlap", 2, "AY")],
+         "fills": [
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 0, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+             {"code": "E00001", "day": 5, "sup": 1, "amt": 0.5,
+              "twin": False, "twin_sup_delta": 0, "twin_amt_epsilon": 0.0},
+         ],
+         "death_day": None},
+    ],
+))
 @example(_spec(patients=[
     # death BEFORE, INSIDE and AFTER candidate index/episode windows,
     # one patient each, wash 0 so every fill is an index date

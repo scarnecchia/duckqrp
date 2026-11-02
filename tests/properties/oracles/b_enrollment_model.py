@@ -139,22 +139,29 @@ def enrollment_episodes(
     return out
 
 
-def containing_episode(
+def containing_episodes(
     episodes: tuple[Episode, ...], day: date,
-) -> Episode | None:
-    """The episode covering `day`, or None. The accumulator model cannot
-    produce overlapping episodes, so at most one can contain a day."""
-    hits = [e for e in episodes if e.enr_start <= day <= e.enr_end]
-    if len(hits) > 1:
-        raise AssertionError(
-            "day model produced overlapping episodes; the model is wrong")
-    return hits[0] if hits else None
+) -> tuple[Episode, ...]:
+    """ALL episodes covering `day`, in episode order.
+
+    Parity note (operator ruling on B2, arb branch): the shipped SQL
+    joins `enrollment_spans` on `adate BETWEEN enr_start AND enr_end`,
+    so a claim dated inside several (overlapping) output episodes fans
+    out per containing span — at the stockpile shaves, at POV1 pass 2,
+    and at the episodes `located` join. The accumulator model emits the
+    same overlapping segments when coverage flags rupture mid-episode
+    (e.g. spans [0,10]=YY, [5,8]=NY, [7,9]=YY under MD emit [0,10],
+    [5,8], [7,9]), so the oracle must fan out identically instead of
+    picking one span. Only 40_index.sql's dedupe SEMI JOIN is fan-out
+    immune (any-hit).
+    """
+    return tuple(e for e in episodes if e.enr_start <= day <= e.enr_end)
 
 
 __all__ = [
     "Episode",
     "NormSpan",
-    "containing_episode",
+    "containing_episodes",
     "enrollment_episodes",
     "has_coverage",
     "normalize_spans",
