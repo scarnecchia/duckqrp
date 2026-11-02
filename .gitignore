@@ -31,3 +31,9 @@ _dbg_*/
 *.parquet
 *.sas7bdat
 *.csv
+
+# Property-based suite state. The example database is a local cache of
+# previously failing examples for tests/properties/ only; it is a user
+# artifact, never committed, and deliberately kept apart from any repo-root
+# .hypothesis/ directory (which belongs to whoever ran the tool there).
+tests/properties/.hypothesis-db/

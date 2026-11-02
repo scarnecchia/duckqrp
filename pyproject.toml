@@ -25,7 +25,12 @@ classifiers = [
 # textual is here because tests/test_ui.py skips itself without it: a
 # developer install that omitted it ran 291 of 328 tests and reported no
 # error, so the terminal UI went untested without anyone noticing.
-dev = ["pytest>=8", "pandas>=2", "mypy>=1.8", "ruff>=0.6", "textual>=0.80"]
+# hypothesis belongs only here, never in runtime dependencies: it backs
+# the property-based suite under tests/properties/ (profiles: quick,
+# discovery, deep — see that conftest.py). requirements.lock stays
+# runtime-only and is not regenerated for it.
+dev = ["pytest>=8", "pandas>=2", "mypy>=1.8", "ruff>=0.6",
+       "textual>=0.80", "hypothesis>=6,<7"]
 ui = ["textual>=0.80"]
 serve = ["textual>=0.80", "textual-serve>=1.1"]
 
