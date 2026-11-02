@@ -6,13 +6,25 @@ State: discovery `31846dc` (final integrated campaign state). Report
 date: 2026-11-02. Worker: closing-records, worktree
 `wt/closing-records`.
 
-**Status: properties complete; original suites pending. Overall
-campaign final validation is NOT yet claimed complete.**
+**Status: final validation COMPLETE with known baseline residue.**
+Both post-integration runs executed at discovery `31846dc`; the
+campaign is implemented and validated with its recorded pre-existing
+baseline failures. Scope: property-based correctness on synthetic
+bounded inputs against independent oracles and SAS citations — **no
+universal correctness claim and no universal SAS-parity claim** is
+made or implied.
 
 | run | command | result | state |
 |---|---|---|---|
 | final full properties, quick | `python -m pytest tests/properties --hypothesis-profile=quick -q` at 31846dc | exit 0; 424 passed, 13 skipped, 1 xfailed, 13 warnings, 299.29s | COMPLETE (log: session `final-properties.log`) |
-| original suites | `python -m pytest --ignore=tests/properties -q` | still running at this report | PENDING — no result recorded, none claimed |
+| original suites | `python -m pytest --ignore=tests/properties -q` at 31846dc | exit 1; 373 passed, 2 failed, 3 skipped, 437 warnings, 464.08s | COMPLETE — baseline-matched: the 2 failures are exactly the pre-existing spill-attribution OOM tests; zero new failures (log: session `final-existing.log`) |
+
+**How the plan's "full pytest after integration" was satisfied:** as
+two disjoint pytest selections — `tests/properties` and
+`--ignore=tests/properties` — which together partition the entire test
+suite (every test file belongs to exactly one selection). They ran
+serially, one after the other, on the shared machine; this was a split
+serial validation, not one full-suite command.
 
 The 13 skips are the opt-in replay wrappers (the mutation-replay module
 runs 1 + skips 6; the finding-replay module skips 7); the replays
@@ -36,8 +48,19 @@ the suite's single recorded xfail pin.
 Static gates on the merged tree (checked in this worktree after the
 merge, campaign venv): `ruff check --select E4,E7,E9,F tests/properties`
 clean; `mypy src tests/properties` — "Success: no issues found in 83
-source files" (the last three errors fixed by 14a54f1,
-investigation/packages/TYPES-FINAL.md).
+source files" (re-verified by the parent after the final runs), and the
+parent's `git diff --check` clean.
+
+Lint scope, stated plainly: the campaign's ruff gate is the
+`--select E4,E7,E9,F` subset named in README's Commands section — it is
+NOT the full lint. Running ruff 0.17.3's full default ruleset reports
+pre-existing expanded-defaults findings (about 100 in `src/`), and in
+campaign-owned files exactly one: **PYI034** at
+`tests/properties/harness.py:179` (`__enter__` should return `Self`;
+the explicit `StageHarness` return annotation conflicts with the repo's
+`mypy` `python_version = "3.10"` target, which predates `typing.Self`).
+Verified live in this worktree; recorded as known version drift, not a
+campaign regression, and not fixed here.
 
 ## Fixed findings: eight, across seven branches
 
@@ -121,27 +144,47 @@ removed). No seeded mutation remains integrated.
 ## Baseline residue (pre-existing, not campaign findings)
 
 The recorded pre-campaign baseline (`python -m pytest -q` at c3e60db):
-337 passed, 2 failed, 3 skipped, 433s.
+337 passed, 2 failed, 3 skipped, 433s. The final post-integration run
+of the same suites at 31846dc: 373 passed, 2 failed, 3 skipped, 437
+warnings, 464.08s (exit 1). The +36 passing tests are the
+campaign-integrated standalone regression and pin tests. The residue is
+unchanged:
 
 - **2 failures, both deterministic** (reproduced in the operator's own
-  venv on a quiet machine, so not load flakes and not campaign
-  artifacts): `tests/test_pipeline.py::test_spilling_is_attributed_to_the_statement_that_caused_it`
+  venv on a quiet machine at baseline, and reproduced again in the
+  final run — log lines 52/98), so not load flakes and not campaign
+  artifacts: `tests/test_pipeline.py::test_spilling_is_attributed_to_the_statement_that_caused_it`
   and `tests/test_pipeline.py::test_spill_summary_names_the_statement_in_the_log`
-  — OutOfMemoryException inside the tests' forced ~286 MiB DuckDB
-  limit; the spill path is never attributed.
-- **3 environmental skips**: production input file unavailable
-  (test_pipeline.py:6050); 2m dataset not generated
-  (test_ui.py:137, test_ui.py:330).
+  — `_duckdb.OutOfMemoryException` ("failed to pin block of size
+  256.0 KiB") inside the tests' forced ~286 MiB DuckDB limit (286.2 /
+  286.4 of 286.1 MiB used); the spill path is never attributed.
+  Manifest record: `orchestrator-final-existing-suites-1`, result
+  `confirmed` — the run FAILED (exit 1) and is recorded as failed,
+  never relabeled; "confirmed" means the documented pre-existing
+  baseline failure state reproduced exactly, with zero new failures.
+- **3 environmental skips** (count unchanged from baseline; the
+  documented reasons): production input file unavailable
+  (test_pipeline.py:6050); 2m dataset not generated (test_ui.py:137,
+  test_ui.py:330).
 
-What the pending original-suites run needs to show: these same 2
-failures and 3 skips, unchanged, plus everything else green. Any other
-difference is a regression to be investigated before completion is
-claimed.
+Skip/xfail meanings, kept explicit: the properties run's 13 skips are
+the opt-in replay wrappers (six mutation-replay, seven finding-replay;
+the replays themselves were executed separately — AC.8/AC.9 evidence
+above); the properties run's 1 xfailed is the suite's single recorded
+xfail characterization pin; the original suites' 3 skips are the
+environmental data-availability skips above. None of these is a hidden
+failure.
 
-## What would close final validation
+## Close-out
 
-1. The original-suites run finishes with only the known residue above.
-2. This file's status line flips to complete with the recorded result,
-   and the README ledger entry is updated.
-3. Until then: properties complete, everything else pending — stated
-   exactly that way everywhere the campaign keeps records.
+The completion criterion set earlier was met: the original-suites run
+finished with only the known residue (same 2 failures, same 3 skips,
+zero new failures). Final validation is complete with that recorded
+residue. The campaign's deliverables: a property-based correctness
+suite with independent oracles, eight fixed findings across seven fix
+branches, one inherited defect documented per operator ruling (B2),
+four decision briefs awaiting an operator call (DB-2..DB-5), six
+mutation-replay calibration groups, and committed machine-verdict
+evidence for all of it. What the campaign does NOT claim: universal
+correctness of qrp-duckdb, universal SAS parity, or that unmeasured
+divergences (C-1 magnitude, D1 impact size) are harmless.

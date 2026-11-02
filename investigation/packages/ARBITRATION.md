@@ -682,5 +682,9 @@ with its M1 doc-accuracy repair applied; the campaign's last three mypy
 errors were fixed by 14a54f1 (investigation/packages/TYPES-FINAL.md).
 The "NOT merged / review pending" phrasing above and in the pass
 records is historical (accurate at recording time). The D approval's
-limits are recorded in the manifest's D package entry; the final
-validation state lives in [FINAL-VALIDATION.md](FINAL-VALIDATION.md).
+limits are recorded in the manifest's D package entry. Final validation
+subsequently completed at discovery 31846dc with known baseline
+residue (properties: 424 passed / 13 skipped / 1 xfailed, exit 0;
+original suites: 373 passed / 2 failed / 3 skipped — the 2 failures
+exactly the pre-existing baseline spill-attribution OOM tests; the full
+state lives in [FINAL-VALIDATION.md](FINAL-VALIDATION.md)).

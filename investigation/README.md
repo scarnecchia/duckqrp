@@ -110,6 +110,15 @@ python -m ruff check --select E4,E7,E9,F tests/properties
 python -m mypy src tests/properties
 ```
 
+Note on lint scope: the `ruff --select E4,E7,E9,F` line above is the
+campaign's gate, not the full lint. Ruff 0.17.3's full default ruleset
+reports pre-existing expanded-defaults findings (~100 in `src/`), and
+one in campaign-owned files: PYI034 at
+`tests/properties/harness.py:179` (`__enter__` returning the explicit
+`StageHarness` annotation instead of `typing.Self`, which the repo's
+mypy `python_version = "3.10"` target predates). Known version drift,
+recorded in packages/FINAL-VALIDATION.md; not a campaign regression.
+
 Environment: `.venv` in the worktree,
 `uv venv .venv --python 3.13 && uv pip install --python .venv/bin/python -e '.[dev]'`.
 
@@ -321,21 +330,31 @@ overlap-caveat leads recorded. Narrative: packages/CLOSING-RECORDS.md.
   property-test files, no production changes
   (investigation/packages/TYPES-FINAL.md).
 
-**2026-11-02 — final validation: properties COMPLETE, original suites
-PENDING (not complete overall).** The parent ran the final full
-properties quick suite at `31846dc`:
-`python -m pytest tests/properties --hypothesis-profile=quick -q` →
-exit 0, **424 passed, 13 skipped, 1 xfailed, 13 warnings, 299.29s**
-(log: session `final-properties.log`). The 13 skips are the opt-in
-replay wrappers — the six mutation-replay and seven finding-replay
-replays execute separately. The original non-properties suites
-(`python -m pytest --ignore=tests/properties -q`) were still running at
-this update; their result is NOT recorded here and final-suite
-completion is NOT claimed. The standing final-validation report —
-AC.1–AC.9 mapping, known baseline residue (2 pre-existing
-spill-attribution OOM failures, 3 environmental skips), eight fixed
-findings across seven fix branches with seven replay groups, six
-mutation-replay calibration groups, and the unresolved decision briefs
-DB-2..DB-5 plus the D rounding/DISTINCT and B overlap limitations —
-lives in investigation/packages/FINAL-VALIDATION.md and will be updated
-to "complete" only after the original suites actually land.
+**2026-11-02 — final validation COMPLETE with known baseline residue.**
+Both post-integration runs at `31846dc`, executed serially as two
+disjoint selections that together cover every test (the plan's
+full-suite validation; not one command):
+
+- Properties, quick: `python -m pytest tests/properties
+  --hypothesis-profile=quick -q` → exit 0, **424 passed, 13 skipped,
+  1 xfailed, 13 warnings, 299.29s** (session `final-properties.log`).
+  The 13 skips are the opt-in replay wrappers (six mutation-replay,
+  seven finding-replay), executed separately.
+- Original suites: `python -m pytest --ignore=tests/properties -q` →
+  exit 1, **373 passed, 2 failed, 3 skipped, 437 warnings, 464.08s**
+  (session `final-existing.log`; summary and FAILED lines verified).
+  Recorded as `orchestrator-final-existing-suites-1` with result
+  `confirmed` — the run FAILED and is recorded as failed, never
+  relabeled: the 2 failures are exactly the pre-existing baseline
+  spill-attribution OOM tests (`OutOfMemoryException` inside the
+  forced ~286 MiB limit), zero new failures vs the recorded baseline
+  (337 passed / 2 failed / 3 skipped at c3e60db; the +36 passing are
+  campaign-integrated regression tests), and the 3 skips match the
+  baseline's environmental skips.
+
+Parent post-run checks: `mypy src tests/properties` clean (83 files),
+`git diff --check` clean. Full report with the AC.1–AC.9 mapping,
+limitations (D DOUBLE-mean rounding with the reproducibility-only
+DECIMAL proposal, RX DISTINCT nuance, B legacy overlap scope, PYI034
+lint-scope note), unresolved DB-2..DB-5, and the no-universal-claim
+scope statement: investigation/packages/FINAL-VALIDATION.md.
