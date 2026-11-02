@@ -1,5 +1,87 @@
 # Package E — Runtime state, cancellation, event delivery, and filesystem results
 
+## Pass2 — frontend release fixes and fault variants
+
+Tested production revision: `6bc41715defcf553ec06e35af887fb4643f45e54`
+(owned branch after `git merge --no-edit discovery`). Test change state: that
+revision plus new `tests/properties/test_pkg_e_pass2.py`; this report is the
+only other changed file. No production/shared-infrastructure edits, network,
+publication, pushes, or SAS execution in pass2.
+
+New checks:
+- Fresh hand-fixture parquet roots for each TUI success/error/cancelled case.
+  Actual Textual workers are awaited with a 30-second bound, without sleeps.
+  Engine close count is exactly one; a real query independently proves the
+  DuckDB connection is closed. Cancellation is installed before handle start,
+  repeated twice, and produces no StageStarted/StageFinished events.
+- Deterministic missing-input CLI failure followed by a NEW successful run,
+  with distinct engines, exact close counts after each call, actual return
+  codes 1 then 0, and closed-connection checks. This exercises the fixed
+  finally paths, rather than assuming the doubles release resources.
+- Cheap generated RunHandle histories: one legal start, bounded wait,
+  events-or-drain consumption, then one close; 1–6 stage steps, success,
+  failure, or boundary cancellation, repeated cancellation 1–3 times.
+  Expected executed prefixes and terminal flags come from the input schedule,
+  not the adapter's recorded state. Exactly one final terminal and one release
+  are required. No post-cancel stage is allowed. Deep exhausts 648 input tuples
+  (some map to the same boundary through modulo); no invalid histories.
+- Single and persistent kth-log-call failures over up to 24 event deliveries:
+  production multi_sink must deliver every event, in order and by identity,
+  to its healthy subscriber despite the failing subscriber.
+- Four real tiny-pipeline partial-write variants: parquet/CSV, failure before
+  or after the second write. Each reports failure through RunHandle, leaves no
+  manifest, retains actual partial parquet output, and releases its connection.
+
+All tests use threads=1 where constructing engines in the new tests. Existing
+pass1 tests and existing regression suites retain their prior configuration.
+Only one test process ran at a time. Commands used `.venv/bin/python` and
+`timeout 300` (initial focused run used `timeout 180`); no piped pytest status.
+
+Final-state verification (actual exit codes):
+
+| command suffix after `timeout 300 .venv/bin/python -m pytest` | exit | duration | result |
+|---|---:|---:|---|
+| `tests/properties/test_pkg_e_*.py --hypothesis-profile=discovery --hypothesis-show-statistics -q` | 0 | 39s | 31 passed |
+| `tests/properties/test_pkg_e_pass2.py -k 'bounded_handle or logging_fault' --hypothesis-profile=deep --hypothesis-show-statistics -q` | 0 | 2s | 2 passed, 8 deselected |
+| `tests/properties/test_pkg_e_*.py --hypothesis-profile=quick --hypothesis-show-statistics -q` (first) | 0 | 17s | 31 passed |
+| same quick command (second) | 0 | 17s | 31 passed |
+| `tests/test_rewrites.py tests/test_determinism.py tests/test_regression_e1.py tests/test_ui.py -k 'not cancel_stops_mid_query and not spilling_is_detected_and_reported' -q` | 0 | 44s | 52 passed, 2 deselected |
+
+`ruff check --select E4,E7,E9,F tests/properties`: exit 0.
+`mypy src tests/properties`: exit 0, 75 files; informational unchecked-body
+notes in package D only. Regression run preceded the final four partial-write
+variants; those variants do not alter any production code.
+
+Discovery statistics: existing lifecycle 500 passing total (4 reuse + 496
+new), cancel timings never 57.26%, between statements 15.73%, between stages
+15.32%, before start 11.69%; terminal failed 45.77%, cancelled 27.22%, ok
+27.02%. New handle family 500 passing, no invalid cases, terminal distribution
+33.4% cancel / 33.4% ok / 33.2% fault. Deep: handle family 648 passing,
+0 invalid, exhausted; logging 2000 passing, 417 Hypothesis-invalid generation
+attempts (no assume/filter or illegal lifecycle steps). Fault hits are explicit
+statistics, and deterministic examples force an activated logging failure.
+
+Initial test-authoring failure: recording only Engine.emit missed the runner's
+failure terminals. Corrected to observe RunHandle.extra_sink; this was an
+observer defect, not a product lead. Initial mypy inherited-field inference
+error corrected with an explicit EventSink annotation. All final checks green.
+
+E1/E2 release fixes verified on real connections. No new confirmed product
+bug from these variants. DB3/DB4 (SIGINT semantics and ownership of direct-run
+failure terminals) remain characterized, pending operator decisions; no new
+contract or production fix imposed.
+
+Remaining gaps: pass1 still contains timing-based query-progress/SIGINT and UI
+polling machinery; its prior claim of universally race-free barriers was too
+strong. Pass2 additions introduce no sleeps and use worker completion or
+pre-start cancellation, but do not replace all legacy machinery. The old
+History generator also conflates some fault/cancel precedence through terminal
+rewrites; the new independently asserted handle family avoids that combination
+rather than claiming to repair the old model. Post-stage cancellation inside a
+real blocked SQL operator, logging file-open/close failures, and stale manifests
+on writes into an already-populated output tree remain beyond the added cases.
+
+
 Branch: `inv/0f462p/e-runtime-lifecycle` (base a0d0b93)
 Scope: AC.6 — lifecycle/cancellation/fault-injection/output-honesty/CLI+TUI.
 Production files read fully: `src/qrp/engine.py`, `runner.py`, `events.py`,
