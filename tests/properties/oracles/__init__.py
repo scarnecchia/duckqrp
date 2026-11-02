@@ -7,3 +7,4 @@ quoted in the shipped SQL comments), not from the SQL text: date arithmetic
 is done by day enumeration over small domains, so no span/gap expression of
 the implementation can be mirrored by accident, and nothing here executes
 or copies a shipped query.
+"""
