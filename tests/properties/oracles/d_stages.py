@@ -546,8 +546,9 @@ def expected_covariates(master: list[dict[str, Any]],
                         start_date: date) -> list[dict[str, Any]]:
     """One row per (cohort, episode, covarnum) with ANY qualifying claim
     overlapping the anchor window. RX claims go through the documented
-    chain: clip to enrollment pieces, same-day sum, chain, overlap by
-    day (dateonly covariates use start dates only)."""
+    chain: clip to per-span pieces, same-day sum, chain, clip the
+    chained coverage to enrollment again, overlap by day (dateonly
+    covariates use start dates only)."""
     # cfg_covariates carries one row per (cohortgrp, covarnum); keying
     # by covarnum alone kept only the last cohort's row and silently
     # skipped every other cohort's episodes (masked while the starved
@@ -601,34 +602,53 @@ def _covariate_rows(master, claims, defs, codes, spans_by_cfg, start_date):
 
 def _rx_chain_hit(patid, ws, we, dateonly, wanted, rx_claims, spans,
                   start_date, enr_days):
-    fills: dict[date, int] = defaultdict(int)
+    # Documented chain (80_covariates.sql `clipped`/`reclipped` CTEs;
+    # ms_cidacov_codeextraction.sas:590-672 as cited there): each
+    # dispensing is CLIPPED to every enrollment span it overlaps (one
+    # piece per span, supply cut at the span edges). The clipped CTE is
+    # SELECT DISTINCT, so a duplicate dispensing with the same shape
+    # (same day, supply, code — the same_supply_ties knob) contributes
+    # ONCE; genuinely different same-day fills then sum in `sameday`.
+    # Pieces chain back-to-back and the chained coverage is clipped TO
+    # ENROLLMENT AGAIN — a continuation falling outside every span (the
+    # gap, or past the last span end) is dropped. Codes within one
+    # covarnum share the default per-covarnum stockgroup here, so one
+    # chain per (patid, covarnum) matches production's per-stockgroup
+    # partition.
+    pieces: set[tuple[date, int, str]] = set()
     for s in rx_claims:
         if s["patid"] != patid or (str(s["code"]), "RX") not in wanted:
             continue
         if s["expiredt"] < start_date - timedelta(days=enr_days):
             continue
         for pid, sp_start, sp_end in spans:
-            if pid == patid and sp_start <= s["adate"] <= sp_end:
-                fills[s["adate"]] += (s["expiredt"] - s["adate"]).days + 1
-                break
-    # chain within the member's coverage (piece-per-span clip + re-clip
-    # only differ on gapped enrollment; generated fixtures enroll
-    # continuously, and gapped fixtures keep fills inside one span)
-    cum = 0
-    ra = None
-    epoch = date(1970, 1, 1)
-    pieces: list[tuple[date, date]] = []
-    for adate in sorted(fills):
-        sup = fills[adate]
-        cum += sup
-        anchor = (adate - epoch).days - (cum - sup)
-        ra = anchor if ra is None else max(ra, anchor)
-        pieces.append((epoch + timedelta(days=cum - 1 + ra - sup + 1),
-                       epoch + timedelta(days=cum - 1 + ra)))
-    for a, b in pieces:
-        cend = a if dateonly else b
-        if cend >= ws and a <= we:
-            return True
+            if pid == patid and s["adate"] <= sp_end \
+                    and s["expiredt"] >= sp_start:
+                lo = max(s["adate"], sp_start)
+                hi = min(s["expiredt"], sp_end)
+                pieces.add((lo, (hi - lo).days + 1, str(s["code"])))
+    day_sup: dict[date, int] = defaultdict(int)
+    for lo, sup, _code in pieces:
+        day_sup[lo] += sup
+    # chain: each piece's supply continues from where coverage already
+    # runs — max(prior end, piece start), then add the supply.
+    chained: list[tuple[date, date]] = []
+    end: date | None = None
+    for adate in sorted(day_sup):
+        sup = day_sup[adate]
+        start = adate if end is None else max(end + DAY, adate)
+        end = start + timedelta(days=sup - 1)
+        chained.append((start, end))
+    # second shave: clip the chained coverage to enrollment again
+    for cs, ce in chained:
+        for pid, sp_start, sp_end in spans:
+            if pid != patid or cs > sp_end or ce < sp_start:
+                continue
+            a = max(cs, sp_start)
+            b = min(ce, sp_end)
+            cend = a if dateonly else b
+            if cend >= ws and a <= we:
+                return True
     return False
 
 
@@ -1291,13 +1311,15 @@ def expected_distindex(cohort_final: list[dict[str, Any]],
             exp_ids.update(match_med(r["cohortgrp"], "exp", claim))
         hoi_ids: set[int] = set()
         if r["feventdt"] is not None:
+            # cdm_dispensing is the NORMALIZED view (10_normalize):
+            # columns are patid/adate/code, not the raw rxdate/rx.
             for d in dispensings:
-                if d["patid"] == r["patid"] and d["rxdate"] == r["feventdt"]:
+                if d["patid"] == r["patid"] and d["adate"] == r["feventdt"]:
                     for k in codes_cfg:
                         if k["cohortgrp"] == r["cohortgrp"] \
                                 and k["role"] == "EVENT" \
                                 and k["codecat"] == "RX" \
-                                and k["code"] == str(d["rx"]):
+                                and k["code"] == str(d["code"]):
                             hit = lookup(r["cohortgrp"], "hoi",
                                          (k["stockgroup"],))
                             if hit is not None:

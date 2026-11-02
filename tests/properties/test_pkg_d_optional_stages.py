@@ -16,7 +16,7 @@ is NOT asserted anywhere.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import pytest
@@ -32,7 +32,10 @@ from .oracles.d_fixtures import (
     ALL_CODES, ALL_EVENTS, CIDA_LEVELS, FUTU_LEVELS, study_with_features,
 )
 from .strategies import SEEDS, generate_options
-from .synth import GenerateOptions, generate
+from .synth import (
+    Dispensing, EnrollmentSpan, GenerateOptions, Patient, SyntheticDataset,
+    generate,
+)
 
 _START = date(2014, 1, 1)
 _END = date(2014, 12, 31)
@@ -549,3 +552,128 @@ def test_attrition_final_empty_members_report_zero() -> None:
     # exclusion (information row) — carrying 2 here is exactly the F1
     # defect this contract exists to prevent.
     assert got[27.0] == (0, None)
+
+
+# ---- gapped-enrollment RX covariate: piece-per-span clip witness -----
+#
+# Contract (80_covariates.sql `clipped` CTE lines 117-141 and
+# `reclipped` lines 165-174, citing ms_cidacov_codeextraction.sas
+# :590-672): a covariate dispensing is clipped to EVERY enrollment span
+# it overlaps (one piece per span, supply cut at the span edges),
+# same-day supplies sum, pieces chain back-to-back, and the chained
+# coverage is clipped to enrollment AGAIN — a continuation landing in a
+# gap or past the last span end is dropped. Generated fixtures enroll
+# continuously, so this hand witness is the only place the straddle is
+# exercised end to end.
+
+_W_START = date(2014, 1, 1)
+_W_END = date(2014, 12, 31)
+
+
+def _enumerate_chain_days(spans: list[tuple[date, date]],
+                          fills: list[tuple[date, int]]) -> set[date]:
+    """Covered days of the documented chain, enumerated day by day:
+    clip each fill to every overlapping span, chain the pieces forward
+    one day at a time, then keep only days inside a span (second
+    shave)."""
+    pieces: list[tuple[date, int]] = []
+    for adate, sup in fills:
+        raw_end = adate + timedelta(days=sup - 1)
+        for sp_start, sp_end in spans:
+            if adate <= sp_end and raw_end >= sp_start:
+                lo = max(adate, sp_start)
+                hi = min(raw_end, sp_end)
+                pieces.append((lo, (hi - lo).days + 1))
+    covered: set[date] = set()
+    next_free: date | None = None
+    for lo, sup in sorted(pieces):
+        start = lo if next_free is None or lo > next_free else next_free
+        for k in range(sup):
+            covered.add(start + timedelta(days=k))
+        next_free = start + timedelta(days=sup)
+    return {d for d in covered
+            if any(sp_start <= d <= sp_end for sp_start, sp_end in spans)}
+
+
+def test_rx_covariate_gapped_enrollment_piece_per_span() -> None:
+    """A 60-day fill straddling a 31-day enrollment gap covers its
+    clipped first-span piece (06-20..06-30), stops at the gap, resumes
+    on the second span (08-01..08-18), and the second fill chains
+    inside that span (09-01..09-10). The hole window inside the gap
+    must NOT hit: under the naive single-span chain (full supply on the
+    containing span, no second shave) the coverage would run through
+    08-18 and the hole window would find days — this witness pins the
+    piece-per-span semantics exactly."""
+    # 31-day gap (enrol_gap 0): the enrollment stage keeps two spans.
+    p1 = Patient(1, date(1980, 5, 1), "F", "1", "N", "02108", _W_START)
+    spans = (EnrollmentSpan(1, date(2014, 1, 1), date(2014, 6, 30),
+                           "Y", "Y", "Y"),
+             EnrollmentSpan(1, date(2014, 8, 1), _W_END, "Y", "Y", "Y"))
+    dispensings = (
+        # the index fill: cohort_a episode, index 2014-03-01
+        Dispensing(1, date(2014, 3, 1), "E00001", "ND", 30, 10.0, 1001),
+        # straddles the gap: 11 days on span 1, 18 on span 2
+        Dispensing(1, date(2014, 6, 20), "N00001", "ND", 60, 5.0, 1001),
+        # inside span 2, chains the coverage to 09-10
+        Dispensing(1, date(2014, 9, 1), "N00001", "ND", 10, 5.0, 1001),
+    )
+    dataset = SyntheticDataset(
+        patients=(p1,), deaths=(), enrollment=spans,
+        dispensings=dispensings, diagnoses=(), procedures=(),
+        encounters=(), labs=(), exposure_codes=("E00001",),
+        event_codes=("D00001",), noise_drug_codes=("N00001",),
+        noise_dx_codes=("X00001",), start=_W_START, end=_W_END)
+    index_dt = date(2014, 3, 1)
+    covariates = (
+        Covariate(1, "gap_all", "RX", covfrom=-300, covto=200,
+                  codes=("N00001",)),
+        Covariate(2, "gap_hole", "RX", covfrom=126, covto=141,
+                  codes=("N00001",)),
+        Covariate(3, "gap_tail", "RX", covfrom=192, covto=193,
+                  codes=("N00001",)),
+        Covariate(4, "gap_over", "RX", covfrom=194, covto=203,
+                  codes=("N00001",)),
+    )
+    study = study_with_features(("E00001",), covariates=covariates,
+                                start=_W_START, end=_W_END)
+
+    # hand-derived chain output: the three clipped, chained,
+    # re-clipped coverage intervals and their 39 covered days.
+    hand_intervals = ((date(2014, 6, 20), date(2014, 6, 30)),
+                      (date(2014, 8, 1), date(2014, 8, 18)),
+                      (date(2014, 9, 1), date(2014, 9, 10)))
+    hand_days = {lo + timedelta(days=k)
+                 for lo, hi in hand_intervals
+                 for k in range((hi - lo).days + 1)}
+    assert len(hand_days) == 39
+    enum_spans = [(s.enr_start, s.enr_end) for s in spans]
+    enum_fills = [(d.rxdate, d.rxsup) for d in dispensings[1:]]
+    assert _enumerate_chain_days(enum_spans, enum_fills) == hand_days
+
+    with StageHarness(study) as harness:
+        harness.attach_dataset(dataset)
+        harness.run_through("covariates")
+        master = d_stages.table_dicts(harness.engine.con, "ptsmasterlist")
+        assert [(m["cohortgrp"], m["patid"], m["indexdt"])
+                for m in master] == [("cohort_a", 1, index_dt)]
+        rows = d_stages.table_dicts(harness.engine.con, "covariates_long")
+        got = {(r["cohortgrp"], r["patid"], r["indexdt"], r["covarnum"],
+                r["covarname"]) for r in rows}
+        # exact expectations: the hole window (inside the gap) has NO
+        # row — a containing-span-only chain without the second shave
+        # would cover gap days and hit; the over window (beyond the
+        # chain end) has NO row — keeping FULL supply on every span
+        # piece (the wp307 double-count) would push chained coverage
+        # past 09-10 and hit; the tail covariate pins the exact final
+        # piece end.
+        assert got == {("cohort_a", 1, index_dt, 1, "gap_all"),
+                       ("cohort_a", 1, index_dt, 3, "gap_tail")}
+        # each window's outcome agrees with the enumerated covered days
+        # (non-dateonly: a piece hits iff its covered days meet the
+        # window).
+        for cov in covariates:
+            ws = index_dt + timedelta(days=cov.covfrom)
+            we = index_dt + timedelta(days=cov.covto)
+            expected_hit = any(ws <= d <= we for d in hand_days)
+            hit = any(r[3] == cov.covarnum for r in got)
+            assert hit == expected_hit, cov.covarname
