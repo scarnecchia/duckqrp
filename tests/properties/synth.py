@@ -28,6 +28,14 @@ Supported configurations only
 no dose restrictions (no code strengths needed), no combinations, no
 unsupported table ids. Packages that need richer studies should extend
 this builder rather than hand-rolling StudyConfig in a test.
+
+Every event code also carries the loader's care-setting expansion: an
+absent CARESETTINGPRINCIPAL means the all-settings wildcard
+(`('**', '*')`, qrp.config.CARE_SETTING_ALL), and the event_claims
+stage INNER JOINs cfg_care_setting on (cohortgrp, code) — so a study
+without those rows would silently lose every outcome claim. test_
+property_builder_events.py pins the builder's rows against the same
+codes fed through the real loader.
 """
 
 from __future__ import annotations
@@ -43,6 +51,7 @@ from typing import Any
 import duckdb
 
 from qrp.config import (
+    CARE_SETTING_ALL,
     CohortConfig,
     Covariate,
     InclusionRule,
@@ -548,8 +557,12 @@ def hand_fixture() -> tuple[SyntheticDataset, StudyConfig]:
 
     * P1  enrolled, two E00001 fills 2014-03-10 / 2014-04-09 (the
           second continues the episode; it sits inside the first
-          index's washout so only one episode results), one enveloped
-          IP diagnosis (D00002 inside a stay), one event;
+          index's washout so only one episode results), two event
+          claims in EACH cohort — D00002 on 2014-05-03 (enveloped
+          to IP/'X' inside the stay) and D00001 on 2014-06-01 — of
+          which exactly ONE attributes to the episode: the episode's
+          supply runs out 2014-05-08, so first_event is D00002 on
+          2014-05-03 and D00001 stays unattributed;
     * P2  enrolled but only a noise drug, dies 2015-01-01;
     * P3  an E00001 fill dated BEFORE enrollment starts — the claim
           enters exposure_claims (extraction is query-period-bounded)
@@ -681,6 +694,19 @@ def build_study(
             exposure_codes=tuple(
                 (c, "RX", "ND", None) for c in codes),
             event_codes=tuple((c, "DX", "09", None) for c in event_codes),
+            # Loader-equivalent care settings. The study loader expands
+            # EVERY event code's caresettingprincipal, and an absent one
+            # expands to the all-settings wildcard CARE_SETTING_ALL
+            # (qrp.config.parse_care_setting on an empty value). The
+            # event_claims stage INNER JOINs cfg_care_setting on
+            # (cohortgrp, code), so a cohort whose event codes carry no
+            # care-setting row silently loses every outcome claim — the
+            # vacuity this emitted the hard way until packages C/D/F each
+            # re-added the expansion by hand. One row per code here makes
+            # a builder study carry exactly what loading the same codes
+            # from an input file would.
+            event_care_settings=tuple(
+                (c, *CARE_SETTING_ALL) for c in event_codes),
         )
 
     cohorts = [cohort("cohort_a", first)]
