@@ -1,0 +1,314 @@
+[
+  {
+    "record_id": "a-1",
+    "ok": true,
+    "red_exit_code": 1,
+    "green_exit_code": 0,
+    "red_pattern_matched": true,
+    "worktree_removed": true,
+    "steps": [
+      {
+        "step": "base",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "apply",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "reset",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "red_tail": "E       )\nE       Explanation:\nE           These lines were always and only run by failing test cases:\nE               /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/replay-a-1/tests/properties/oracles/a_sql_grammar.py:217\nE               /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/replay-a-1/tests/properties/test_pkg_a_sqlsplit.py:106\nE               /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/replay-a-1/tests/properties/test_pkg_a_sqlsplit.py:108\n\ntests/properties/test_pkg_a_sqlsplit.py:105: AssertionError\n______ TestSqlSplitExecutionEquivalence.test_empty_and_degenerate_inputs _______\n\nself = <properties.test_pkg_a_sqlsplit.TestSqlSplitExecutionEquivalence object at 0x7f405162e270>\n\n    def test_empty_and_degenerate_inputs(self) -> None:\n        assert split_statements(\"\") == []\n        assert split_statements(\"   \\n\\t \") == []\n        assert split_statements(\";;;\") == []\n        assert split_statements(\"-- only; a comment\\n\") == []\n        assert split_statements(\"/* ; */ /* ' */ \") == []\n        tail = split_statements(\"SELECT 1\")\n>       assert [s.kind for s in tail] == [None]     # the tail push\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE       assert [] == [None]\nE         \nE         Right contains one more item: None\nE         Use -v to get more diff\n\ntests/properties/test_pkg_a_sqlsplit.py:149: AssertionError\n=========================== short test summary info ============================\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_mandatory_shapes[2-0]\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_mandatory_shapes[2-1]\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_mandatory_shapes[2-2]\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_mandatory_shapes[2-3]\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_mandatory_shapes[3-1]\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_mandatory_shapes[3-3]\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_mandatory_shapes[5-0]\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_mandatory_shapes[5-1]\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_mandatory_shapes[5-3]\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_sql_split_execution_equivalence\nFAILED tests/properties/test_pkg_a_sqlsplit.py::TestSqlSplitExecutionEquivalence::test_empty_and_degenerate_inputs\n========================= 11 failed, 7 passed in 0.52s =========================",
+    "green_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.13.13, pytest-9.2.0, pluggy-1.7.0\nrootdir: /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/replay-a-1\nconfigfile: pyproject.toml\nplugins: platformdirs-4.14.3, hypothesis-6.170.14\ncollected 18 items\n\ntests/properties/test_pkg_a_sqlsplit.py ..................               [100%]\n\n============================== 18 passed in 0.70s =============================="
+  },
+  {
+    "record_id": "b-1",
+    "ok": true,
+    "red_exit_code": 1,
+    "green_exit_code": 0,
+    "red_pattern_matched": true,
+    "worktree_removed": true,
+    "steps": [
+      {
+        "step": "base",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "apply",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "reset",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "red_tail": "        if len(sql) != len(model):\n>           raise AssertionError(\n                f\"{label}: SQL returned {len(sql)} rows, model {len(model)}\\n\"\n                f\"sql:   {sql}\\nmodel: {model}\")\nE           AssertionError: enrollment_spans: SQL returned 4 rows, model 3\nE           sql:   [{'enr_cfg_id': 'MD|1|0', 'patid': 1, 'episode': 1, 'enr_start': datetime.date(2011, 1, 8), 'enr_end': datetime.date(2011, 1, 27)}, {'enr_cfg_id': 'MD|1|0', 'patid': 2, 'episode': 1, 'enr_start': datetime.date(2011, 1, 8), 'enr_end': datetime.date(2011, 1, 17)}, {'enr_cfg_id': 'MD|1|0', 'patid': 2, 'episode': 2, 'enr_start': datetime.date(2011, 1, 19), 'enr_end': datetime.date(2011, 1, 28)}, {'enr_cfg_id': 'MD|1|0', 'patid': 2, 'episode': 3, 'enr_start': datetime.date(2011, 1, 31), 'enr_end': datetime.date(2011, 2, 9)}]\nE           model: [{'enr_cfg_id': 'MD|1|0', 'patid': 1, 'episode': 1, 'enr_start': datetime.date(2011, 1, 8), 'enr_end': datetime.date(2011, 1, 27)}, {'enr_cfg_id': 'MD|1|0', 'patid': 2, 'episode': 1, 'enr_start': datetime.date(2011, 1, 8), 'enr_end': datetime.date(2011, 1, 28)}, {'enr_cfg_id': 'MD|1|0', 'patid': 2, 'episode': 2, 'enr_start': datetime.date(2011, 1, 31), 'enr_end': datetime.date(2011, 2, 9)}]\nE           Failing explicit example: test_enrollment_matches_day_model(\nE               spec={'enrol_gap': 1,\nE                'wash_per': 183,\nE                'coverage': 'MD',\nE                'gap_b_differs': False,\nE                'patients': [{'spans': [('adjacent', 10, 'YY'), ('gap_minus', 10, 'YY')],\nE                  'fills': [{'code': 'E00001',\nE                    'day': 8,\nE                    'sup': 3,\nE                    'amt': 1.0,\nE                    'twin': False,\nE                    'twin_sup_delta': 0,\nE                    'twin_amt_epsilon': 0.0}],\nE                  'death_day': None},\nE                 {'spans': [('adjacent', 10, 'YY'),\nE                   ('gap_exact', 10, 'YY'),\nE                   ('gap_plus', 10, 'YY')],\nE                  'fills': [{'code': 'E00001',\nE                    'day': 8,\nE                    'sup': 3,\nE                    'amt': 1.0,\nE                    'twin': False,\nE                    'twin_sup_delta': 0,\nE                    'twin_amt_epsilon': 0.0}],\nE                  'death_day': None}],\nE                'dup_demog': False,\nE                'leap_birth': None},\nE           )\n\ntests/properties/oracles/b_pkg_fixtures.py:213: AssertionError\n=========================== short test summary info ============================\nFAILED tests/properties/test_pkg_b_enrollment.py::test_enrollment_matches_day_model\n============================== 1 failed in 0.51s ===============================",
+    "green_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.13.13, pytest-9.2.0, pluggy-1.7.0\nrootdir: /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/replay-b-1\nconfigfile: pyproject.toml\nplugins: platformdirs-4.14.3, hypothesis-6.170.14\ncollected 1 item\n\ntests/properties/test_pkg_b_enrollment.py .                              [100%]\n\n============================== 1 passed in 0.97s ==============================="
+  },
+  {
+    "record_id": "c-1",
+    "ok": true,
+    "red_exit_code": 1,
+    "green_exit_code": 0,
+    "red_pattern_matched": true,
+    "worktree_removed": true,
+    "steps": [
+      {
+        "step": "base",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "apply",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "reset",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "red_tail": "        \"\"\"\n        dataset = grid_dataset(dxs=[(-7, \"D00001\", \"AV\")])\n        cases = (\n            (None, False),   # any prior event disqualifies\n            (0, True),       # washout disabled\n            (7, False),      # horizon -7: event AT the horizon disqualifies\n            (8, False),      # horizon -8: event still inside\n            (6, True),       # horizon -6: event one day BEFORE the horizon\n        )\n        for wash, expect_kept in cases:\n            run, outcomes = _run_followup(dataset, fup_wash_per=wash)\n>           _assert_followup_matches_model(run, outcomes)\n\ntests/properties/test_pkg_c_followup.py:273: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\nrun = TwoPass(inputs={'ptsmasterlist': ({'cohortgrp': 'cohort_a', 'patid': 1, 'indexdt': datetime.date(2014, 2, 15), 'episod...', 'enrollment_spans', 'exposure + stockpiling', 'index dates', 'pov1', 'episodes + masterlist', 'follow-up + events'))\noutcomes = {('cohort_a', 1, datetime.date(2014, 2, 15)): EpisodeOutcome(cohortgrp='cohort_a', patid=1, indexdt=datetime.date(2014...ength=30, episodeenddt_censor=datetime.date(2014, 4, 30), timetocensor=75, person_days=30, exit_reason='exposure_end')}\n\n    def _assert_followup_matches_model(run: Any, outcomes: dict) -> None:\n        \"\"\"cohort_final membership and columns, and first_event rows.\"\"\"\n        final = {\n            (str(r[\"cohortgrp\"]), int(r[\"patid\"]), r[\"indexdt\"]): r\n            for r in run.outputs[\"cohort_final\"]\n        }\n        expected_kept = {k for k, o in outcomes.items() if o.kept}\n>       assert set(final) == expected_kept, (\n            sorted(str(s) for s in set(final) ^ expected_kept),\n            \"cohort_final membership differs from the model\")\nE       AssertionError: ([\"('cohort_a', 1, datetime.date(2014, 2, 15))\"], 'cohort_final membership differs from the model')\nE       assert {('cohort_a',...2014, 2, 15))} == set()\nE         \nE         Extra items in the left set:\nE         ('cohort_a', 1, datetime.date(2014, 2, 15))\nE         Use -v to get more diff\n\ntests/properties/test_pkg_c_followup.py:222: AssertionError\n=========================== short test summary info ============================\nFAILED tests/properties/test_pkg_c_followup.py::test_followup_washout_boundaries\n========================= 1 failed, 1 passed in 3.74s ==========================",
+    "green_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.13.13, pytest-9.2.0, pluggy-1.7.0\nrootdir: /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/replay-c-1\nconfigfile: pyproject.toml\nplugins: platformdirs-4.14.3, hypothesis-6.170.14\ncollected 2 items\n\ntests/properties/test_pkg_c_followup.py ..                               [100%]\n\n============================== 2 passed in 4.01s ==============================="
+  },
+  {
+    "record_id": "e-1",
+    "ok": true,
+    "red_exit_code": 1,
+    "green_exit_code": 0,
+    "red_pattern_matched": true,
+    "worktree_removed": true,
+    "steps": [
+      {
+        "step": "base",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "apply",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "reset",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "red_tail": "                   ^^^\n\ntests/properties/test_pkg_e_faults.py:109: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n.venv/lib/python3.13/site-packages/hypothesis/core.py:1726: in _raise_to_user\n    raise the_error_hypothesis_found\ntests/properties/test_pkg_e_faults.py:121: in test_fault_schedule_terminal_events\n    _run_real_to_write_fault(dataset, study, schedule.at)\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\ndataset = SyntheticDataset(patients=(Patient(patid=1, birth_date=datetime.date(1980, 5, 1), sex='F', race='1', hispanic='N', pos...se_drug_codes=('N00001',), noise_dx_codes=('X00001',), start=datetime.date(2011, 1, 1), end=datetime.date(2015, 6, 30))\nstudy = StudyConfig(study_type=2, start_date=datetime.date(2011, 1, 1), end_date=datetime.date(2015, 6, 30), cohorts=(CohortCo...=(), risk_scores=(), zipfile=(), utilization=(), drug_classes=(), lab_codes=(), mfu=(), stockpiling=(), run_envelope=0)\nfail_write_at = 1\n\n    def _run_real_to_write_fault(\n        dataset: SyntheticDataset,\n        study: StudyConfig,\n        fail_write_at: int,\n    ) -> None:\n        \"\"\"Direct driver: all stages complete, write k fails mid-loop.\"\"\"\n        log = EventLog()\n        engine = WriteFaultEngine(threads=1, verbose=False,\n                                  fail_write_at=fail_write_at, on_event=log)\n        out = Path(tempfile.mkdtemp(prefix=\"pkg-e-outfault-\")) / \"out\"\n        root = write_parquet(dataset, Path(tempfile.mkdtemp()) / \"indata\")\n        try:\n            with warnings.catch_warnings():\n                warnings.simplefilter(\"ignore\")\n>               with pytest.raises(RuntimeError, match=\"injected output-write\"):\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE               Failed: DID NOT RAISE RuntimeError\nE               Failing explicit example: test_fault_schedule_terminal_events(\nE                   schedule=FaultSchedule(kind='write', at=1),\nE               )\n\ntests/properties/test_pkg_e_faults.py:89: Failed\n=========================== short test summary info ============================\nFAILED tests/properties/test_pkg_e_outputs.py::test_output_failure_is_not_reported_complete\nFAILED tests/properties/test_pkg_e_faults.py::test_fault_schedule_terminal_events\n============================== 2 failed in 1.51s ===============================",
+    "green_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.13.13, pytest-9.2.0, pluggy-1.7.0\nrootdir: /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/replay-e-1\nconfigfile: pyproject.toml\nplugins: platformdirs-4.14.3, hypothesis-6.170.14\ncollected 2 items\n\ntests/properties/test_pkg_e_outputs.py .                                 [ 50%]\ntests/properties/test_pkg_e_faults.py .                                  [100%]\n\n============================== 2 passed in 5.44s ==============================="
+  },
+  {
+    "record_id": "f-1",
+    "ok": true,
+    "red_exit_code": 1,
+    "green_exit_code": 0,
+    "red_pattern_matched": true,
+    "worktree_removed": true,
+    "steps": [
+      {
+        "step": "base",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "apply",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "reset",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "red_tail": "            tmp_path_factory: pytest.TempPathFactory,\n            kind: str, target: tuple[str, MiniTable]) -> None:\n        \"\"\"Exactly ONE targeted corruption; the comparator must report it\n        with its classification and exit nonzero.\"\"\"\n        target_name = target[0]\n        maker, marker = CORRUPTIONS[kind]\n        tables = list(as_pairs)\n        tol = DETECTION_TOL if kind == \"perturb_far\" else None\n        sas, duck = paired_trees(\n            tmp_path_factory.mktemp(\"cmp\"), tables,\n            duck_mutate=maker(target_name))\n        code, text = run_compare(sas, duck, tol=tol)\n        event(f\"corruption={kind}\")\n        event(f\"target={target_name}\")\n>       assert code == 1, f\"{kind} on {target_name} exited 0:\\n{text}\"\nE       AssertionError: duplicate_row on stockpiled exited 0:\nE         tables: 4 SAS, 4 DuckDB, 4 compared\nE         \nE         No differences.\nE         \nE       assert 0 == 1\nE       Failing explicit example: test_comparators_detect_targeted_corruption(\nE           tmp_path_factory=TempPathFactory(_given_basetemp=None,\nE            _trace=<pluggy._tracing.TagTracerSub object at 0x7ff74d71cc30>,\nE            _basetemp=None,\nE            _retention_count=3,\nE            _retention_policy='all'),\nE           kind='duplicate_row',\nE           target=('stockpiled',\nE            MiniTable(name='stockpiled',\nE             key_cells=(('cohort_a', '1', '2014-03-10'),\nE              ('cohort_a', '2', '2014-03-11')),\nE             value_cells=(('30', '2014-04-09'), ('14', '2014-03-25')),\nE             value_names=('rxsup', 'expiredt'))),\nE       )\n\ntests/properties/test_pkg_f_comparators.py:534: AssertionError\n=========================== short test summary info ============================\nFAILED tests/properties/test_pkg_f_comparators.py::test_comparators_detect_targeted_corruption\n============================== 1 failed in 0.06s ===============================",
+    "green_tail": "============================= test session starts ==============================\nplatform linux -- Python 3.13.13, pytest-9.2.0, pluggy-1.7.0\nrootdir: /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/replay-f-1\nconfigfile: pyproject.toml\nplugins: platformdirs-4.14.3, hypothesis-6.170.14\ncollected 1 item\n\ntests/properties/test_pkg_f_comparators.py .                             [100%]\n\n============================== 1 passed in 0.06s ==============================="
+  },
+  {
+    "record_id": "d-1-pass2-20261102",
+    "ok": true,
+    "red_exit_code": 1,
+    "green_exit_code": 0,
+    "red_pattern_matched": true,
+    "worktree_removed": true,
+    "steps": [
+      {
+        "step": "base",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "worktree",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "venv",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "apply",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "red",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "reset",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "green",
+        "ok": true,
+        "detail": ""
+      },
+      {
+        "step": "cleanup",
+        "ok": true,
+        "detail": ""
+      }
+    ],
+    "red_tail": "E         'E00012',\nE         'E00013',\nE         'E00014',\nE         'E00015',\nE         'E00016',\nE         'E00017',\nE         'E00018',\nE         'E00019',\nE         'E00020'),\nE        'codes_b': ('E00001',\nE         'E00002',\nE         'E00003',\nE         'E00004',\nE         'E00005',\nE         'E00006',\nE         'E00007',\nE         'E00008',\nE         'E00009',\nE         'E00010',\nE         'E00011',\nE         'E00012',\nE         'E00013',\nE         'E00014',\nE         'E00015',\nE         'E00016',\nE         'E00017',\nE         'E00018',\nE         'E00019',\nE         'E00020'),\nE        'over_a': {'wash_per': 0, 'enr_days': 30},\nE        'over_b': {'wash_per': 25, 'enr_days': 30}},\nE       patients=3,  # or any other generated value\nE       seed=3,\nE   )\nE   Explanation:\nE       These lines were always and only run by failing test cases:\nE           /home/scarndp/.local/share/polytoken/sessions-v1/0f462p-motto/wt/replay-d-1-pass2-20261102/tests/properties/test_pkg_d_config_sharing.py:149\n=========================== short test summary info ============================\nFAILED tests/properties/test_pkg_d_config_sharing.py::test_cohorts_together_equal_separate[wash]\n1 failed in 29.40s",
+    "green_tail": ".                                                                        [100%]\n1 passed in 10.88s"
+  }
+]
