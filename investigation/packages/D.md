@@ -306,3 +306,63 @@ that is enrollment-episode semantics, not the stockpile double-count.
 * Discovery profile was run on the denominators family only (cheapest,
   per instructions); the stage/config families ran on quick (10
   examples each; 12 + 7 dimensions).
+
+## F2-dependent independent age-day validation
+
+Baseline: owned D `22fad196a48284a3cceabe2f2df576b20d6f2464` merged with
+F2 `37e3d89` in isolated branch `inv/0f462p/d-f2-days`; merge baseline
+`7630f386b4ba331917f55aad1385129d6b48414f`. Integrate the subsequent test
+commit only after F2. No production edits or SAS execution were performed.
+The old segment-start oracle/tests remain unchanged in age semantics and do
+not validate F2. The earlier broad no-defect statement is not an F2 verdict.
+
+`d_age_days.py` computes attained whole years separately on each calendar
+ day, then tests each configured lower/upper bound directly. It never uses
+SQL threshold dates, next-band offsets, or intermediate database results.
+Its input is a sequence of member-day occurrences: member counts deduplicate
+IDs, day counts retain multiplicity. The integration fixtures independently
+enumerate enrollment days, retain death day, and remove exclusion day;
+duplicate exclusion claims remove that day only once. Full output rows are
+compared as sorted lists, not sets.
+
+Contract evidence: read-only `ms_cidadenom.sas:1036-1057`, especially 1046,
+uses INTNX with SAMEDAY alignment. Accordingly the oracle uses birthday
+anniversaries adjusted to the month's last available day for leap births.
+Hand pins cover ordinary birthdays, February 29, February 28 in a non-leap
+year, death/exclusion/both on the boundary, two unique members, and exact
+nonempty counts. Generated cases vary window extents, death/exclusion
+positions, and member counts. A cheap property has independent arithmetic
+expectations for days before/on/after a birthday, repeated day occurrences,
+and order invariance.
+
+Finite-top/gapped configurations: config.py:55-79 accepts range tokens and
+the module example contains gaps, but parser acceptance does not establish
+SAS denominator behavior. The SAS loop consumes lower thresholds and does
+not apply finite upper bounds. Literal bounds are pinned in a **model-only**
+test; no finite-top/gapped production or SAS parity assertion is made.
+Integration claims cover contiguous, open-top, year-based bands only.
+Months/weeks/days, overlapping bands, year strata, washout/event scopes,
+and optional-stage/gapped-RX expansions remain followup coverage.
+
+Instrumentation repair: `d_denom.py` no longer populates empty defaultdict
+entries while merging washout/exclusion periods. Hit counters now count
+unique demographic-valid members whose periods actually intersect an
+eligible window. The new tests verify exclusion counters against actual
+window intersection, including outside-window and after-death claims.
+Earlier 50/50 exclusion-hit statistics must not be relied on.
+
+Final commands (sequential, one StageHarness database at a time, threads=1):
+
+* `timeout 180 uv run --extra dev pytest tests/properties/test_pkg_d_age_days.py --hypothesis-profile=quick -q`: exit 0; 16 passed, 5.28s.
+* `timeout 180 uv run --extra dev pytest tests/properties/test_pkg_d_age_days.py --hypothesis-profile=discovery --hypothesis-show-statistics -q`: exit 0; 16 passed, 16.82s; 50 DB examples, 92% nonempty, 60% crossing bands; 500 cheap examples.
+* `timeout 180 uv run --extra dev pytest tests/properties/test_pkg_d_age_days.py -k day_model_independent_counts --hypothesis-profile=deep --hypothesis-show-statistics -q`: exit 0; 2,000 examples, 1 passed, 2.88s.
+* `uv run ruff check --select E4,E7,E9,F tests/properties/oracles/d_age_days.py tests/properties/test_pkg_d_age_days.py tests/properties/oracles/d_denom.py`: exit 0.
+
+Initial setup without the dev extra exited 4 (missing Hypothesis); corrected
+with the declared dev extra. The first suite run exited 1 because event()
+was called outside Hypothesis in deterministic pins; instrumentation moved
+to the generated test, and all final commands passed. Neither was a
+production defect. Verdict: F2 agrees with the independent bounded age-day
+oracle on this tested contract; no genuine F2 defect was found. This is not
+an assertion of complete denominator parity or coverage of ambiguous bands.
+

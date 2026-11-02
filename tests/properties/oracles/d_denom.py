@@ -450,11 +450,14 @@ def expected_denomcounts(dataset: SyntheticDataset,
 
         shared: dict[int, list[tuple[date, date]]] = defaultdict(list)
         for patid in set(washout) | set(exclusion):
-            shared[patid] = _merge(washout[patid] + exclusion[patid])
-        if washout:
-            _fact("washout-hit-members", len(washout))
-        if exclusion:
-            _fact("exclusion-hit-members", len(exclusion))
+            shared[patid] = _merge(washout.get(patid, []) + exclusion.get(patid, []))
+        for name, periods in (("washout", washout), ("exclusion", exclusion)):
+            hit_members = {patid for patid, start, end in windows
+                           if patid in members and patid not in multi
+                           and any(max(start, a) <= min(end, b)
+                                   for a, b in periods.get(patid, []))}
+            if hit_members:
+                _fact(f"{name}-hit-members", len(hit_members))
 
         # ---- event periods and the event-member set --------------------
         # A member with ANY event period row is an event member for the
