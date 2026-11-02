@@ -1,3 +1,4 @@
+# pattern: Functional Core
 """Independent day-enumeration oracle for 92_cidadenom.sql (denomcounts).
 
 Contract (docs/SAS_PARITY.md "enrolled member-days", docs/PARITY_FINDINGS.md
@@ -20,8 +21,9 @@ Contract (docs/SAS_PARITY.md "enrolled member-days", docs/PARITY_FINDINGS.md
 * counting: per USERSTRATA t2cida level and stratum, dennumpts counts
             DISTINCT members with >= 1 eligible day; dennummemdays sums
             eligible days (NULL when output_denom = 'M'). Stratum values
-            are taken at each contiguous eligible segment's start (age at
-            segment start, year of segment start), as the docs state.
+            use independently attained age on each eligible calendar day.
+            Year retains the existing segment-start convention; supported
+            age assertions cover contiguous open-top year bands only.
 * gates   : members with duplicate or missing demographics are excluded;
             cohorts with output_denom = 'N' get no rows.
 
@@ -45,6 +47,7 @@ from typing import Any
 from qrp.config import StudyConfig
 
 from ..synth import SyntheticDataset, rows_for_table
+from .d_age_days import MemberDay, count_age_days
 
 DAY = timedelta(days=1)
 
@@ -530,21 +533,17 @@ def expected_denomcounts(dataset: SyntheticDataset,
                     for seg_start, seg_end in segs:
                         if segs != [(dstart, dend)]:
                             _fact("shaved-windows")
-                        # An INNER join to the band table: a segment whose
-                        # age matches NO band is dropped, and one matching
-                        # several bands is counted once per band (the join
-                        # fans out), exactly as the implementation's join
-                        # does.
-                        bands: list[tuple[str, int]] = []
-                        for st in cohort.age_strata.strata:
-                            v = _age_in_unit(m.birth_date, seg_start, st.unit)
-                            if v is not None and st.lo <= v <= st.hi:
-                                bands.append((st.label, st.ordinal))
-                        if has["agegroup"] and not bands:
-                            continue
-                        if not has["agegroup"]:
-                            bands = [(None, None)]  # type: ignore[list-item]
-                        for band_label, band_ordinal in bands:
+                        bands: list[tuple[str | None, int | None, int]]
+                        if has["agegroup"]:
+                            counts = count_age_days(
+                                tuple(MemberDay(patid, m.birth_date, day)
+                                      for day in sorted(_days(seg_start, seg_end))),
+                                cohort.age_strata,
+                            )
+                            bands = [(b.label, b.ordinal, b.days) for b in counts]
+                        else:
+                            bands = [(None, None, (seg_end - seg_start).days + 1)]
+                        for band_label, band_ordinal, n_days in bands:
                             key = (
                                 level.level_id,
                                 cohort.cohortgrp,
@@ -555,7 +554,6 @@ def expected_denomcounts(dataset: SyntheticDataset,
                                 m.hispanic if has["hispanic"] else None,
                                 str(seg_start.year) if has["year"] else None,
                             )
-                            n_days = (seg_end - seg_start).days + 1
                             if scope == "*":
                                 star_pts[key].add(patid)
                                 star_days[key] += n_days

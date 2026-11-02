@@ -139,8 +139,8 @@ def _one_patient_fixture(death: date) -> SyntheticDataset:
 
 def test_denominator_exclusion_exactly_covers_stratum_boundary() -> None:
     """An exclusion window that shaves EXACTLY the first eligible day
-    moves the segment start across a birthday, so the member's stratum
-    flips — the segment-start stratum contract, boundary-exact.
+    removes the only eligible day before a birthday, so the member
+    appears only in the older band — calendar-day allocation, boundary-exact.
 
     Hand math: born 1950-08-02; query 2014; enrollment 2014-01-01 with
     enr_days 212 so denom_start = 2014-08-01 (age 63); bands '00-63'

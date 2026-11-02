@@ -365,3 +365,57 @@ to the generated test, and all final commands passed. Neither was a
 production defect. Verdict: F2 agrees with the independent bounded age-day
 oracle on this tested contract; no genuine F2 defect was found. This is not
 an assertion of complete denominator parity or coverage of ambiguous bands.
+
+## D reconciliation after F2 — 2026-11-02
+
+Baseline `14911db`; private branch `inv/0f462p/d-reconcile`. This section
+supersedes the historical segment-start age claims above. `d_denom` now
+passes each surviving calendar day to `d_age_days.count_age_days`, after
+its unchanged independent eligibility, washout, exclusion and event-scope
+calculations. Per-stratum member sets still deduplicate IDs; day totals
+still accumulate occurrences across windows and scopes. No SQL age
+threshold formula was copied. Full-row exact comparisons remain intact.
+Only contiguous open-top year-band integration claims are supported;
+finite/gapped bands remain ambiguous. Year retains the prior segment-start
+convention and is not newly validated here.
+
+All runs used the baseline plus the D-only working-tree changes committed
+with this section, serial pytest, one StageHarness database at a time,
+its default threads=1, and `uv run --offline --extra dev pytest`.
+The complete D suite means the four explicit files `test_pkg_d_age_days.py`,
+`test_pkg_d_config_sharing.py`, `test_pkg_d_denominators.py`, and
+`test_pkg_d_optional_stages.py` under `tests/properties/`.
+
+| command suffix / bound | UTC completion | exit | result | pytest time |
+|---|---|---|---|---|
+| denominators, `--hypothesis-profile=quick -q`, timeout 180 | before full quick | 0 | 7 passed | 4.61s |
+| complete D, `--hypothesis-profile=quick -q`, timeout 300 | 20:27:06 | 1 | 41 passed, 1 failed | 130.38s |
+| complete D, `--hypothesis-profile=quick -q --tb=short`, timeout 300 | 20:29:20 | 1 | 41 passed, 1 failed | 117.09s |
+| complete D, `--hypothesis-profile=discovery --hypothesis-show-statistics -q --tb=short`, timeout 900 | 20:38:51 | 1 | 41 passed, 1 failed | 564.51s |
+| age_days, `-k day_model_independent_counts --hypothesis-profile=deep --hypothesis-show-statistics -q`, timeout 180 | 20:38:59 | 0 | 1 passed, 2,000 examples | 2.96s |
+
+**Preserved divergence, not classified as a production defect:** all three
+complete runs fail `test_optional_stage_matches_reference[attrition_person_time]`.
+Minimized input: patients=2, seed=0, GenerateOptions with all five booleans
+false. At cohort_a level 11, production has numpts=0 while the existing
+optional-stage oracle expects 2. This may require reconciling that oracle
+with F1's empty-step contract; it was not changed merely to fit production.
+The failure remains executable, with no xfail or weakened comparison.
+The full suite is therefore **not green**.
+
+Discovery: denominator property passed 50 examples (98% nonempty windows,
+86% nonempty output, 36% actual washout hits, 12% death clipping, **0%
+actual exclusion hits**). Deterministic exclusion tests remain necessary;
+the former claimed 50/50 exclusion distribution was instrumentation error.
+Independent age integration passed 50 examples (one invalid; events 94.12%
+nonempty, 64.71% crossing bands); its pure property passed 500 examples.
+All seven config-sharing dimensions passed 50 examples each; wash rejected
+12 examples. Eleven optional-stage families passed 50 examples each.
+Attrition stopped on its reused counterexample, not 50 successful examples.
+
+Remaining bounded gaps: mandatory nonempty optional-stage fixtures and the
+gapped-RX piece-per-span clip witness were not implemented in this pass.
+The current RX oracle still models only the containing enrollment span;
+its extension needs separate contract validation. Optional-stage `*-ran`
+events prove execution, not nonempty results. No production, shared harness,
+manifest, network/publication, SAS execution, or branch deletion occurred.
