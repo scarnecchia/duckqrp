@@ -45,10 +45,15 @@ SELECT
     CAST({opt_postalcode} AS VARCHAR)      AS zip,
     CAST({opt_postalcode_date} AS DATE)    AS zip_date
 FROM {read_demographic}
--- The ORDER BY is a TOTAL order, not just `birth_date`. Two demographic
--- rows sharing a birth date would otherwise be resolved arbitrarily and
--- the run would not be reproducible. Any tie-break that is not a total
--- order is a latent parity failure; see tests/test_determinism.py.
+-- The ORDER BY is total ONLY when one of these columns separates the
+-- duplicate rows: birth_date, sex, race, hispanic, postalcode. Rows
+-- agreeing on all five (they may still differ in postalcode_date,
+-- which is not ordered) resolve by first-encountered scan order —
+-- deliberately kept, because SAS's own dedupe is `proc sort nodupkey
+-- by PatId` (ms_create_enrollment_spans.sas:198), whose default
+-- unstable sort leaves the survivor among tied rows
+-- order-dependent too. See tests/test_determinism.py and the
+-- TestDemographicsFullTie battery.
 QUALIFY row_number() OVER (
     PARTITION BY patid
     -- the tie-break must use the RESOLVED optional columns too,
