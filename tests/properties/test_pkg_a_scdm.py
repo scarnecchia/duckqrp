@@ -201,14 +201,14 @@ class TestCodeIdentityPreserved:
 
 
 class TestDocumentedOptionalRxamt:
-    @pytest.mark.xfail(
-        strict=True,
-        reason="A-2: INPUTS.md declares dispensing.rxamt optional "
-               "(dose only), but 10_normalize.sql references it "
-               "unconditionally, so a probe-compatible extract "
-               "without the column dies with a BinderException",
-    )
     def test_optional_rxamt_runs(self, tmp_path: Path) -> None:
+        """A-2, FIXED by inv/0f462p/fix-a2: an extract declaring every
+        required column but omitting the documented-optional rxamt used
+        to die at the first stage with a BinderException while `qrp
+        inspect` called the schema compatible. The normalize view now
+        resolves rxamt like every other declared-optional column:
+        absent -> NULL amounts and no amount rule. Was xfail(strict)
+        while the contract was violated."""
         ds = _prep(generate(patients=2, seed=0, options=GenerateOptions(
             duplicate_demographics=True, same_supply_ties=True,
             include_deaths=False)))

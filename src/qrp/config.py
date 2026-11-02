@@ -1579,7 +1579,17 @@ def load_study_dict(raw: dict[str, Any]) -> StudyConfig:
         params = {str(k).lower(): v for k, v in first.items()}
     params.update({str(k).lower(): v for k, v in (raw.get("study") or {}).items()})
 
-    cohortfile = {r["cohortgrp"]: r for r in rows("cohortfile")}
+    # A duplicate cohortgrp row cannot be silently folded away: validate()
+    # documents duplicate cohortgrp as an error, and the fold below used
+    # to let the LAST row win, so conflicting parameters on a doubled
+    # row were resolved silently instead of rejected. Raises with the
+    # same message as the validate guard.
+    cohortfile: dict[str, dict[str, Any]] = {}
+    for r in rows("cohortfile"):
+        grp = r["cohortgrp"]
+        if grp in cohortfile:
+            raise ValueError(f"duplicate cohortgrp {grp!r}")
+        cohortfile[grp] = r
     type2file = {r.get("group", r.get("cohortgrp")): r for r in rows("type2file")}
 
     (codes_by_group, stock_by_group,

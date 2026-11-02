@@ -53,8 +53,8 @@
         "stage gates == plan_stages; fmt key set via harness/pipeline agreement"
       ]
     },
-    {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "pass1-complete", "head": "2d12750", "merged_to_discovery": "462c7bb", "notes": "findings: A-1 duplicate-ID rejection guards unreachable from files (last-row-wins / setdefault merge), A-2 documented-optional dispensing.rxamt crashes 10_normalize (xfail pinned), A-3 demographics full-tie survivor is insert-order dependent but contained (evidence: investigation/witnesses/a-demographics-full-tie-evidence.txt); open contract questions logged for Phase 4"},
-    {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "confirmed finding B2 (overlapping raw enrollment spans double-count a dispensing through stockpile joins; independently reproduced by orchestrator via investigation/probes/b_overlap_probe.py); strict-xfail witness test committed; fix-location ambiguity B1 (SAS-parity lag segmentation vs shave-join fix) open for Phase 4"},
+    {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "pass1-complete", "head": "2d12750", "merged_to_discovery": "462c7bb", "notes": "findings A-1/A-2/A-3 ARBITRATED (see investigation/packages/ARBITRATION.md): A-1 fixed on inv/0f462p/fix-a1 (cohortgrp side; covarnum merge intended), A-2 fixed on inv/0f462p/fix-a2, A-3 resolved doc-only (SAS parity); new lead: diagnosis optionals dx_codetype/pdx/enctype referenced unconditionally in 10_normalize.sql (same class as A-2, unfixed)"},
+    {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "finding B2 ARBITRATED and OPERATOR-RULED: inherited bug-for-bug from the SAS original (ms_create_enrollment_spans -> ms_episoderec2 -> ms_shaveoutside -> ms_stockpiling chain; full citations in investigation/findings/B2-overlapping-enrollment-double-count.md); documented as a defect report, SAS parity kept, no fix branch; strict-xfail witness test_enrollment_overlapping_raw_spans_known_divergence remains as the pin; question B1 resolved (segmentation is parity-intended)"},
     {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "pass1-complete", "head": "8645179", "merged_to_discovery": "5c8b237", "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"},
     {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pending"},
     {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pass1-complete", "head": "0b391e5", "merged_to_discovery": "82e4364", "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md"},
@@ -231,6 +231,51 @@
       "result": "pass",
       "detail": "clean under the repo's ruff>=0.6 default rule set; ruff 0.17.3's expanded defaults add one PYI034 (typing.Self suggestion conflicts with the repo's mypy python_version=3.10 target) — the same expanded-defaults pass reports 100 findings in src/, so this is version drift, not a regression",
       "duration_seconds": null
+    },
+    {
+      "id": "arb-red-b2-1",
+      "package": "B",
+      "command": "python -m pytest tests/test_regression_b2.py -q",
+      "revision": "inv/0f462p/fix-b2 f4d2e6a (test) on c3e60db",
+      "result": "red",
+      "detail": "AssertionError: one dispensing produced 2 rows — claimed double-count reproduced by the standalone regression test at the base",
+      "duration_seconds": null
+    },
+    {
+      "id": "arb-green-b2-1",
+      "package": "B",
+      "command": "python -m pytest tests/test_regression_b2.py tests/test_determinism.py tests/test_rewrites.py -q; python -m pytest tests/test_pipeline.py -q",
+      "revision": "inv/0f462p/fix-b2 c87dc0b",
+      "result": "pass",
+      "detail": "regression 1 passed; determinism+rewrites 15 passed; full pipeline 287 passed, 2 failed (the two pre-existing exempt spill-attribution OOM tests), 1 skipped in 6:53. Prototype divergence branch validated then REMOVED per the operator's parity ruling on B2 (documented as an inherited defect; see investigation/findings/B2-overlapping-enrollment-double-count.md)",
+      "duration_seconds": 413.7
+    },
+    {
+      "id": "arb-red-green-a1-1",
+      "package": "A",
+      "command": "python -m pytest tests/test_regression_a1.py -q",
+      "revision": "inv/0f462p/fix-a1 f971710 (red) then 5bbc4ff (green), both on c3e60db",
+      "result": "red then green",
+      "detail": "red: DID NOT RAISE ValueError; green: 2 passed. determinism+rewrites 15 passed at green; no shipped study/*.json has duplicate cohortgrp rows",
+      "duration_seconds": null
+    },
+    {
+      "id": "arb-red-green-a2-1",
+      "package": "A",
+      "command": "python -m pytest tests/test_regression_a2.py -q; python -m pytest tests/test_determinism.py tests/test_rewrites.py tests/test_ui.py -q; python -m pytest tests/test_pipeline.py -q",
+      "revision": "inv/0f462p/fix-a2 1577f83 (red) then 564eb7a (green), both on c3e60db",
+      "result": "red then green",
+      "detail": "red: BinderException Referenced column \"rxamt\" not found; green: 2 passed + 50 passed/2 skipped + full pipeline 287 passed, 2 failed (exempt spill tests), 1 skipped in 6:55",
+      "duration_seconds": 415.9
+    },
+    {
+      "id": "arb-quick-after-merge-1",
+      "package": "arb",
+      "command": "python -m pytest tests/properties/test_pkg_a_config.py tests/properties/test_pkg_a_sqlsplit.py tests/properties/test_pkg_a_scdm.py tests/properties/test_pkg_a_tiebreak.py tests/test_determinism.py tests/test_rewrites.py tests/test_regression_a1.py tests/test_regression_a2.py --hypothesis-profile=quick; python -m pytest tests/properties/test_pkg_b_{enrollment,stockpile,index,episodes}.py --hypothesis-profile=quick; python -m pytest tests/properties/test_pkg_c_{dose,inclusion,followup}.py tests/properties/test_harness_stages.py --hypothesis-profile=quick",
+      "revision": "arb branch after merges + witness/oracle/harness updates",
+      "result": "pass",
+      "detail": "109 passed (A quick set incl. documented-rejection case, un-xfailed A-2 witness, both regression tests) + 8 passed (B, 0 xfailed, SAS-parity witness) + 38 passed (C + harness)",
+      "duration_seconds": null
     }
   ],
   "baseline": {
@@ -263,7 +308,55 @@
       "note": "stage harness and real pipeline agree table-for-table on the hand fixture — the trust anchor for every stage-level property"
     }
   ],
-  "findings": [],
+  "findings": [
+    {
+      "id": "B2",
+      "doc": "investigation/findings/B2-overlapping-enrollment-double-count.md",
+      "title": "One dispensing inside overlapping enrollment episodes is stockpiled twice — inherited bug-for-bug from the SAS original",
+      "status": "open-inherited (operator-ruled: document as defect, SAS parity kept, no fix branch)",
+      "classification": "production defect, INHERITED from SAS (verified against the original SAS source, /home/scarndp/dev/Sentinel/qrp, package 14.5.0); mitigation expected upstream via the Sentinel model QA Suite (unverified here)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none — join-side lateral one-containing-span fix described in the finding doc as NOT APPLIED; a validated prototype (inv/0f462p/fix-b2, red f4d2e6a / green c87dc0b) was removed per the operator parity ruling, results in passes arb-red-b2-1/arb-green-b2-1",
+      "witness": "investigation/probes/b_overlap_probe.py + strict-xfail pin tests/properties/test_pkg_b_enrollment.py::test_enrollment_overlapping_raw_spans_known_divergence"
+    },
+    {
+      "id": "B1",
+      "doc": "investigation/packages/ARBITRATION.md",
+      "title": "Fix-location question: lag-break segmentation vs shave joins — RESOLVED by SAS source",
+      "status": "resolved",
+      "resolution": "SAS emits overlapping episodes (ms_episoderec2.sas:67-97) and its own shaves fan out per containing span and same-day-sum (ms_shaveoutside macro body; ms_cidanum.sas:1299-1308, 1531-1541; ms_stockpiling.sas proc means N()=NumDispensing) — SAS double-counts, so neither candidate fix preserves parity; decision brief DB-1 for the operator"
+    },
+    {
+      "id": "A-1",
+      "doc": "investigation/findings/A-1-duplicate-cohortgrp-guard-unreachable.md",
+      "title": "Duplicate cohortgrp rows silently resolved last-wins; documented rejection unreachable from files",
+      "status": "fixed",
+      "classification": "production defect (cohortgrp side); covarnum merge intended by design",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix-a1 (red f971710 / green 5bbc4ff), merged to arb",
+      "witness": "tests/test_regression_a1.py::test_duplicate_cohortgrp_rows_are_rejected"
+    },
+    {
+      "id": "A-2",
+      "doc": "investigation/findings/A-2-optional-rxamt-binder.md",
+      "title": "Documented-optional dispensing.rxamt crashes normalize with a BinderException",
+      "status": "fixed",
+      "classification": "production defect (published INPUTS.md contract violated); SAS itself requires the column — nuance documented",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix-a2 (red 1577f83 / green 564eb7a), merged to arb",
+      "witness": "tests/test_regression_a2.py::test_optional_rxamt_absent_runs (+ zero-amount exclusion pin)"
+    },
+    {
+      "id": "A-3",
+      "doc": "investigation/findings/A-3-demographics-full-tie-comment.md",
+      "title": "'TOTAL order' comment false for full-tie duplicate demographics — doc-only; behavior is SAS parity and strictly more deterministic than SAS",
+      "status": "resolved-doc-only",
+      "classification": "documentation defect (behavior kept; SAS dedupes by PatId alone with an unstable sort, ms_create_enrollment_spans.sas:198-201)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none — replacement comment wording proposed verbatim in the finding doc",
+      "witness": "investigation/witnesses/a-demographics-full-tie-evidence.txt"
+    }
+  ],
   "open_questions": [
     "demographics QUALIFY tie-break is total only if (birth_date, sex, race, hispanic, postalcode) differ across duplicate rows — full-tie behavior unverified",
     "tools/gen_synthetic.py writes rxamt as an integer (BIGINT), tripping the pipeline's fractional-amount truncation warning; calibrating oracles against it inherit that semantics",

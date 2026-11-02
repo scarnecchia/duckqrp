@@ -1122,6 +1122,15 @@ def run(
     # like the code column rather than assumed, since SCDM extracts vary.
     ct_col = next((c for c in ("rx_codetype", "codetype", "ndc_codetype")
                    if c in disp_cols), None)
+    # rxamt is OPTIONAL in SCDM (INPUTS.md: dose only) but is referenced
+    # on every row of the dispensing view, so an extract without the
+    # column failed at the first stage with a BinderException. Resolved
+    # like the code column: without it the amounts are simply absent —
+    # the view gets NULL and SAS's `rxamt IS NOT NULL AND rxamt > 0`
+    # rule is resolved out (there is no amount to test); with it the
+    # rule is spelled with the real column. A dose study without the
+    # column sees NULL amounts rather than invented ones.
+    rxamt_col = "rxamt" if "rxamt" in disp_cols else None
 
     # An INTEGER rxamt means fractional amounts were truncated when the
     # extract was written — a 0.6 mL prefilled syringe becomes 0, is then
@@ -1188,6 +1197,15 @@ def run(
         # NULL when the extract has no codetype: the exposure join
         # treats that as "match any", which is the old behaviour.
         "dispensing_codetype": ct_col or "NULL",
+        # NULL when the extract has no rxamt (optional, dose only): the
+        # amounts are absent, so the SAS `rxamt IS NOT NULL AND
+        # rxamt > 0` rule cannot apply and is resolved out — see the
+        # view. Extracts WITH the column keep the rule verbatim.
+        "dispensing_rxamt": rxamt_col or "NULL",
+        "dispensing_amt_rule": (
+            f"({rxamt_col}) IS NOT NULL AND ({rxamt_col}) > 0"
+            if rxamt_col else "TRUE"
+        ),
         "enrollment_chart": chart_col,
         **{f"opt_{k}": v for k, v in optional_cols.items()},
         "indata": str(Path(indata)).rstrip("/"),

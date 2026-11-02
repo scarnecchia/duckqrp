@@ -155,19 +155,35 @@ def test_enrollment_matches_day_model(spec: dict) -> None:
 
 
 # ---------------------------------------------------------------------
-# Known divergence (lead B1): overlapping raw spans whose inner boundary
-# ruptures mid-episode. The day-model merges the outer span whole; the
-# shipped SQL breaks against the immediately PREVIOUS span (as the SAS
-# parity notes document), emitting episodes that OVERLAP each other.
-# Everything downstream then fans out per containing span (lead B2: a
-# single dispensing is stockpiled twice). xfail(strict) so a future fix
-# fails this test and prompts its removal.
+# B2 pin (OPERATOR RULED: inherited defect, parity kept — see
+# investigation/findings/B2-overlapping-enrollment-double-count.md).
+# Overlapping raw spans whose inner boundary ruptures mid-episode make
+# the day-model merge the outer span whole, while the shipped SQL
+# breaks against the immediately PREVIOUS span and emits OVERLAPPING
+# episodes; everything downstream then fans out per containing span
+# (the single dispensing below is stockpiled twice, numdispensing=2,
+# supplies 16/46). Verified bug-for-bug against the ORIGINAL SAS
+# source (read-only reference tree): ms_create_enrollment_spans.sas:
+# 109-117 builds the shave reference via %MS_EPISODEREC2, whose
+# lag-break (:67-77) and min/max reconciliation (:79-97) emit the same
+# overlapping episodes; ms_shaveoutside (cartesian claims×spans join)
+# shaves per containing span; ms_cidanum.sas:1299-1308 pre-shaves,
+# ms_stockpiling same-day-sums the copies (N()=NumDispensing), and
+# ms_cidanum.sas:1531-1541 re-shaves through the same join. So the
+# behavior is INHERITED from SAS, and fixing the Python side would
+# diverge from SAS parity — not authorized; the Sentinel model QA
+# Suite is expected to prevent overlapping enrollment spans upstream
+# (mitigation, unverified here). xfail(strict) pins the CURRENT
+# behavior against the day-model expectation; it fails the day any
+# parity policy changes, prompting removal.
 # ---------------------------------------------------------------------
 
 @pytest.mark.xfail(
-    reason="lead B1/B2: overlapping raw spans yield overlapping "
-           "enrollment episodes and a stockpiled double-count; see "
-           "investigation/packages/B.md",
+    reason="B2 (inherited from SAS, operator-ruled): overlapping raw "
+           "spans yield overlapping enrollment episodes and a "
+           "stockpiled double-count; see "
+           "investigation/findings/B2-overlapping-enrollment-"
+           "double-count.md and investigation/packages/ARBITRATION.md",
     strict=True)
 def test_enrollment_overlapping_raw_spans_known_divergence() -> None:
     dataset = mini_dataset(
@@ -183,14 +199,16 @@ def test_enrollment_overlapping_raw_spans_known_divergence() -> None:
     model_rows = _model_rows(dataset, study)
     with StageHarness(study) as harness:
         harness.attach_dataset(dataset)
-        harness.run_through("enrollment_spans")
+        harness.run_through("episodes + masterlist")
         sql = fetch_rows(harness.engine, "enrollment_spans")
-    # Day-model: ONE episode (2011-01-01 .. 2011-12-31) — C's start sits
-    # inside A's end, so the accumulator merges it; SQL instead breaks C
-    # from B (77 blank days from B's end) and emits a second, nested
-    # episode.
-    assert len(sql) == 1, (
-        f"overlapping raw spans produced {len(sql)} episodes: {sql}; "
+        stock = fetch_rows(harness.engine, "stockpiled")
+    # Day-model: ONE episode (2011-01-01 .. 2011-12-31) and ONE
+    # stockpiled record (numdispensing=1, rxsup=30). The SQL instead
+    # emits the two overlapping episodes and TWO stockpiled rows
+    # (numdispensing=2, supplies 16 and 46) — SAS's own output.
+    assert len(sql) == 1 and len(stock) == 1, (
+        f"overlapping raw spans produced {len(sql)} episodes and "
+        f"{len(stock)} stockpiled rows for one dispensing; "
         f"day-model: {model_rows}")
     assert model_rows == [
         ("MD|0|0", 1, 1, date(2011, 1, 1), date(2011, 12, 31))]
