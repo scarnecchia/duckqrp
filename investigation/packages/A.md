@@ -1,5 +1,4 @@
 # Package A — Input contracts, normalization, SQL parsing
-
 Branch `inv/0f462p/a-input-contracts`, worktree
 `sessions-v1/0f462p-motto/wt/a`. PRIVATE campaign artifact.
 
@@ -202,3 +201,133 @@ the witness).
   (needs pyreadstat/sas7bdat fixtures; no synthetic SAS writer
   exists). Its JSON contract is covered from the consumer side via
   `inputfile.load()`.
+
+---
+
+# Pass 2 (Phase 3)
+
+Branch state: pass-1 HEAD `2d12750` merged with integrated discovery
+`8f9f603` (clean merge; files disjoint). All runs below are on the
+merged tree with the pass-2 changes, pre-commit.
+
+## What changed vs pass 1
+
+1. **New permanent property for the A-2/A-4 class**
+   (`test_pkg_a_optional_columns.py` + `oracles/a_optional_columns.py`):
+   EVERY column INPUTS.md/scdm.py declares optional (27 columns across
+   7 tables) is omitted from an otherwise-complete, fully-populated
+   extract and the outcome characterized per column, asserting today's
+   behavior: **14 resolve-and-run** (NULL-resolved or unreferenced;
+   claim extraction unchanged; `dispensing.rxamt` additionally pins the
+   fix-a2 semantics — amount rule resolved OUT, rows kept with NULL
+   amounts), **18 raise** with a BinderException naming the column,
+   each pinned `xfail(strict=False)` asserting the DOCUMENTED contract
+   so the pins flip to XPASS as fixes land. Plus a generated 1–2-column
+   omission-set property (outcome class = union of members' classes)
+   and a transcription cross-check against `qrp.scdm.SCDM` so the hand
+   list cannot drift.
+2. **NEW LEAD — the A-4 family is larger than the arbitrated trio.**
+   Beyond diagnosis `dx_codetype`/`pdx`/`enctype` (A-4), the probe
+   found the same unconditional-reference crash for **procedure
+   `px_codetype`/`enctype`** (`_cdm_procedure_raw` binds them
+   unconditionally; crashes even for an RX-only study because the PX
+   extraction block materializes the view regardless of codes) and for
+   **all 13 `lab_result` optionals** (`cdm_lab` binds them all;
+   surfaces only when a labs-enabled study runs the labs stage — the
+   probe configures a lab code so the characterization is real, not
+   vacuous). Severity: same as A-2 pre-fix (probe reports the schema
+   compatible; run dies at bind). Evidence: the 18 xfail pins + probe
+   output recorded in `oracles/a_optional_columns.py` docstring
+   (revision 8f9f603).
+3. **Boundary characterization refreshed on the merged tree.**
+   fix-a1 verified: the arbiter-updated
+   `duplicate_cohortgrp_rejected_at_load` (was
+   `..._collapse_to_last`) passes as a documented rejection; renamed
+   the stale case id to match the fixed contract (arbiter updated the
+   kind/fragment, I only renamed). The duplicate-covarnum case remains
+   an accurate characterization — the covariates parser was not part of
+   fix-a1 and still merges rows by covarnum (first row's windows,
+   union of codes); the validate guard remains unreachable from files.
+   fix-a2 verified: `TestDocumentedOptionalRxamt` (arbiter-updated,
+   xfail removed) passes; the new property additionally pins the
+   resolved-out amount rule.
+4. **Generator improvements — coincident bounds.** Six new
+   min==max-style shapes the metamorphic suite never generated:
+   `agestrat` "65-65" (coincident stratum), `t2washper == enrdays`
+   (accepted edge of the documented wash>enr rejection), covariate
+   windows `covfrom == covto` (one-day window), lab ranges `7:7`
+   (lo == hi), stockpiling `suprange` "5-5", and duplicate code rows in
+   COHORTCODES (duplicates preserved verbatim in order — identity, not
+   set). Authored all-knobs case rides the semantic-case
+   parametrization; a `@given` knob-subset property asserts per-knob
+   hand expectations with `event()` rates.
+5. **`oracles/a_scdm_layouts.py` extended**: `drop_by_table` (the
+   per-column omission surface) and all EIGHT canonical tables now
+   written (matching `synth.write_parquet`'s write-every-table rule, so
+   column omission is exercised against a PRESENT table, and the
+   empty-table ≡ absent-table accidental equivalence of pass 1 is
+   gone).
+
+## Pass-2 run records (for the manifest)
+
+```
+id: a-pass2-discovery-1
+command: python -m pytest tests/properties/test_pkg_a_config.py tests/properties/test_pkg_a_sqlsplit.py tests/properties/test_pkg_a_scdm.py tests/properties/test_pkg_a_tiebreak.py tests/properties/test_pkg_a_optional_columns.py --hypothesis-profile=discovery --hypothesis-show-statistics
+revision: pre-commit (discovery 8f9f603 merged into inv/0f462p/a-input-contracts + pass-2 changes)
+result: 107 passed, 18 xfailed
+duration: 74.3s wall (pytest reports 74.03s)
+key stats: config metamorphic 500/500 (axes 49.6-53.8%); coincident knobs
+  62.7-68.3% each (500 examples, 71 dedup-invalids); sqlsplit hazards
+  comment_only 62%, tail-without-semicolon 50%, ;in-string 46%,
+  line-comment 30%, block-comment 28%, escaped-quote 22%, quoted-ident
+  18% (50 DB examples); optional-column sweep 50 examples across 7
+  tables, crash-surface BinderException 26.3% of generated omission
+  sets, classes runs/raises both hit for mixed procedure sets.
+```
+
+```
+id: a-pass2-deep-1
+command: python -m pytest tests/properties/test_pkg_a_config.py --hypothesis-profile=deep --hypothesis-show-statistics
+revision: pre-commit (as above)
+result: 38 passed
+duration: 2.8s wall
+key stats: representation metamorphic 2000/2000 (axes 49.5-52.0%);
+  coincident-bound knob space exhausted (63 subsets; 1956 passing,
+  knobs 77.52% each, "nothing left to do").
+```
+
+```
+id: a-pass2-quick-gate-1
+command: python -m pytest tests/properties/test_pkg_a_* --hypothesis-profile=quick
+revision: pre-commit (as above)
+result: 107 passed, 18 xfailed
+duration: 36.2s wall
+key stats: regression gate on merged tree incl. the new optional-column
+  property (15 passed + 18 xfailed standalone) and coincident-bound
+  property. Companion gates: tests/test_rewrites.py +
+  tests/test_determinism.py -> 15 passed (2.5s); ruff
+  --select E4,E7,E9,F tests/properties clean; mypy src
+  tests/properties clean (72 files).
+```
+
+## Statistics highlights and remaining gaps
+
+* All six coincident-bound knobs fire at 63–77% in discovery/deep —
+  the pass-1 gap (no coincident-bound shapes at all) is closed.
+* Optional-column sweep covers 27/27 declared-optional columns
+  deterministically (parametrized) + generated 1–2 column sets per
+  table at 50 discovery examples; every table's runs and raises
+  classes both exercised (mixed-class procedure sets included).
+* Gaps NOT closed, and why:
+  - procedure/lab crashes are conditional on stage materialization;
+    the property characterizes them under one labs-enabled study and a
+    populated procedure row. Whether omission ALSO changes results
+    silently in studies that never materialize the views (e.g. labs
+    off) is uncharacterized — those runs legitimately never read the
+    columns.
+  - CSV inputs and `--table-map`-driven resolution remain covered by
+    contract reading only (unchanged from pass 1).
+  - The 71 "invalid" cases in the discovery coincident run are
+    hypothesis dedup/exhaustion of the 63-subset space, not filtering;
+    deep confirms full coverage.
+

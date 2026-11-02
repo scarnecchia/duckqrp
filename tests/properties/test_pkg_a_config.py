@@ -60,7 +60,8 @@ def read_sem(study: StudyConfig, path: str) -> object:
     if path == "covariates":
         # compact hand-readable encoding of the covariate list
         return "; ".join(
-            f"{c.covarname}:from={c.covfrom},codes={len(c.codes)}"
+            f"{c.covarname}:from={c.covfrom},to={c.covto},"
+            f"codes={len(c.codes)}"
             for c in study.covariates
         )
     return getattr(study, path)
@@ -229,6 +230,33 @@ class TestConfigTranslationSemantics:
             study = _load_from_file(payload, lookup, Path(tmp))
         assert_semantics(study,
                          {k: fx.BASE_EXPECT[k] for k in fx.CORE_SEMANTICS_KEYS})
+
+    @given(
+        knobs=st.sets(st.sampled_from(fx.COINCIDENT_KNOBS),
+                      min_size=1, max_size=len(fx.COINCIDENT_KNOBS)
+                      ).map(lambda s: tuple(sorted(s))),
+    )
+    @example(knobs=("agestrat", "covar_point", "dup_code", "lab_eq",
+                    "sup_eq", "wash_eq_enr"))
+    @example(knobs=("dup_code",))
+    @example(knobs=("lab_eq",))
+    @example(knobs=("sup_eq",))
+    @example(knobs=("wash_eq_enr",))
+    def test_coincident_bound_semantics(self, knobs: tuple[str, ...]
+                                        ) -> None:
+        """min==max shapes pass 1 never generated: coincident agestrat
+        bounds (65-65), wash == enr_days (the accepted edge of the
+        documented rejection), one-day covariate windows (covfrom ==
+        covto), lab ranges with lo == hi, stockpiling ranges with lo ==
+        hi, and code lists carrying a duplicate code. Each knob's
+        translation is asserted against its hand expectation; the
+        events report the coincident-bound rates."""
+        for k in knobs:
+            event(f"coincident:{k}")
+        payload = fx.apply_coincident(fx.base_payload(), knobs)
+        with tempfile.TemporaryDirectory(prefix="qrp-a-coinc-") as tmp:
+            study = _load_from_file(payload, None, Path(tmp))
+        assert_semantics(study, fx.coincident_expect(knobs))
 
 
 # ---------------------------------------------------------------------
