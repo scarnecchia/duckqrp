@@ -321,9 +321,18 @@ SELECT
     -- all_events identical to eps_wevents by construction, so a cohort
     -- with recurrent events under-reported them. Reported in review.
     coalesce(fe.numevents, 0)         AS numevents,
-    -- person-time runs to the event, or to the end of the episode
-    span_days(m.atriskindexdt, least(COALESCE(fe.eventdt, m.episodeenddt),
-                                     m.episodeenddt)) AS person_days,
+    -- person-time runs to the event, or to the end of the episode.
+    -- Floored at 0 like followuptime: when at_risk_start pushes the
+    -- at-risk window past the episode end there are ZERO days at risk,
+    -- not negative ones — SAS floors the same span at 0 via
+    -- Max(0, ...) (ms_finalizeptsmasterlist.sas:305) and deletes
+    -- episodes with no at-risk day outright
+    -- (ms_createptsmasterlist.sas:175-176). Unfloored, the negative
+    -- rows are summed into the denominators table and inflate the
+    -- event rates.
+    greatest(0, span_days(m.atriskindexdt,
+                          least(COALESCE(fe.eventdt, m.episodeenddt),
+                                m.episodeenddt))) AS person_days,
     CASE
         WHEN fe.eventdt IS NOT NULL           THEN 'event'
         WHEN m.episodeenddt = m.deathdt       THEN 'death'
