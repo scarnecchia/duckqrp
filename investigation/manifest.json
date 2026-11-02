@@ -53,7 +53,7 @@
         "stage gates == plan_stages; fmt key set via harness/pipeline agreement"
       ]
     },
-    {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "in_progress"},
+    {"id": "A", "branch": "inv/0f462p/a-input-contracts", "scope": "config.py, inputfile.py, scdm.py, sqlsplit.py, tools/sas_inputfiles_to_json.py, INPUTS.md: config translation semantics, invalid boundaries, SQL split execution equivalence, SCDM alias/partition equivalence", "status": "pass1-complete", "head": "2d12750", "merged_to_discovery": "462c7bb", "notes": "findings: A-1 duplicate-ID rejection guards unreachable from files (last-row-wins / setdefault merge), A-2 documented-optional dispensing.rxamt crashes 10_normalize (xfail pinned), A-3 demographics full-tie survivor is insert-order dependent but contained (evidence: investigation/witnesses/a-demographics-full-tie-evidence.txt); open contract questions logged for Phase 4"},
     {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "confirmed finding B2 (overlapping raw enrollment spans double-count a dispensing through stockpile joins; independently reproduced by orchestrator via investigation/probes/b_overlap_probe.py); strict-xfail witness test committed; fix-location ambiguity B1 (SAS-parity lag segmentation vs shave-join fix) open for Phase 4"},
     {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "in_progress"},
     {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pending"},
@@ -61,6 +61,33 @@
     {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pending"}
   ],
   "passes": [
+    {
+      "id": "pkg-a-quick-1",
+      "package": "A",
+      "command": "python -m pytest tests/properties/test_pkg_a_* tests/properties/test_ac1_infrastructure.py --hypothesis-profile=quick",
+      "revision": "2d12750",
+      "result": "pass",
+      "detail": "95 passed, 1 xfailed (strict A-2 witness)",
+      "duration_seconds": 29.5
+    },
+    {
+      "id": "pkg-a-discovery-stats-1",
+      "package": "A",
+      "command": "python -m pytest tests/properties/test_pkg_a_config.py --hypothesis-profile=discovery --hypothesis-show-statistics",
+      "revision": "2d12750",
+      "result": "pass",
+      "detail": "representation metamorphic 500/500, all re-spelling axes 48-53%; verbatim slices 500/500; mandatory shapes carry rare interactions (tail-push ~40%, escaped quotes ~30%, quoted identifiers ~20%)",
+      "duration_seconds": null
+    },
+    {
+      "id": "orchestrator-merge-a-1",
+      "package": "A",
+      "command": "python -m pytest tests/properties --hypothesis-profile=quick",
+      "revision": "462c7bb (discovery merge)",
+      "result": "pass",
+      "detail": "113 passed, 2 xfailed in campaign venv after merge (strict xfails: B2, A-2)",
+      "duration_seconds": 38.0
+    },
     {
       "id": "pkg-b-quick-1",
       "package": "B",
