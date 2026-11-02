@@ -92,7 +92,42 @@
 - **related findings:** A-2 (same mechanism, dispensing.rxamt); the
   procedure/lab family below (same class, unfixed).
 
-## Expanded family reported after the diagnosis fix
+## Complete-family follow-through
+
+The clean standalone branch `inv/0f462p/fix3-a4-complete` supersedes
+`inv/0f462p/fix2-a4` for delivery. The old branch is preserved. Its
+`tests/test_pipeline.py` compatibility changes remain integration-only.
+
+- Base: `c3e60db5d08343b1cebbb90d234602f09cb0d70d`.
+- Red: `8bc521e`; standalone `tests/test_optional_claim_columns.py`.
+- Green: `a6a74e4f1116e096572170551aa44085f84d995c`.
+- Typing correction: `f1dca19` (separate commit, no history rewrite).
+- All 18 individual omissions and all three per-table omission sets
+  now match explicit-NULL controls; three present-value controls pass.
+- Keys are table-qualified, preventing diagnosis/procedure `enctype`
+  availability from leaking between tables. Existing casts and defaults
+  are unchanged.
+- Red command: `PYTHONPATH=src ../arb2/.venv/bin/python -m pytest
+  tests/test_optional_claim_columns.py -q --tb=no` from the clean
+  worktree: 21 failed, 3 passed, 11.49s, captured pytest exit 1.
+- Green same suite: 24 passed, 16.83s, exit 0.
+- Arb2 integration: standalone suite plus
+  `tests/test_pipeline.py::test_claim_views_envelope_inpatient_stays`:
+  25 passed, 17.43s, exit 0.
+- Existing A4/F1/F2 regressions plus determinism and rewrites:
+  20 passed, 4.49s, exit 0. Those older tests use their existing thread
+  settings; the new standalone suite explicitly uses DuckDB threads=1.
+- `mypy src/qrp/pipeline.py`: success after the tuple-loop variable
+  correction. `ruff check tests/test_optional_claim_columns.py`: pass.
+  Pipeline Ruff reports six existing import/broad-exception findings.
+
+Remaining campaign work: transfer package A's optional-column property
+and its `a_scdm_layouts` dependency from `f5a2a85`, remove obsolete
+expected-crash handling, and run broader integration validation. The
+standalone suite queries `cdm_lab` directly; it does not enable the labs
+stage. No claim of that additional stage validation is made here.
+
+## Expanded family reported after the diagnosis fix (historical)
 
 Package A's pass-2 sweep (commit `f5a2a85`, reported by the campaign
 orchestrator) extends this same published-contract violation to procedure
