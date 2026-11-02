@@ -548,7 +548,11 @@ def expected_covariates(master: list[dict[str, Any]],
     overlapping the anchor window. RX claims go through the documented
     chain: clip to enrollment pieces, same-day sum, chain, overlap by
     day (dateonly covariates use start dates only)."""
-    defs = {c["covarnum"]: c for c in cov_cfg}
+    # cfg_covariates carries one row per (cohortgrp, covarnum); keying
+    # by covarnum alone kept only the last cohort's row and silently
+    # skipped every other cohort's episodes (masked while the starved
+    # fixtures compared empty against empty).
+    defs = {(c["cohortgrp"], c["covarnum"]): c for c in cov_cfg}
     return _covariate_rows(master, claims, defs, codes_by_covarnum,
                            spans_by_cfg, start_date)
 
@@ -559,8 +563,8 @@ def _covariate_rows(master, claims, defs, codes, spans_by_cfg, start_date):
     other_claims = [c for c in claims if c["codecat"] != "RX"]
     # build code sets from the cfg rows the caller collected
     for m in master:
-        for covnum, cov in defs.items():
-            if cov["cohortgrp"] != m["cohortgrp"]:
+        for (_grp, covnum), cov in defs.items():
+            if _grp != m["cohortgrp"]:
                 continue
             dateonly = bool(cov.get("dateonly"))
             anchor_f = m.get("episodeenddt") \
@@ -1047,7 +1051,10 @@ def expected_attrition(demographics: list[dict[str, Any]],
         for lv in (2.0, 3.0, 4.0, 5.0):
             counts[(grp, lv)] = n2
         # counts over GROUP BY cohortgrp produce NO row when the cohort
-        # has no records at all — n stays NULL (absent), never 0
+        # has no records at all — n stays NULL (absent) in this raw
+        # grid, mirroring production's `_att_counts`. The skeleton walk
+        # below applies the counted-CTE contract to that absence: a
+        # missing counted row is 0, only blanks carry.
         gi_rows = gi.get(grp, set())
         if gi_rows:
             # level 6 counts DISTINCT members, level 7 the records
@@ -1096,31 +1103,35 @@ def expected_attrition(demographics: list[dict[str, Any]],
                                        if r["cohortgrp"] == grp})
     rows = []
     for grp in sorted(cfg_enr):
-        # prev_raw is the RAW count of the previous counted level inside
-        # the (init|excl) partition — NULLs propagate (production's lag
-        # runs over the raw grid), while `remaining` carries the last
-        # non-NULL count forward across NULL and blank rows.
-        prev_raw: int | None = None
-        last_seen: int | None = None
+        # F1 empty-step contract (ms_attrition_cidacompute.sas:77-88,
+        # :112-119; 70_outputs.sql `counted` CTE): a counted step's
+        # count(*) over an EMPTY relation is 0, never missing — the first
+        # empty counted step takes the whole drop as its exclusion and
+        # every later counted step reports 0. Only 'blank' rows carry
+        # the previous remaining forward. prev_counted mirrors the
+        # production lag's (init|excl) partition: blanks and the final
+        # row never feed an exclusion's previous count.
+        prev_counted: int | None = None
+        last_n0: int | None = None
         for lv, kind, claim_level, descr in _ATTR_SKELETON:
-            n = counts.get((grp, lv))
-            remaining = n if n is not None else last_seen
+            n0 = counts.get((grp, lv))
+            if n0 is None and kind != 'blank':
+                n0 = 0
+            remaining = n0 if n0 is not None else last_n0
             if kind == 'blank':
                 excluded = 0
             elif kind == 'init' or kind == 'final':
                 excluded = None
             else:
-                excluded = None if prev_raw is None or n is None \
-                    else prev_raw - n
+                excluded = None if prev_counted is None \
+                    else prev_counted - n0
             rows.append({"group": grp, "level": lv,
                          "claim_level": claim_level, "descr": descr,
                          "remaining": remaining, "excluded": excluded})
-            # blanks live in their own lag partition: only counted levels
-            # advance prev_raw
-            if kind != 'blank':
-                prev_raw = n
-            if n is not None:
-                last_seen = n
+            if kind in ('init', 'excl'):
+                prev_counted = n0
+            if n0 is not None:
+                last_n0 = n0
         # 18.n information rows, one per (criteria, cond) of the cohort
         conds = sorted({(r["criteria"], r["cond"], r["cond_name"])
                         for r in inclusion_cfg

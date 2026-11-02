@@ -118,14 +118,25 @@ def study_with_features(
     start: date = date(2014, 1, 1),
     end: date = date(2014, 12, 31),
 ) -> StudyConfig:
-    """build_study plus the feature blocks, with loader care settings."""
+    """build_study plus the feature blocks, with loader care settings.
+
+    wash_per/enr_days are 30, not the 183 defaults: the generator's
+    dispensing supplies are 7-90 days, so an episode can only chain
+    >=183 enrolled days in rare draws and ptsmasterlist comes out empty
+    for most examples — every stage comparison would then pass against
+    an equally empty oracle (the vacuity this suite exists to avoid).
+    30 keeps the min-enrollment gate discriminating (supplies 7/14 still
+    fail it) while yielding members on ordinary draws. wash_per must
+    stay <= enr_days (config.py validation).
+    """
     s = build_study(
         dataset_codes, event_codes, start=start, end=end,
         covariates=covariates, inclusions=exclusions,
         risk_scores=risk_scores, strata=strata, zipfile_rows=zipfile,
         utilization=utilization, drug_classes=drug_classes,
-        lab_codes=lab_codes, mfu=mfu)
-    return replace(s, cohorts=tuple(wildcard_events(c) for c in s.cohorts))
+        lab_codes=lab_codes, mfu=mfu, wash_per=30)
+    short_days = tuple(replace(c, enr_days=30) for c in s.cohorts)
+    return replace(s, cohorts=tuple(wildcard_events(c) for c in short_days))
 
 
 def split_codes(codes: tuple[str, ...]) -> tuple[tuple[str, ...],
