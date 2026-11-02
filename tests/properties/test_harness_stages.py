@@ -10,6 +10,7 @@ lives in test_harness_pipeline.py).
 from __future__ import annotations
 
 import hashlib
+from datetime import date
 
 import pytest
 
@@ -44,12 +45,21 @@ def test_harness_hand_fixture_matches_hand_calculation() -> None:
 
     P1: two E00001 fills (2014-03-10, 2014-04-09) -> one episode
         (the second fill sits inside the 183-day washout of the first
-        index date) and one event diagnosis; an ambulatory claim inside
-        their 2014-05-01..05 IP stay is enveloped to IP/'X'.
+        index date) and one attributed outcome; an ambulatory claim
+        inside their 2014-05-01..05 IP stay is enveloped to IP/'X'.
     P2: noise drug only -> no cohort membership; dies 2015-01-01.
     P3: E00001 fill dated before their enrollment starts -> excluded.
     P4: duplicate demographic rows and a same-day/same-supply E00021
         tie pair -> one episode in cohort_b, tie-breaks exercised.
+
+    Events: the builder's studies carry the loader's wildcard care
+    settings, so P1's two diagnoses become FOUR event_claims rows (both
+    codes, both cohorts; extraction is query-period-bounded, not
+    enrollment-bounded), of which exactly ONE attributes — the episode's
+    supply ends 2014-05-08, so first_event is D00002 on 2014-05-03 and
+    the 2014-06-01 claim lands outside the window. A builder that lost
+    the care-setting rows would leave ALL of these empty (the vacuity
+    test_property_builder_events.py calibrates against).
     """
     dataset, study = hand_fixture()
     with StageHarness(study) as harness:
@@ -91,6 +101,20 @@ def test_harness_hand_fixture_matches_hand_calculation() -> None:
             "SELECT enctype, pdx FROM cdm_diagnosis WHERE code = 'D00002'"
         ).fetchall()
         assert env == [("IP", "X")]
+
+        # Event attribution is real, not vacuous: "follow-up + events"
+        # runs before "attrition + denominators", so both tables exist.
+        # Four extracted claims (both codes x both cohorts), one
+        # attributed outcome, hand-computed.
+        n_claims = harness.engine.con.execute(
+            "SELECT count(*) FROM event_claims").fetchone()
+        assert n_claims is not None and int(n_claims[0]) == 4
+        first = harness.engine.con.execute(
+            "SELECT cohortgrp, patid, indexdt, eventdt, numevents "
+            "FROM first_event ORDER BY cohortgrp, patid"
+        ).fetchall()
+        assert first == [("cohort_a", 1, date(2014, 3, 10),
+                          date(2014, 5, 3), 1)]
 
 
 # ---------------------------------------------------------------------
