@@ -1,0 +1,14 @@
+[a-1] package A: base 2d12750 diff investigation/calibrations/a-1.patch (recorded)
+[a-1] RED (exit 1, pattern matched) -> GREEN (exit 0) -> worktree removed  (2.5s)  OK
+[b-1] package B: base 1d4dfec diff investigation/calibrations/b-1.patch (reconstructed)
+[b-1] RED (exit 1, pattern matched) -> GREEN (exit 0) -> worktree removed  (2.6s)  OK
+[c-1] package C: base 8645179 diff investigation/calibrations/c-1.patch (reconstructed)
+[c-1] RED (exit 1, pattern matched) -> GREEN (exit 0) -> worktree removed  (8.9s)  OK
+[e-1] package E: base 0b391e5 diff investigation/calibrations/e-1.patch (reconstructed)
+[e-1] RED (exit 1, pattern matched) -> GREEN (exit 0) -> worktree removed  (8.1s)  OK
+[f-1] package F: base c4b61a5 diff investigation/calibrations/f-1.patch (reconstructed)
+[f-1] RED (exit 1, pattern matched) -> GREEN (exit 0) -> worktree removed  (1.2s)  OK
+[d-1-pass2-20261102] package D: base d3b6043cc6f1c9b8746740fd5d751ca896f014c3 diff investigation/calibrations/d-1.patch (reconstructed)
+[d-1-pass2-20261102] RED (exit 1, pattern matched) -> GREEN (exit 0) -> worktree removed  (41.4s)  OK
+replay OK for 6 record(s): ['a-1', 'b-1', 'c-1', 'e-1', 'f-1', 'd-1-pass2-20261102']
+replay_exit=0
