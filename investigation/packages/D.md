@@ -548,11 +548,11 @@ to edit).
 |---|---|---|---|---|
 | complete D, quick, timeout 300 | af8021a | 0 | 46 passed | 120.35s |
 | complete D, quick, timeout 300 | af8021a | 0 | 46 passed | 120.52s |
-| complete D, discovery + statistics, timeout 900 | af8021a | 1→0 after fixes | 1 failed (mfu, classified: legit emptiness, guard added) then 46 passed | 595-614s |
-| optional stages, quick | final | 0 | 16 passed | 31-34s |
-| ruff check --select E4,E7,E9,F tests/properties | final | 0 | All checks passed | — |
-| mypy src tests/properties | final | 0 | 3 errors, all pre-existing outside D ownership | — |
-
-(Exact final-SHA reruns recorded in the table above were executed at the
-pass's final commit; the af8021a rows are the mid-pass battery that
-surfaced and classified the mfu case.)
+| complete D, discovery + statistics, timeout 900 | af8021a/f1eb9c4 | 1 twice | 45-46 passed; 2 counterexamples found, diagnosed, fixed (distindex rxdate, covariates DISTINCT), then 1 labs failure classified as float-order boundary | 595-614s |
+| labs case, discovery (exact counterexample) | cc4945d parent | 0 | 1 passed after exact-decimal mean | 12.6s |
+| complete D, quick, timeout 300 | cc4945d | 0 | 46 passed | 119.56s |
+| complete D, quick, timeout 300 | cc4945d | 0 | 46 passed | 121.08s |
+| complete D, discovery + statistics, timeout 900 | cc4945d | 0 | 46 passed | 593.40s |
+| ruff check --select E4,E7,E9,F tests/properties | cc4945d | 0 | All checks passed | — |
+| ruff format --check (3 owned files) | cc4945d | 0 | clean after format commit | — |
+| mypy src tests/properties | cc4945d | 0 exit, 3 errors | all pre-existing outside D ownership (harness.py:262 x2 from 7f5f67d; test_property_builder_events.py:251 from c8f897d) | — |
