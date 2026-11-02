@@ -1,0 +1,60 @@
+C-1 witness — SAS re-checks length criteria AFTER the maxcumdose truncation; this implementation does not
+PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+
+SAS evidence (read-only reference tree /home/scarndp/dev/Sentinel/qrp,
+package 14.5.0, quoting verified by the arbiter):
+
+  inputfiles/macros/ms_createpov4.sas:178-201
+    computes _POV4&CohortId. with censordate_maxdose = the first expiry
+    date whose running round(total) exceeds &maxcumdose. (proc means
+    min over by patid episodestartdt episodeenddt).
+
+  inputfiles/macros/ms_createptsmasterlist.sas — ONE data step, in this
+  order:
+    :93   merges _POV4 (carries censordate_maxdose)
+    :124  if missing(censordate_maxdose)=0 and EpisodeEndDt >
+          censordate_maxdose then EpisodeEndDt = censordate_maxdose;
+          <- THE TRUNCATION
+    :127-129  atriskindexdt = IndexDt + &ATRISKSTART.
+    :137-139  death truncation
+    :146      FUT truncation
+    :148      EpisodeEndDt clipped to enr_end
+    :153      MinEnrolMet2  (dataavail_dt vs IndexDt + reqdaysaftind)
+    :156      MinEnrolMet3  (dataavail_dt >= EpisodeEndDt +
+              reqdaysaftepi)  <- reads the TRUNCATED end
+    :159-162  MinObsEnrolMet1-4 (:160/:162 read EpisodeEndDt)
+    :165      MinEpiDurMet  (EpisodeEndDt - IndexDt + 1 >= &minepisdur.)
+              <- reads the TRUNCATED end
+    :185      if MinEnrolMet and MinEnrolMet2 and MinEnrolMet3 and
+              FUEnrolMet and MinEpiDurMet and MinObsEnrolMet1-4;
+              <- the delete
+    :189      defensive: if IndexDt > EpisodeEndDt then delete;
+
+  => In SAS the flags are evaluated AFTER the truncation BY ORDERING
+  within the same step: a dose-censored episode that falls below
+  minepisdur or the required observable days is DELETED. Note the
+  assignment pointer "ms_episoderec2.sas dose-truncation path" was
+  imprecise: ms_episoderec2.sas contains no maxcumdose logic at all
+  (grep for maxcumdose/censordate_maxdose/truncat: no hits in the
+  truncation sense); the apply-and-check lives in
+  ms_createptsmasterlist.sas.
+
+This implementation (branch base c3e60db):
+
+  src/qrp/sql/50_episodes.sql  evaluates min_epi_dur_met /
+  min_enr_aft_met on the PRE-truncation episodeenddt and FILTERS on
+  them there;
+  src/qrp/sql/55_dose_censor.sql:65-78 (base numbering) truncates
+  episodeenddt/episode_days afterwards and re-checks NO flag.
+  The stale comment claimed "Apply, then re-check ... exactly as it
+  can in SAS" — false for this implementation; corrected in
+  inv/0f462p/fix3-docs commit dff222c (comment-only).
+
+Consequence (parity-gap lead, NOT fixed — decision brief DB-5): a
+cohort with maxcumdose+cumdoseper whose dose censoring pushes an
+episode below minepisdur (or below the required observable days)
+survives in this implementation with a shortened episode_days but is
+deleted in SAS -> episode counts and downstream attrition/denominator
+levels differ. Needs a witness study whose maxcumdose tips on a
+short-episode patient to quantify; DB-5 holds the implementation
+options.

@@ -373,73 +373,7 @@
       "tests/test_ui.py:330 needs 2m dataset"
     ]
   },
-  "calibrations": [
-    {
-      "id": "a-1",
-      "package": "A",
-      "base_revision": "2d12750",
-      "base_note": "package A pass-1 HEAD (wave base a0d0b93); src/ and tools/ are identical from a0d0b93 through this HEAD, so the diff applies at both",
-      "diff_path": "investigation/calibrations/a-1.patch",
-      "failing_command": "python -m pytest tests/properties/test_pkg_a_sqlsplit.py --hypothesis-profile=quick",
-      "expected_failure_pattern": "assert \\[\\] == \\[None\\]",
-      "red_evidence": "11 failed, 7 passed while mutated: test_empty_and_degenerate_inputs split_statements(\"SELECT 1\") -> [] == [None] failed (tail push gone); mandatory shapes [] != grammar-authored; final table missing from the sequential run",
-      "green_evidence": "clean tree after git checkout -- src/qrp/sqlsplit.py passed 18/18; git status shows no src/ changes",
-      "reverted": true,
-      "provenance": "recorded"
-    },
-    {
-      "id": "b-1",
-      "package": "B",
-      "base_revision": "1d4dfec",
-      "base_note": "package B pass-1 HEAD (branch base a0d0b93 per B.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
-      "diff_path": "investigation/calibrations/b-1.patch",
-      "failing_command": "python -m pytest tests/properties/test_pkg_b_enrollment.py::test_enrollment_matches_day_model --hypothesis-profile=quick",
-      "expected_failure_pattern": "enrollment_spans: SQL returned \\d+ rows, model \\d+",
-      "red_evidence": "FAILED in 0.39s on the gap-threshold interaction @example: AssertionError: enrollment_spans: SQL returned 4 rows, model 3 \u2014 patient 2's adjacent+gap_exact pair wrongly split where the model merges (enrol_gap=1)",
-      "green_evidence": "clean tree after git checkout -- src/qrp/sql/20_enrollment.sql re-verified: 2 passed, 1 xfailed in 1.06s",
-      "reverted": true,
-      "provenance": "reconstructed"
-    },
-    {
-      "id": "c-1",
-      "package": "C",
-      "base_revision": "8645179",
-      "base_note": "package C pass-1 HEAD (branch base a0d0b93 per C.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
-      "diff_path": "investigation/calibrations/c-1.patch",
-      "failing_command": "python -m pytest tests/properties/test_pkg_c_followup.py::test_followup_washout_boundaries tests/properties/test_pkg_c_followup.py::test_followup_and_censoring_match_day_model --hypothesis-profile=quick",
-      "expected_failure_pattern": "cohort_final membership differs from the model",
-      "red_evidence": "test_followup_washout_boundaries FAILED for the expected reason \u2014 case (wash=6, event at -7): stage dropped the episode the model kept, assertion cohort_final membership differs from the model; the generated property still passed (boundary rare in generated data)",
-      "green_evidence": "reverted with git checkout -- src/qrp/sql/60_followup.sql; git status shows only new package files; re-run green",
-      "reverted": true,
-      "provenance": "reconstructed"
-    },
-    {
-      "id": "e-1",
-      "package": "E",
-      "base_revision": "0b391e5",
-      "base_note": "package E pass-1 HEAD (branch base a0d0b93 per E.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
-      "diff_path": "investigation/calibrations/e-1.patch",
-      "failing_command": "python -m pytest tests/properties/test_pkg_e_outputs.py::test_output_failure_is_not_reported_complete tests/properties/test_pkg_e_faults.py::test_fault_schedule_terminal_events --hypothesis-profile=quick",
-      "expected_failure_pattern": "DID NOT RAISE",
-      "red_evidence": "both FAIL for the expected reason \u2014 Failed: DID NOT RAISE RuntimeError (match 'injected output-write'); adhoc confirmation: RunFinished(ok=True) while manifest.json is ABSENT",
-      "green_evidence": "reverted with git checkout -- src/qrp/pipeline.py; git status shows only package-E files; both properties green again",
-      "reverted": true,
-      "provenance": "reconstructed"
-    },
-    {
-      "id": "f-1",
-      "package": "F",
-      "base_revision": "c4b61a5",
-      "base_note": "package F pass-1 HEAD (branch base a0d0b93 per F.md); src/ and tools/ are identical from a0d0b93 through this HEAD",
-      "diff_path": "investigation/calibrations/f-1.patch",
-      "failing_command": "python -m pytest tests/properties/test_pkg_f_comparators.py::test_comparators_detect_targeted_corruption --hypothesis-profile=quick",
-      "expected_failure_pattern": "duplicate_row on stockpiled exited 0",
-      "red_evidence": "AssertionError: duplicate_row on stockpiled exited 0 \u2014 hit the deterministic @example immediately; ROW COUNT was the only detection left and dedupe killed it",
-      "green_evidence": "reverted with git checkout -- tools/parity_compare.py; git status shows only package-F files; comparator family green again (26 passed)",
-      "reverted": true,
-      "provenance": "reconstructed"
-    }
-  ],
+  "calibrations": [],
   "evidence": [
     {
       "kind": "witness_directory",
@@ -487,15 +421,75 @@
       "id": "A-3",
       "doc": "investigation/findings/A-3-demographics-full-tie-comment.md",
       "title": "'TOTAL order' comment false for full-tie duplicate demographics \u2014 doc-only; behavior is SAS parity and strictly more deterministic than SAS",
-      "status": "resolved-doc-only",
+      "status": "resolved-doc-only (comment applied in wave 3)",
       "classification": "documentation defect (behavior kept; SAS dedupes by PatId alone with an unstable sort, ms_create_enrollment_spans.sas:198-201)",
       "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
-      "fix_branch": "none \u2014 replacement comment wording proposed verbatim in the finding doc",
+      "fix_branch": "inv/0f462p/fix3-docs commit b0be77e (merged into inv/0f462p/arb3-findings) applies the proposed replacement comment verbatim; comment-only, zero executable changes",
       "witness": "investigation/witnesses/a-demographics-full-tie-evidence.txt"
+    },
+    {
+      "id": "E-1",
+      "doc": "investigation/findings/E-1-tui-leaks-run-engine.md",
+      "title": "TUI never releases the run's engine \u2014 one leaked DuckDB connection per completed run in a session",
+      "status": "fixed",
+      "classification": "resource-release defect (close is caller-owned; the TUI is the caller; a long-lived multi-run session is the designed usage)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix3-e1, red 323b231 / green 0a26573, merged into inv/0f462p/arb3-findings",
+      "witness": "investigation/witnesses/e1-e2-frontend-engine-leak-evidence.txt + tests/test_regression_e1.py::test_tui_run_closes_the_run_engine"
+    },
+    {
+      "id": "E-2",
+      "doc": "investigation/findings/E-2-cli-failure-path-leaks-engine.md",
+      "title": "CLI failure path never closes its engine (low severity; process-bounded for subprocess use)",
+      "status": "fixed",
+      "classification": "resource-release defect, low (fixed on the same branch as E-1: identical try/finally fix shape)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix3-e1, red 323b231 / green 0a26573",
+      "witness": "investigation/witnesses/e1-e2-frontend-engine-leak-evidence.txt + tests/test_regression_e1.py::test_cli_failure_closes_the_engine (CloseProbeEngine exit-path hook)"
+    },
+    {
+      "id": "E-3",
+      "doc": "investigation/findings/E-3-E4-sigint-and-failure-terminal-contracts.md",
+      "title": "CLI SIGINT mid-run: unhandled, exit \u22122, JSONL without terminal record, no manifest \u2014 contract choice open",
+      "status": "open-contract-choice (decision brief DB-3; no fix by charter)",
+      "classification": "unspecified contract (exit code, diagnostics, terminal log record for a killed run); resource half now clean since the E-2 fix (finally unwinds on BaseException)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none \u2014 DB-3",
+      "witness": "package E characterization test test_cli_sigint_mid_run_is_characterized (discovery branch); evidence in the finding doc"
+    },
+    {
+      "id": "C-1",
+      "doc": "investigation/findings/C-1-dose-censor-no-post-truncation-recheck.md",
+      "title": "55_dose_censor.sql claims a post-truncation criteria re-check; the SQL does not re-check and SAS does (parity-gap lead; comment corrected)",
+      "status": "lead-open (decision brief DB-5); doc half resolved (comment corrected)",
+      "classification": "silent divergence from SAS for maxcumdose+cumdoseper studies whose censor pushes an episode below a length criterion (magnitude unmeasured, needs a witness study); the false comment corrected in fix3-docs",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none for behavior \u2014 DB-5; comment-only commit inv/0f462p/fix3-docs dff222c",
+      "witness": "investigation/witnesses/c1-dose-censor-recheck-sas-evidence.txt"
+    },
+    {
+      "id": "C-3",
+      "doc": "investigation/findings/C-3-person-days-no-floor.md",
+      "title": "cohort_final.person_days has no floor and reads negative when at_risk_start outruns the episode; negatives sum into the denominators and inflate rates",
+      "status": "fixed (closes package C open question OC-3)",
+      "classification": "wrong answer via 70_outputs denominators/rates for studies with at_risk_start > episode span; SAS floors the same at-risk span at 0 (ms_finalizeptsmasterlist.sas:305) and deletes zero-at-risk episodes (ms_createptsmasterlist.sas:175-176)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix3-c3, red 26ddf87 / green 1a810a2, merged into inv/0f462p/arb3-findings",
+      "witness": "investigation/witnesses/c3-person-days-negative-evidence.txt + tests/test_regression_c3.py"
+    },
+    {
+      "id": "D2",
+      "doc": "investigation/findings/D2-cidadenom-header-comment.md",
+      "title": "92_cidadenom.sql header claims exclusion shaving is NOT implemented \u2014 it is (doc error corrected; inclusion half is the D1 gap)",
+      "status": "resolved-doc-only",
+      "classification": "documentation defect (comment contradicted the stage's own WHERE r.criteria='EXC' and the SAS original)",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "inv/0f462p/fix3-docs commit 34f84e7 (comment-only, zero executable changes)",
+      "witness": "investigation/packages/D.md finding D2 + git show 34f84e7"
     }
   ],
   "open_questions": [
-    "demographics QUALIFY tie-break is total only if (birth_date, sex, race, hispanic, postalcode) differ across duplicate rows \u2014 full-tie behavior unverified",
+    "RESOLVED (wave 1 arbitration; comment applied wave 3, fix3-docs b0be77e): demographics QUALIFY tie-break is total only if (birth_date, sex, race, hispanic, postalcode) differ across duplicate rows \u2014 full-tie rows resolve by scan order, same as SAS's unstable proc sort; behavior kept, comment corrected",
     "tools/gen_synthetic.py writes rxamt as an integer (BIGINT), tripping the pipeline's fractional-amount truncation warning; calibrating oracles against it inherit that semantics",
     "claims_from scan bound does not apply to enrollment spans (contract intent unconfirmed; low impact)",
     "encounter tables are never identified by column fingerprint (fingerprint=False); name/table_map only",
@@ -506,5 +500,27 @@
     "run_envelope with NULL encounter ddate and discharge-status deaths colliding with death-table rows",
     "utilization dedup when encounter rows share encounterid",
     "combo covariates referencing later covarnums vs documented one-at-a-time evaluation"
+  ],
+  "open_decisions": [
+    {
+      "id": "E-4",
+      "doc": "investigation/findings/E-3-E4-sigint-and-failure-terminal-contracts.md",
+      "title": "Direct pipeline.run() failures emit no RunFinished; only RunHandle synthesizes it \u2014 who owns the failure terminal event is unspecified",
+      "status": "open-contract-choice (decision brief DB-4; no fix by charter)",
+      "classification": "unspecified contract; safe direction asserted (nothing claims ok on failure); LOGGING.md parity promise holds for successes only",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none \u2014 DB-4",
+      "witness": "package E characterization test test_direct_run_sql_fault_propagates_without_ok (discovery branch)"
+    },
+    {
+      "id": "D1",
+      "doc": "investigation/packages/D.md (finding D1); decision brief DB-2 in investigation/packages/ARBITRATION.md wave 3",
+      "title": "CIDA denominators omit SAS's INCLUSION-subcondition window restriction and dose restriction under excl_incl=Y \u2014 INC-condition studies get overstated member-days",
+      "status": "open-contract-choice (decision brief DB-2; no code by charter)",
+      "classification": "parity gap, confirmed against the SAS original by D and re-verified by arbiter 3 (ms_cidadenom.sas:146, 413-417, 265/359); affects studies with INCLUSIONCODES only",
+      "first_failing_revision": "c3e60db5d08343b1cebbb90d234602f09cb0d70d",
+      "fix_branch": "none \u2014 DB-2",
+      "witness": "investigation/packages/D.md with SAS citations"
+    }
   ]
 }

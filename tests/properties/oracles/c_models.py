@@ -559,8 +559,14 @@ def episode_outcome(
         exit_reason = "disenrollment"
     elif ep.episodeenddt == cfg.censor_date:
         exit_reason = "study_end"
-    person_days = (min(feventdt if feventdt else ep.episodeenddt,
-                       ep.episodeenddt) - atriskindexdt).days + 1
+    # Floored at 0 like followuptime (C-3 fix): when at_risk_start pushes
+    # the at-risk window past the episode end there are zero days at
+    # risk, not negative ones.
+    person_days = max(
+        0,
+        (min(feventdt if feventdt else ep.episodeenddt,
+             ep.episodeenddt) - atriskindexdt).days + 1,
+    )
     return EpisodeOutcome(
         cohortgrp=ep.cohortgrp, patid=ep.patid, indexdt=ep.indexdt,
         kept=kept, feventdt=feventdt, numevents=num,

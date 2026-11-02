@@ -1,0 +1,31 @@
+E-1 / E-2 witness — the two shipped frontends never release the run engine
+PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+
+Reproduction: fix branches inv/0f462p/fix3-e1 (worktree wt/fix3-e1).
+Red commit 323b231 adds tests/test_regression_e1.py; on the unfixed
+tree (base c3e60db) both tests fail for the expected reasons:
+
+  command:  .venv/bin/python -m pytest tests/test_regression_e1.py -v
+  (in wt/fix3-e1 at red commit 323b231)
+
+  FAILED test_tui_run_closes_the_run_engine
+    - the run completed (not app.running; results table non-empty),
+      then `engine_closed(app)` stayed False for the full bounded
+      budget: app.handle.engine.con.execute("SELECT 1") still succeeds
+      -> the DuckDB connection behind the finished run is open. Every
+      completed run in one QRPApp session leaves one live engine (each
+      holding that run's in-memory database); repeated runs accumulate.
+
+  FAILED test_cli_failure_closes_the_engine
+      assert [] == [True]
+    - cli.main(["run", ...]) on an empty SCDM root constructs the
+      Engine, fails the pipeline on missing tables, returns 1, and the
+      CloseProbeEngine double recorded ZERO close() calls: eng.close()
+      sat inside the try after run() (src/qrp/cli.py:293 on base) and
+      never executed on the failure path.
+
+Green commit 0a26573 (tui.py _pump try/finally; cli.py eng in finally):
+both tests pass in 2.59s. Merged-tree validation: tests/test_ui.py +
+tests/test_determinism.py + tests/test_rewrites.py -> 50 passed,
+2 skipped (the pre-existing /tmp/qrp_data/2m skips); mypy src/qrp/tui.py
+src/qrp/cli.py clean; ruff --select E4,E7,E9,F clean.

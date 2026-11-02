@@ -168,3 +168,333 @@ arbiter):**
   f4d2e6a / green c87dc0b, 287-passed pipeline run) are preserved in
   the manifest passes and summarized in the B2 finding doc's
   not-applied minimal-fix section.
+
+---
+
+# Arbitration wave 3 — packages E, C leads, D doc errors (arbiter 3 report)
+
+Arbiter: third findings arbiter (general-purpose subagent), branch
+`inv/0f462p/arb3-findings`. PRIVATE — NOT AUTHORIZED FOR PUBLICATION.
+
+Findings arbitrated: E-1/E-2/E-3/E-4 (runtime lifecycle leads from
+package E), the C-1 comment (verified against the SAS original and
+reclassified as a parity-gap lead), C-3/OC-3 (person_days floor,
+resolved against the SAS original), D2 (demonstrated doc error,
+corrected), and A-3's proposed comment wording (applied verbatim).
+D1's implementation question is assembled as decision brief DB-2
+(no code). Every SAS citation below was re-verified by this arbiter in
+the read-only reference tree /home/scarndp/dev/Sentinel/qrp/ (package
+14.5.0); every fix was re-derived from code + docs, reproduced red, and
+validated green before merging. Finding documents live in
+investigation/findings/ (E-1, E-2, C-1, C-3, D2, E-3-E4).
+
+## Rulings at a glance
+
+| id | classification | shipped fix | fix branch |
+|---|---|---|---|
+| E-1 | DEFECT — resource release: the TUI is the RunHandle's caller (close is caller-owned) and a long-lived multi-run session is its designed usage; every completed run leaked one live engine holding its in-memory database | YES | inv/0f462p/fix3-e1, red 323b231 → green 0a26573 |
+| E-2 | DEFECT (low) — same release gap on the CLI failure path; process exit bounds it for subprocess use, but main() is library-callable and in-process callers accumulate | YES (same branch — the fix shape is the same try/finally, per the wave-3 charter) | inv/0f462p/fix3-e1, red 323b231 → green 0a26573 |
+| E-3 | CONTRACT CHOICE — SIGINT mid-run leaves a truncated log with no terminal record; no contract exists for exit code/diagnostics/terminal record | none (decision brief DB-3) | — |
+| E-4 | CONTRACT CHOICE — pipeline.run emits no failure-path RunFinished; only RunHandle synthesizes it; LOGGING.md's "identical stream" parity holds for successes only | none (decision brief DB-4) | — |
+| C-1 | PARITY-GAP LEAD — SAS enforces length criteria on the post-truncation episode (ordering inside ms_createptsmasterlist.sas:124→156/160/162/165→185); this implementation filters in 50 on the pre-truncation end and 55 re-checks nothing. The comment claiming the re-check was FALSE — corrected | comment only (dff222c); behavior = DB-5 | inv/0f462p/fix3-docs |
+| C-3 (OC-3) | DEFECT — person_days unfloored reads negative when at_risk_start outruns the episode; SAS floors the same at-risk span at 0 (Max(0,...), ms_finalizeptsmasterlist.sas:305) and deletes zero-at-risk episodes (ms_createptsmasterlist.sas:175-176); negative rows sum into the denominators and inflate rate_per_1000_py | YES | inv/0f462p/fix3-c3, red 26ddf87 → green 1a810a2 |
+| D2 | DOC ERROR — header claims exclusion shaving is NOT implemented; it is (92:309 `WHERE r.criteria = 'EXC'`; SAS ms_cidadenom.sas:146, 347-368, 441) | YES (comment) | inv/0f462p/fix3-docs, 34f84e7 |
+| A-3 | DOC ERROR (wave 1) — proposed replacement wording applied verbatim | YES (comment) | inv/0f462p/fix3-docs, b0be77e |
+| D1 | PARITY GAP (confirmed by D against the SAS original; re-verified by this arbiter at ms_cidadenom.sas:146/413-417/265+359) | none (decision brief DB-2) | — |
+
+## Validation record (merged arb3 tree, HEAD at commit of this file)
+
+- tests/test_regression_e1.py + tests/test_regression_c3.py +
+  tests/test_determinism.py + tests/test_rewrites.py +
+  tests/properties/test_pkg_a_tiebreak.py → **43 passed**.
+- tests/test_ui.py → **35 passed, 2 skipped** (the pre-existing
+  /tmp/qrp_data/2m skips).
+- Package E quick set (lifecycle/faults/outputs/cli_tui,
+  --hypothesis-profile=quick) → **21 passed**.
+- Package C quick suites (inclusion/dose/followup, quick) →
+  **31 passed** after the OC-3 pin and oracle were updated to the
+  floored semantics (see Surprises 1).
+- Package D denominators quick → **7 passed** (92 comment-only change
+  confirmed inert).
+- Full tests/test_pipeline.py in the fix3-c3 worktree → **287 passed,
+  2 failed** (the two PRE-EXISTING EXEMPT spill-attribution OOM tests,
+  same two as wave 1's record), 1 skipped, 7m32s.
+- mypy on the changed Python files clean; ruff --select E4,E7,E9,F
+  clean on changed files; fix3-docs diff verified to contain ZERO
+  non-comment SQL line changes.
+
+## Decision brief DB-2 (verbatim-ready for the operator)
+
+**Question D1 (from investigation/packages/D.md):** the Python
+implementation omits SAS's INCLUSION-subcondition window restriction
+and dose-denominator restriction in the CIDA denominators under
+`excl_incl = Y`. Implement, document, or partially implement?
+
+**Evidence (all re-verified in the read-only SAS tree by this
+arbiter):** `ms_setnumloopmacrovars.sas:653-681` sets `excl_incl = Y`
+whenever a study has inclusion codes (default N at :653-654), so the
+branch is active for ANY study with INCLUSIONCODES. Inside it
+(ms_cidadenom.sas:146 gate): INCLUSION subconditions build claim-index
+windows (`EligStart = ADate - CondTo`, `EligEnd = Expiredt/ADate -
+CondFrom`) and RESTRICT eligible time to them via `%ms_shaveoutside`
+KeepPartBf=Y over `_Denom&Group._STACK_INC` (ms_cidadenom.sas:413-417;
+windows read at :197-212 per D); EXCLUSION subconditions shave OUT via
+`%ms_shaveinside` (:347-368, merged STACK_EXCL shaved at :441) — that
+half IS implemented (92_cidadenom.sql:309 `WHERE r.criteria = 'EXC'`).
+Dose thresholds additionally restrict eligibility through
+`%ms_dose_denom` (:265, :359) — not implemented.
+
+**Impact, honestly stated:** affected shape = any study whose cohorts
+configure INCLUSIONCODES (conditions). For those, member-days are
+OVERSTATED — SAS narrows eligibility to the inclusion windows and
+(dose configured) to dose-eligible members; this implementation keeps
+all enrolled time minus exclusions. Direction is certain (overstated);
+magnitude depends on how restrictive the study's inclusion windows and
+dose thresholds are relative to enrollment. Unaffected: studies without
+inclusion codes (excl_incl stays N; the EXC-half parity is exact —
+package D's day-enumeration oracle agrees with production on every
+generated case including exclusion shaving, deaths, washouts, OUTPUTDENOM
+M/N, gapped enrollment). Consistent with docs/PARITY_FINDINGS.md
+"Third fix", which implemented only the exclusion half.
+
+**Options:**
+
+- **(a) Implement both for parity.** Feature work, NOT a minimal fix.
+  Scope estimate (this arbiter's): the 92 stage needs a per-config
+  build of INC-subcondition windows from the inclusion config (the
+  episode-side 52 machinery builds different windows — denominator
+  windows are claim-index anchored, not episode anchored), the
+  %ms_dose_denom analogue over `claim_dose`, reuse of the existing
+  merge/shave plumbing (`_denom_unelig` merge + `_denom_windows_x` for
+  the EXC half gives the shape), then oracle + property work:
+  d_denom's day-enumeration oracle must model inclusion windows and
+  dose restriction, and test_pkg_d_denominators' generator must emit
+  INC-condition studies (it currently emits none). Realistic effort:
+  days of focused work plus a discovery-style validation pass; risk
+  concentrated in the window-build semantics (CondFrom/CondTo,
+  codedays, dateonly) where 52 already encodes the episode-side
+  reading that DB-2's implementation would have to mirror for the
+  denominator.
+- **(b) Document as a known divergence.** One paragraph in
+  docs/SAS_PARITY.md (shape: affected studies, direction, the D2
+  header already points there since 34f84e7) + the CIDA denominator
+  section of README. Honest and cheap; leaves INC-condition studies
+  overstating member-days with no tool-side warning.
+- **(c) Implement only one restriction.** Not recommended as an end
+  state: the two restrictions interact (dose restriction applies to
+  members, windows to time; implementing windows alone still
+  overstates for dose-restricted studies and vice versa), so a partial
+  implementation is a smaller divergence, not a correct subset — it
+  only makes sense as a staged step toward (a).
+
+**Recommendation the brief is written to support (not a ruling):** if
+INC-condition studies are in production scope, (a) with the D-style
+oracle extension; if not, (b) now, (a) when the first INC-condition
+study arrives.
+
+## Decision brief DB-3 (verbatim-ready for the operator)
+
+**Question E-3:** what SHOULD `qrp run` do on SIGINT mid-run — exit
+code, diagnostics, and what terminal record the logs carry? (Current:
+KeyboardInterrupt is a BaseException, `except Exception` cannot catch
+it; the process dies with a raw traceback, exit −2/SIGINT, the JSONL
+stream ends with no terminal record (last observed line
+StageFinished(normalize)), no FAILED line reaches the .log, and no
+manifest survives.)
+
+**Evidence:** errors.py's charter — "The runbook promises actionable
+errors; that promise has to hold wherever the failure happens" — is
+currently unmet on this path. ARCHITECTURE.md fully specifies IN-APP
+cancellation (flag + boundary → CancelledRun →
+RunFinished(cancelled=True), error stays empty, no ERROR LogMessage —
+model M4) but says nothing about process signals. LOGGING.md frames the
+.log as "what you attach to a parity report or a bug": a SIGINT-killed
+run is indistinguishable from a truncated log. OUTPUTS.md's
+manifest-last rule means the absence of a manifest correctly marks the
+run incomplete — the one part of today's behavior any option must
+preserve. Resource note: since the E-2 fix, the CLI's finally DOES
+release the engine on SIGINT (finally unwinds for BaseException); what
+remains open is purely the contract.
+
+**Options:**
+
+- **(a) Keep the current behavior, document it.** Cheap. Defensible
+  for a local tool whose outputs are manifest-guarded; a shell that
+  reports exit 130 for signal deaths is the user's existing mental
+  model. Cost: the JSONL stays terminal-incomplete and the .log reads
+  truncated — "which stage got slower" tooling (LOGGING.md's compare
+  runs) silently loses the run.
+- **(b) Catch KeyboardInterrupt in cli.main around the run block; write
+  a terminal record; exit 130.** Smallest honest change: the cancelled
+  semantics already exist end to end (M4) — reuse them: a
+  RunFinished(cancelled=True) into the JSONL (preserving the
+  CLI/UI-parity promise of LOGGING.md:81-91), a "CANCELLED" line in
+  the .log where FAILED goes today, a one-line actionable diagnostic on
+  stderr, exit 130 (128+SIGINT convention). Caveats: the catch must
+  wrap from before Engine construction (a SIGINT during construction or
+  output writes must not traceback either); do NOT emit ok=False
+  (cancelled is its own state, and the empty-error convention is
+  tested).
+- **(c) Signal-handler cancellation: install a SIGINT handler that
+  requests engine.cancel() and lets the run unwind as CancelledRun.**
+  Most faithful to ARCHITECTURE.md's cancellation story (the query
+  actually interrupts; stages stop at boundaries) and gives the TUI-
+  identical event stream — but the CLI drives pipeline.run directly
+  (no RunHandle), so this adds signal plumbing to the CLI and changes
+  timing behavior (second SIGINT must still hard-kill; partial-stage
+  cancellation latency ~0.3s measured in ARCHITECTURE.md). Most work;
+  most uniform.
+
+**Recommendation the brief is written to support (not a ruling):** (b),
+with (c) as the follow-up if operators report long-running SIGINTs
+leaving confusing partial JSONLs; (a) only if SIGINT is considered
+operator error.
+
+## Decision brief DB-4 (verbatim-ready for the operator)
+
+**Question E-4:** who owns the FAILURE-path terminal event?
+`pipeline.run` emits RunStarted/RunFinished around the happy path only;
+on failure the exception propagates — the UI path
+(RunHandle._work, runner.py:128-142) synthesizes
+RunFinished(ok=False, error=explain(exc)) into the same stream, but the
+CLI/JSONL stream carries no terminal event at all. LOGGING.md:81-91
+promises "Both now come from pipeline.run, so the CLI and the UI
+observe an identical stream" (pinned by
+test_cli_and_ui_emit_the_same_events) — true for successes, silently
+false for failures.
+
+**Evidence:** LOGGING.md's parity section exists precisely because the
+two paths DRIFTED once before (the "bug this found" section); the
+failure path is the same drift shape. The safe direction is asserted by
+package E (nothing claims ok on failure — outputs/manifest honesty is
+intact; the .log does get the CLI's "FAILED:" line via runlog.write).
+What is missing is machine-readable: a JSONL consumer replaying runs
+(LOGGING.md's compare-runs use case) cannot tell a failed run from a
+truncated one.
+
+**Options:**
+
+- **(a) pipeline.run owns the failure terminal too:** wrap the stage
+  sequence, emit RunFinished(ok=False) on exception, re-raise. The
+  parity promise becomes unconditionally true; the CLI JSONL gains the
+  terminal record with zero CLI code. Cost — the coupling that makes
+  this NOT a minimal fix: RunHandle._work currently synthesizes the
+  same event and would double-emit for run() failures; its synthesis
+  also covers failures BEFORE run() is reached (Engine construction,
+  cancel-during-startup), so ownership can't just move — _work needs a
+  guard (emit only if run() didn't), which re-splits ownership across
+  two files and re-opens the drift LOGGING.md warns about. Also needs
+  a decision on cancelled runs (CancelledRun through run(): emit
+  cancelled=True there, and _work's guard must respect it).
+- **(b) Document the split ownership:** pipeline.run owns terminal
+  events for completed runs; drivers own failure synthesis. One
+  paragraph in LOGGING.md + amend the parity sentence to "identical for
+  successes; on failure the driver synthesizes the terminal event".
+  Honest, cheap, keeps the asserted safe direction as the contract.
+- **(c) Invert: drivers own ALL terminal events** (UI unchanged; CLI
+  gains synthesis around run()). Fails LOGGING.md's own history — the
+  original bug WAS drivers-only emission; re-centralizing on drivers
+  re-creates the [3/0] header problem for any third driver that
+  forgets.
+
+**Recommendation the brief is written to support (not a ruling):** (b)
+now (documentation-only, zero risk); (a) only as deliberate feature
+work with the _work guard and the CancelledRun interaction designed,
+not slipped in.
+
+## Decision brief DB-5 (verbatim-ready for the operator)
+
+**Question C-1:** SAS re-checks the length-dependent criteria on the
+POST-truncation episode (ms_createptsmasterlist.sas:124 truncation →
+MinEnrolMet3 :156, MinObsEnrolMet2/4 :160/:162, MinEpiDurMet :165 →
+subsetting IF :185); this implementation filters in 50 on the
+pre-truncation end and 55's truncation re-checks nothing. Implement the
+re-check, or document the divergence?
+
+**Evidence:** investigation/witnesses/c1-dose-censor-recheck-sas-evidence.txt
+(SAS line walk); the false comment claiming the re-check was corrected
+in fix3-docs dff222c. Affected shape: studies with maxcumdose AND
+cumdoseper set where the dose censor pushes an episode below minepisdur
+or below the required observable days. Magnitude: UNMEASURED — no
+witness study exists yet; this is the same evidence-first gap the B2
+ruling insisted on closing before classifying.
+
+**Options:**
+
+- **(a) Implement the SAS-ordered re-check.** Not a minimal fix: 55
+  must recompute the end-dependent flags (min_epi_dur_met; the
+  reqdaysaftepi/obs-window equivalents that read EpisodeEndDt) on the
+  truncated end and remove failing episodes — from ptsmasterlist,
+  which every later stage reads, so the change ripples through
+  episode_hoi, cohort_final, attrition, and every C/D oracle that
+  models the current single-pass order. Requires the B2-standard
+  evidence first: a witness study with maxcumdose tipped on a
+  short-episode patient, quantifying how many episodes SAS deletes
+  that this implementation keeps. Realistic effort: comparable to
+  DB-2 (a).
+- **(b) Document as a known divergence + pin.** A strict-xfail-style
+  witness (B2 precedent) plus a SAS_PARITY.md paragraph. Cheap, honest,
+  and the magnitude evidence it records feeds (a) if ever warranted.
+- Note: there is no option "fix the comment only" — dff222c already
+  did that; the question is purely behavioral.
+
+**Recommendation the brief is written to support (not a ruling):** (b)
+with the witness study, unless a production maxcumdose study is in
+scope — then (a) with the oracle work budgeted up front.
+
+## Surprises found during independent review
+
+1. **Package C's OC-3 pin was load-bearing in the opposite direction:**
+   the property suite had pinned `person_days == -1` as observed
+   behavior, so the C-3 fix turned a suite test red. The pin and the
+   c_models oracle were updated to the floored semantics on the arb
+   branch (wave-1 precedent: the B2 witness rewrite), and OC-3 is
+   closed by the ruling.
+2. **The wave-3 assignment pointer for C-1 was imprecise:** the
+   dose-truncation path is NOT in ms_episoderec2.sas (no maxcumdose
+   logic there at all) — it is ms_createpov4.sas:178-201 (compute) →
+   ms_createptsmasterlist.sas:124 (apply) → same-step flags
+   (:156-:185, AFTER the truncation). The re-classification of C-1
+   from "correct the comment" to "parity-gap lead + correct the
+   comment" rests on that corrected trail.
+3. **The C-3 regression fixture tripped two pre-existing input
+   landmines** worth recording: SCDM patid must be INTEGER
+   (10_normalize casts `patid AS BIGINT`), and the diagnosis optionals
+   dx_codetype/pdx/enctype are declared optional in scdm.py but
+   referenced unconditionally in normalize — the same unfixed lead the
+   first arbiter recorded (ARBITRATION.md wave-1 Surprises 2). A
+   conformant-looking minimal extract that omits them cannot run at
+   all.
+4. **The E-1 fix has a cancellation race to avoid and the ordering
+   matters:** closing the engine BEFORE flipping `running` False would
+   let a Cancel landing at the completion instant hit a CLOSED engine
+   (`con.interrupt()` raises ConnectionException) via action_cancel.
+   The fix flips `running` first — a cancel in the gap reaches an
+   open, idle engine, which ARCHITECTURE.md documents as a silent
+   no-op.
+5. **E-2's fix quietly improves the E-3 path:** the CLI finally now
+   releases the engine even on KeyboardInterrupt (finally unwinds for
+   BaseException), so DB-3's options inherit a clean resource story
+   and are purely about contract.
+6. **test_pkg_a_tiebreak.py lives under tests/properties/, not tests/**
+   (the wave-3 charter's validation list said "package quick sets" —
+   first validation run collected nothing because of the wrong path;
+   re-run green).
+7. **Backticks in shell-quoted commit messages get command-substituted**
+   — the first fix3-docs commit message lost its `proc sort nodupkey`
+   quote to bash; repaired by amend with a message file. Recorded so
+   the next arbiter writes -F files from the start.
+
+## Branch inventory
+
+- `inv/0f462p/arb3-findings` (this branch): merges of fix3-e1 /
+  fix3-c3 / fix3-docs, the OC-3 pin + oracle update, finding docs
+  (E-1, E-2, C-1, C-3, D2, E-3-E4), witness files, manifest updates,
+  and this wave-3 section.
+- `inv/0f462p/fix3-e1`: red 323b231 / green 0a26573 (E-1 + E-2).
+- `inv/0f462p/fix3-c3`: red 26ddf87 / green 1a810a2 (C-3 floor).
+- `inv/0f462p/fix3-docs`: b0be77e (A-3 verbatim), 34f84e7 (D2 header),
+  dff222c (C-1 comment) — comment-only commits, zero executable
+  changes verified by diff.
+- Decision briefs DB-2..DB-5 above are verbatim-ready; DB-1 (wave 1)
+  stands answered by the operator's B2 ruling.

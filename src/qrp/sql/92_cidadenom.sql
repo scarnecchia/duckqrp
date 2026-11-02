@@ -28,9 +28,17 @@
 -- enrollment spans already carry death censoring where the study asks
 -- for it.
 --
--- NOT included: the inclusion/exclusion shaving (`excl_incl = Y`) that
--- restricts eligible time by INCLUSIONCODES conditions. See
--- docs/SAS_PARITY.md.
+-- INCLUSIONCODES condition shaving (`excl_incl = Y`, gated at
+-- ms_cidadenom.sas:146): EXCLUSION-condition windows ARE shaved out of
+-- eligible time below (SAS: %ms_shaveinside on EXC subconditions,
+-- ms_cidadenom.sas:347-368, 441; implemented here via `_denom_unelig`
+-- EXC rows at the `_denom_unelig_x` / `_denom_windows_x` shaves).
+-- NOT implemented, unlike SAS: the INCLUSION-condition
+-- restriction (%ms_shaveoutside KeepPartBf=Y over STACK_INC,
+-- ms_cidadenom.sas:413-417) and the dose-denominator restriction
+-- (%ms_dose_denom, ms_cidadenom.sas:265, 359) — with inclusion
+-- criteria configured, eligible time is not narrowed to the inclusion
+-- windows and member-days come out overstated. See docs/SAS_PARITY.md.
 -- =====================================================================
 
 -- Split into three passes rather than one nine-way join. Written as a
