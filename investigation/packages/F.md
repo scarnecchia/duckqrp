@@ -1,5 +1,87 @@
 # Package F — comparison tools, validators, cross-stage metamorphic checks
 
+## Pass 2 — aggregate comparison correction
+
+Integrated discovery with `git merge --no-edit discovery`; merged revision
+`6aaba22ade249c8d6f10123aeede4bfc3e9abb92`. All pass-2 commands below
+used this revision plus the owned F changes in the resulting commit.
+No production changes, push, publication or other worktree changes.
+
+Classification: **test-oracle false positive**, not a production defect.
+Seed 118, four patients, utilization+covariates, permutation seed 0:
+threads=4 changed baseline std_age from 4.511922447625936 to
+4.511922447625941 (about 1.18e-15 relative). DEPLOYMENT.md:220-221
+explicitly allows last-binary-digit aggregate variation <4e-15 relative
+while requiring exact counts/dates/flags. 96_baseline.sql:107-141 computes
+unrounded avg/stddev_samp values, tags them kind='stat', then pivots them.
+
+The oracle now preserves typed schema/rows for baseline and baseline_long.
+Tolerance is rel_tol=4e-15, abs_tol=0, inclusive comparison (boundary policy
+explicit); only baseline mean_*/std_* floats and baseline_long.v where
+kind='stat' and stat names a mean_/std_ aggregate qualify. No other table
+or column is relaxed. No rounding or float-to-string normalization is
+introduced. Zero versus nonzero remains unequal. None differs from NaN;
+NaN equals NaN, finite differs from NaN. Schema and exact other cells remain
+checked. Perfect bipartite matching consumes each row once, preserving
+multiplicity even when near-equality is nontransitive. Existing tie payload
+assertions are unchanged. Seed118 is an explicit @example running all five
+variants including engine baseline_long and emitted baseline parquet.
+
+New sensitivity family: duplicate row addition/replacement, schema drift,
+nonaggregate columns, null/NaN, zero/subnormal, gross corruption, reported
+seed118 values, and 0–40 nextafter steps over binary exponents -100..100.
+At powers of two 18 ulps pass and 19 fail; explicit 17/18/19/20 pins cover
+the immediate representable threshold neighborhood independently of sampling.
+
+### Commands and observed results
+
+All commands use `.venv/bin/python -m`; pytest processes ran sequentially.
+
+| command suffix | result | duration |
+|---|---|---|
+| pytest tests/properties/test_pkg_f_*.py --hypothesis-profile=discovery --hypothesis-show-statistics -q | 74 passed, 4 xfailed | 146.84s |
+| pytest test_pkg_f_comparators.py test_pkg_f_compare_runs.py test_pkg_f_aggregate_comparison.py --hypothesis-profile=deep --hypothesis-show-statistics -q (paths under tests/properties/) | 48 passed | 0.58s |
+| pytest tests/properties/test_pkg_f_*.py --hypothesis-profile=quick -q, first pair | 74 passed, 4 xfailed each | 40.84s / 41.79s |
+| same quick command after adding four explicit threshold pins | 78 passed, 4 xfailed each | 42.16s / 41.63s |
+| pytest tests/test_rewrites.py tests/test_determinism.py -q | 15 passed | 2.41s |
+| ruff check --select E4,E7,E9,F tests/properties | clean | not timed |
+| mypy src tests/properties | clean, 73 source files; three informational untyped-body notes in D | not timed |
+
+Discovery/deep preceded only the four final deterministic threshold pins
+and annotation correction; final quick gates cover those additions.
+Logs retained locally: /tmp/f-pass2-{discovery,deep,quick1,quick2,existing,final1,final2}.log.
+A final tail display command failed due to syntax; subsequent log extraction
+verified actual results. No failed test run is counted as successful.
+
+Stats: discovery aggregate boundary 500 passing, 0 invalid; 55.2% inside,
+44.8% outside. Deep: 2000 passing, 0 invalid; 50.75% inside, 49.25% outside.
+Original corruption family exhausted 36 cases (9x4), acceptance 28 (7x4).
+Metamorphic discovery: 50 passing, 7 invalid, **12 distinct pair event
+labels**, plus explicit examples and dense fixture; not exhaustive 28-pair
+execution. Totals ordinary properties: 50 passing each. Known xfail
+properties each replayed one failing case. No new production finding.
+
+### Corrections and remaining gaps
+
+Earlier claims below of 28/28 generated feature-pair coverage and 28
+corruption cases were inaccurate: 28 pairs are representable, not guaranteed
+executed; corruption space has 36 cases. Also the engine/files comparison
+is not a proof of every output sidecar: txt/manifest content and raw file
+layout are not compared; runtimes/signature contents are exempt. Nonbaseline
+schema checks remain limited by the original exact row serialization.
+
+Only baseline means/SDs currently receive tolerance. Summed amount floats
+elsewhere remain exact, intentionally: broaden only after a witnessed
+case and field-specific contract inspection. Baseline dynamic mean_/std_
+columns are justified by the SQL pivot, not arbitrary output float types.
+No exhaustive optional-feature-pair matrix or strengthened event-presence
+guard was added; exposure presence alone does not guarantee outcome events.
+Doctor still uses its production-generated fixture/default engine settings;
+this pass did not refactor that preexisting test. Cohort batching remains a
+single characterization fixture, not a promised invariant. Existing F2 is
+still a lead/xfail, not newly established as a production contract violation.
+
+
 Branch: `inv/0f462p/f-comparators-metamorphic` (base a0d0b93)
 Scope: comparator correctness FIRST (AC.7), then metamorphic equivalence,
 totals reconciliation, doctor/fingerprint/show/browse behavior.

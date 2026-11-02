@@ -28,7 +28,8 @@ from __future__ import annotations
 
 import json
 import random
-from dataclasses import replace
+from dataclasses import dataclass, replace
+import math
 from pathlib import Path
 from typing import Any
 
@@ -247,15 +248,82 @@ def _norm_rows(rows: list[tuple[Any, ...]]) -> list[str]:
     return sorted(repr(tuple(_norm_cell(c) for c in row)) for row in rows)
 
 
-def read_engine_membership(engine: Any) -> dict[str, list[str]]:
+# DEPLOYMENT.md:220-221 permits last-binary-digit aggregate differences
+# below 4e-15 relative, while counts, dates and flags remain exact.
+# No absolute floor: zero versus a nonzero value must still differ.
+AGGREGATE_RTOL = 4e-15
+
+
+@dataclass(frozen=True)
+class AggregateTable:
+    schema: tuple[tuple[str, str], ...]
+    rows: tuple[tuple[Any, ...], ...]
+
+
+Membership = dict[str, Any]
+
+
+def snapshot(name: str, cursor: Any) -> Any:
+    schema = tuple((str(d[0]), str(d[1])) for d in cursor.description)
+    rows = cursor.fetchall()
+    if name in {"baseline", "baseline_long"}:
+        return AggregateTable(schema, tuple(rows))
+    return _norm_rows(rows)
+
+
+def aggregate_tables_equal(name: str, a: AggregateTable,
+                           b: AggregateTable) -> bool:
+    if a.schema != b.schema or len(a.rows) != len(b.rows):
+        return False
+    columns = [c.lower() for c, _ in a.schema]
+
+    def row_equal(left: tuple[Any, ...], right: tuple[Any, ...]) -> bool:
+        for i, (x, y) in enumerate(zip(left, right, strict=True)):
+            permitted = name == "baseline" and columns[i].startswith(("mean_", "std_"))
+            if name == "baseline_long" and columns[i] == "v":
+                permitted = (left[columns.index("kind")] == "stat"
+                             and right[columns.index("kind")] == "stat"
+                             and str(left[columns.index("stat")]).startswith(("mean_", "std_")))
+            if type(x) is not type(y):
+                return False
+            if isinstance(x, float) and isinstance(y, float):
+                if math.isnan(x) or math.isnan(y):
+                    if not (math.isnan(x) and math.isnan(y)):
+                        return False
+                    continue
+                if permitted and math.isfinite(x) and math.isfinite(y):
+                    if not math.isclose(x, y, rel_tol=AGGREGATE_RTOL, abs_tol=0.0):
+                        return False
+                    continue
+            if x != y:
+                return False
+        return True
+
+    # Perfect bipartite matching, not a set or greedy deduplication:
+    # approximate equality is not transitive, and duplicates consume rows.
+    matches: dict[int, int] = {}
+
+    def augment(i: int, seen: set[int]) -> bool:
+        for j, right in enumerate(b.rows):
+            if j in seen or not row_equal(a.rows[i], right):
+                continue
+            seen.add(j)
+            if j not in matches or augment(matches[j], seen):
+                matches[j] = i
+                return True
+        return False
+
+    return all(augment(i, set()) for i in range(len(a.rows)))
+
+
+def read_engine_membership(engine: Any) -> Membership:
     """Every TABLE in the engine (not views), content-normalized."""
     names = [r[0] for r in engine.con.execute(
         "SELECT table_name FROM duckdb_tables() "
         "WHERE database_name = current_database()").fetchall()]
-    out: dict[str, list[str]] = {}
+    out: Membership = {}
     for name in sorted(names):
-        rows = engine.con.execute(f"SELECT * FROM {name}").fetchall()
-        out[name] = _norm_rows(rows)
+        out[name] = snapshot(name, engine.con.execute(f"SELECT * FROM {name}"))
     return out
 
 
@@ -279,15 +347,14 @@ def read_file_membership(out: Path) -> dict[str, list[str]]:
                 src = f"{base}/**/*.parquet"
             else:
                 src = str(base) + ("" if base.suffix else ".parquet")
-            rows = con.execute(
-                f"SELECT * FROM read_parquet('{src}')").fetchall()
-            files[name] = _norm_rows(rows)
+            files[name] = snapshot(name, con.execute(
+                f"SELECT * FROM read_parquet('{src}')"))
         return files
     finally:
         con.close()
 
 
-def membership_diff(a: dict[str, list[str]], b: dict[str, list[str]],
+def membership_diff(a: Membership, b: Membership,
                     label_a: str, label_b: str) -> list[str]:
     """Human-readable mismatches between two memberships; content of
     NONDETERMINISTIC_TABLES is exempted (presence still required)."""
@@ -300,6 +367,10 @@ def membership_diff(a: dict[str, list[str]], b: dict[str, list[str]],
         problems.append(f"tables only in {label_b}: {only_b}")
     for name in sorted(set(a) & set(b)):
         if name in NONDETERMINISTIC_TABLES:
+            continue
+        if isinstance(a[name], AggregateTable) and isinstance(b[name], AggregateTable):
+            if not aggregate_tables_equal(name, a[name], b[name]):
+                problems.append(f"{name}: aggregate rows/schema differ: {a[name]!r} vs {b[name]!r}")
             continue
         if a[name] != b[name]:
             sa, sb = set(a[name]), set(b[name])

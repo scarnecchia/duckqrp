@@ -104,6 +104,9 @@ def _direct_run(dataset: SyntheticDataset, study: Any, tmp: Path,
 
 
 @given(ds=DATASETS, pair=PAIRS, perm_seed=st.integers(0, 2**31 - 1))
+@example(ds=generate(patients=4, seed=118,
+                     options=GenerateOptions(include_labs=True)),
+         pair=("utilization", "covariates"), perm_seed=0)
 @example(
     ds=generate(patients=1, seed=0,
                 options=GenerateOptions(include_labs=True)),
