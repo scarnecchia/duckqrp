@@ -57,7 +57,7 @@
     {"id": "B", "branch": "inv/0f462p/b-enrollment-stockpiling", "scope": "00_macros, 10_normalize, 20_enrollment, 30_exposure, 40_index, 45_pov1, 50_episodes: enrollment/stockpiling/index/episode outputs vs independent day-set and sequential-recurrence models", "status": "pass1-complete", "head": "1d4dfec", "merged_to_discovery": "58d7efa", "notes": "confirmed finding B2 (overlapping raw enrollment spans double-count a dispensing through stockpile joins; independently reproduced by orchestrator via investigation/probes/b_overlap_probe.py); strict-xfail witness test committed; fix-location ambiguity B1 (SAS-parity lag segmentation vs shave-join fix) open for Phase 4"},
     {"id": "C", "branch": "inv/0f462p/c-dose-inclusion-followup", "scope": "42_dose, 52_inclusion, 55_dose_censor, 60_followup, _claim_dose_view: dose boundaries, inclusion condition model, censoring precedence, follow-up day model", "status": "pass1-complete", "head": "8645179", "merged_to_discovery": "5c8b237", "notes": "no confirmed production defect in scope; pass-1 oracle corner bug (equal min/max cfdd reason attribution) root-caused and fixed after orchestrator replay catch, with DB-timeline discrepancy explanation and new boundary pins; leads: misleading 55_dose_censor comment (claimed re-check not performed), negative person_days, care-setting wildcard trap (cross-package), NULL-cfdd reason None; open questions OC-1..OC-3 in investigation/packages/C.md"},
     {"id": "D", "branch": "inv/0f462p/d-denominators-outputs", "scope": "70_outputs-96_baseline, 47_geography, 62_mstr_wide, config-sharing keys: denominator day enumeration, optional-stage references, cohorts-together-vs-separate; 92_cidadenom comment/implementation discrepancy", "status": "pending"},
-    {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pending"},
+    {"id": "E", "branch": "inv/0f462p/e-runtime-lifecycle", "scope": "engine, runner, events, runlog, pipeline, outputs, cli, tui: lifecycle state machine, cancellation, fault injection, output manifests, CLI/UI terminal states", "status": "pass1-complete", "head": "0b391e5", "merged_to_discovery": "82e4364", "notes": "no confirmed production defect in scope; leads: TUI never closes RunHandle (engine leak per run), CLI failure path never closes engine, SIGINT mid-run unhandled (no terminal log record, no manifest), direct pipeline.run failures emit no RunFinished (parity holds on success only); open questions OQ-1..OQ-7 in investigation/packages/E.md"},
     {"id": "F", "branch": "inv/0f462p/f-comparators-metamorphic", "scope": "parity.py, tools/parity_compare.py, tools/compare_runs.py, selfcheck.py, show.py, browse.py: comparator corruption detection/equivalence acceptance, end-to-end metamorphic checks, totals reconciliation", "status": "pending"}
   ],
   "passes": [
@@ -87,6 +87,24 @@
       "result": "pass",
       "detail": "144 passed, 2 xfailed in campaign venv after merge",
       "duration_seconds": 61.0
+    },
+    {
+      "id": "pkg-e-quick-1",
+      "package": "E",
+      "command": "python -m pytest tests/properties/test_pkg_e_* --hypothesis-profile=quick",
+      "revision": "0b391e5",
+      "result": "pass",
+      "detail": "21 passed; discovery-profile lifecycle stats: 492 cases, cancel-timing distribution never 58%/after_statement 15%/after_stage 15%/before_start 12%, terminals failed 43%/cancelled 30%/ok 28%",
+      "duration_seconds": 13.4
+    },
+    {
+      "id": "orchestrator-merge-e-1",
+      "package": "E",
+      "command": "python -m pytest tests/properties --hypothesis-profile=quick",
+      "revision": "82e4364 (discovery merge)",
+      "result": "pass",
+      "detail": "165 passed, 2 xfailed in campaign venv after merge",
+      "duration_seconds": 74.3
     },
     {
       "id": "pkg-a-quick-1",
