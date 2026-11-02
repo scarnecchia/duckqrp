@@ -3,6 +3,7 @@
 # briefs DB-3 / DB-4)
 
 - **id:** E-3 (DB-3), E-4 (DB-4)
+- **proposed issue title:** Decide the CLI SIGINT contract and the failure-path RunFinished ownership (dual record: E-3 SIGINT, E-4 failure terminal event)
 - **proposed issue titles:**
   - E-3: Decide the CLI SIGINT contract: exit code, diagnostics, and
     the terminal log record for a killed run
