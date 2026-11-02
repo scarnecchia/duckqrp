@@ -59,9 +59,15 @@ FROM running
 WHERE round(total) > max_cum_dose
 GROUP BY 1, 2, 3;
 
--- Apply, then re-check the criteria that depend on episode length.
--- Truncating can push an episode below min_epis_dur or past the
--- required observable days, exactly as it can in SAS.
+-- Apply the dose-censor date to the episode end. NOTE: the
+-- length-dependent criteria (min_epis_dur, required days after
+-- index/episode) were evaluated in 50_episodes on the PRE-truncation
+-- end and are NOT re-checked here, unlike SAS: ms_createptsmasterlist.sas
+-- truncates at :124 and only THEN evaluates the flags that read the
+-- truncated end (MinEnrolMet3 :156, MinObsEnrolMet2/4 :160/:162,
+-- MinEpiDurMet :165) and enforces them (subsetting IF :185). An episode
+-- the dose censor pushes below a length criterion therefore survives
+-- here but is deleted in SAS.
 CREATE OR REPLACE TABLE ptsmasterlist AS
 SELECT
     m.* EXCLUDE (episodeenddt, episode_days),
