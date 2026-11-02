@@ -1,0 +1,28 @@
+witness: package F lead F1 — attrition level 27 contradicts cohort_final
+recorded: 2026-01 (package F, branch inv/0f462p/f-comparators-metamorphic)
+contract: attrition level 27 descr "Information - Unique number of members in final cohort" (70_outputs.sql; docs/OUTPUTS.md "attrition now reproduces SAS's table")
+expected: level-27 remaining per group == count(DISTINCT patid) in cohort_final for that group
+actual: funnel forward-fills the last member count through uncounted episode levels; an EMPTY cohort_final coexists with remaining=2 at level 27
+severity guess: high — attrition is the headline funnel table downstream readers check first
+
+reproduce:
+    python -m pytest tests/properties/test_pkg_f_totals.py::test_attrition_final_count_pin_f1 --hypothesis-profile=quick   # XFAIL pin
+    python -m pytest tests/properties/test_pkg_f_totals.py::test_attrition_final_count_matches_cohort_final --hypothesis-profile=quick  # XFAIL property
+reproducer (deterministic):
+    from tests.properties.synth import generate, GenerateOptions
+    ds = generate(patients=1, seed=0, options=GenerateOptions(include_labs=True))
+    study = wildcard_study(study_for(ds, **feature_kwargs(ds, ("cida",))))
+    # full_pipeline_run(ds, study, output_dir=...) then compare:
+    #   cohort_final: 0 rows, ptsmasterlist: 0 rows
+    #   attrition cohort_a: L1..L6 remaining=1, L7=2 (2 index_candidates),
+    #     L8..L27 remaining=2 with excluded NULL at every counted episode
+    #     step (L10 L12 L16 L18..L24) — the counts never computed, the
+    #     last_value(n IGNORE NULLS) forward-fill carried 2 to level 27.
+
+observation detail (generate(patients=1, seed=0), wildcard+cida study):
+    cohort_a exposure_claims=2 (E00005 2015-01-16, E00019 2013-07-31)
+    index_candidates=2 rows (both dates)
+    cohort_final=0 rows — every episode dropped downstream with NO
+    attrition step recording an exclusion
+    cohort_b: zero exposure_claims, yet remaining=1 at every level
+    (forward-filled from the demographics count at L1)

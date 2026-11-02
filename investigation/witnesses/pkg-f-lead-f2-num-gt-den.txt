@@ -1,0 +1,23 @@
+witness: package F lead F2 — numerator exceeds denominator (npts > dennumpts)
+recorded: 2026-01 (package F, branch inv/0f462p/f-comparators-metamorphic)
+contract: a numerator counts members of the population the denominator counts; docs/OUTPUTS.md treats denomcounts/t2_cida as reconciled (DenNumPts)
+expected: npts <= dennumpts at every shared (level, group, agegroup, agegroupnum, sex, race, hispanic, year) key
+actual: ('001','cohort_b','75+',sex=None,index_year=NULL) npts=1 dennumpts=0; ('002','cohort_b','75+','F',NULL) npts=1 dennumpts=0
+severity guess: medium — stratified cells disagree while unstratified (000) reconciles; suspect an age-anchor mismatch between the numerator and denominator agegroup assignment, or an event-shave that removes the whole 75+ denominator cell while the episode survives
+
+reproduce:
+    python -m pytest tests/properties/test_pkg_f_totals.py::test_numerator_denominator_pin_f2 --hypothesis-profile=quick   # XFAIL pin
+    python -m pytest tests/properties/test_pkg_f_totals.py::test_numerator_never_exceeds_denominator --hypothesis-profile=quick  # XFAIL property
+reproducer (deterministic):
+    from tests.properties.synth import generate, GenerateOptions
+    ds = generate(patients=4, seed=0, options=GenerateOptions(include_labs=True))
+    study = wildcard_study(study_for(ds, **feature_kwargs(ds, ("cida",))))
+    # denomcounts rows: 22-44 (1 member), 65-74 (2 members) per cohort;
+    # NO 75+ row (dropped by the HAVING n_pts > 0), while t2_cida keeps
+    # a 75+ row with dennumpts=0 and numcounts puts npts=1 there.
+
+open questions:
+  - which anchor date does each stage use for agegroup (index date vs
+    enrollment vs per-year boundary)?
+  - is the denominator event-shave (a:/b: scopes in 92_cidadenom.sql)
+    supposed to be able to empty a cell that still has episodes?
