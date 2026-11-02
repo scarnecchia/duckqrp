@@ -30,6 +30,7 @@ from .oracles.b_episode_model import (
     model_episode_criteria,
     model_episodes,
 )
+from .oracles.b_enrollment_model import enrollment_episodes
 from .oracles.b_pkg_fixtures import (
     assert_rows_match,
     expand_spec,
@@ -276,6 +277,15 @@ def test_episode_selection_matches_model(case: dict) -> None:
         event("death interaction present")
     fills = [f for p in spec["patients"] for f in p["fills"] if f["twin"]]
     event(f"same-day tie pairs={len(fills)}")
+    # Coverage statistic: does this case place a dispensing date inside
+    # >= 2 modeled episodes — the B2 fan-out family the overlap-domain
+    # invariants in test_pkg_b_independent_review.py characterize?
+    # Statistic only; no policy implied.
+    modeled = enrollment_episodes(dataset, study)
+    if any(sum(ep.enr_start <= d.rxdate <= ep.enr_end for ep in eps) >= 2
+           for eps in modeled.values()
+           for d in dataset.dispensings):
+        event("dispensing inside multiple episodes (B2 fan-out family)")
 
     with StageHarness(study) as harness:
         harness.attach_dataset(dataset)
