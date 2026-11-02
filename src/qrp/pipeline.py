@@ -1187,6 +1187,12 @@ def run(
         # discharge_status marks deaths in hospital (EX = expired); an
         # extract without it simply has no encounter-derived deaths
         ("read_encounter", ("ddate", "discharge_status")),
+        # the diagnosis care-setting trio is OPTIONAL (INPUTS.md:
+        # required is only patid, adate, dx). A missing pdx/enctype
+        # means the claim carries no principal flag or care setting —
+        # the view's COALESCE wildcards 'X'/'XX' — and a missing
+        # dx_codetype means "match any", as with dispensing's codetype
+        ("read_diagnosis", ("dx_codetype", "pdx", "enctype")),
     ):
         optional_cols.update(_optional(key, *cols))
     chart_col = optional_cols["chart"]

@@ -150,9 +150,14 @@ SELECT
     CAST(patid AS BIGINT)  AS patid,
     CAST(adate AS DATE)    AS adate,
     CAST(dx AS VARCHAR)    AS code,
-    CAST(dx_codetype AS VARCHAR) AS codetype,
-    upper(COALESCE(CAST(pdx AS VARCHAR), 'X')) AS pdx,
-    upper(COALESCE(CAST(enctype AS VARCHAR), 'XX')) AS enctype
+    -- dx_codetype/pdx/enctype are OPTIONAL (INPUTS.md); resolved
+    -- against the extract by pipeline.py — the column, or NULL. NULL
+    -- codetype matches any configured codetype; NULL pdx/enctype fall
+    -- to the COALESCE wildcards below ('X' any principal flag, 'XX'
+    -- any care setting).
+    CAST({opt_dx_codetype} AS VARCHAR) AS codetype,
+    upper(COALESCE(CAST({opt_pdx} AS VARCHAR), 'X')) AS pdx,
+    upper(COALESCE(CAST({opt_enctype} AS VARCHAR), 'XX')) AS enctype
 FROM {read_diagnosis}
 WHERE adate IS NOT NULL;
 
