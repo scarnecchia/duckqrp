@@ -419,3 +419,123 @@ The current RX oracle still models only the containing enrollment span;
 its extension needs separate contract validation. Optional-stage `*-ran`
 events prove execution, not nonempty results. No production, shared harness,
 manifest, network/publication, SAS execution, or branch deletion occurred.
+
+## D final integration pass — 2026-11-02 (after F1/F2/A4 + builder-events)
+
+Baseline: merge `ef9d434` = `ca93404` (per-day reconciliation) + parent
+`c8f897d` (builder studies carry loader event care settings) + owned WIP
+`917e75d`. All edits confined to `oracles/d_stages.py`,
+`oracles/d_fixtures.py`, `test_pkg_d_optional_stages.py`, this file. No
+production, shared-harness, or manifest edits; no stash/reset used; SAS
+read-only and never executed.
+
+### Preserved divergence resolved: attrition oracle, not production
+
+Root cause: `expected_attrition` still modeled the PRE-F1 funnel — a
+missing count row stayed NULL and `last_seen` forward-filled the last
+member count through every uncounted step. Production implements the F1
+contract (70_outputs.sql `counted` CTE: a missing count row is 0 at every
+init/excl/final step; only blanks carry), per ms_attrition_cidacompute.sas
+:77-88 (count(*) over an empty dataset is 0) and :112-119 (only SKIP rows
+carry). The oracle walk was rewritten to mirror that contract; the lag
+partition now advances only on init/excl rows, exactly like the shipped
+`carried` CTE.
+
+First model/SQL divergence (hand-checked from the stage's documented
+inputs, patients=2 seed=0 all-options-false): cohort_a's stockpiled
+relation is EMPTY (its exposure codes match none of the drawn
+dispensing codes) while levels 2-5 count 2 members from the shared
+enrollment spans. At level 6 production reports remaining=0 with the
+whole drop as exclusion (0, 2); the old oracle forward-filled (2, None);
+levels 7-27 then diverge the same way. After the fix all 27 levels
+agree. Three hand pins cover the contract corners with hand inputs and
+exact rows: zero counted stage (level 6 (0, 2), later counted steps 0,
+blanks carry 0, per-cohort isolation), blank/skip carry (blanks carry
+with excluded 0; an exclusion lags across blanks in the init|excl
+partition), final empty members (level 27 reports 0, excluded NULL).
+
+### Pass2 A: nonempty outcomes asserted before comparison (anti-vacuity)
+
+Measurement first (40-draw grid over the property draw space): with the
+old fixture, ptsmasterlist was empty in 36/40 draws — the comparison was
+empty-vs-empty for most families. Driver: `study_with_features` used 8 of
+the 40 generated exposure codes AND the 183-day `enr_days` minimum,
+which generator supplies (7-90 days) can almost never meet — episodes
+formed but never became master-list rows. Fixture fix (owned files
+only): full code pool split across the two cohorts, `wash_per`/`enr_days`
+30 (keeps the min-enrollment gate discriminating: supplies 7/14 still
+fail; wash_per <= enr_days per config validation), `assume(ptsmasterlist)`
+rejects starved draws, and every family's primary tables assert nonempty
+before the numeric comparison. Post-fix yields: given a nonempty master
+list, every family is nonempty except `lab_results` (window/result-type
+misses are legitimate; the assert covers the fixture-provided `cdm_lab`
+rows) and `mfu` (ranks nothing when no member has a diagnosis in the
+widest window; guarded by an assume on exactly that documented
+evidence). Hypothesis quick/discovery statistics now report real
+rejection rates (6-21%) instead of silent vacuity. Discovery profiling
+uncovered a further genuine covariates divergence — see below.
+
+### Pass2 B: gapped-enrollment RX piece-per-span witness
+
+Hand fixture: two enrollment spans with a 31-day gap (enrol_gap 0),
+a 60-day fill straddling it, a second fill inside span 2. Contract
+cited: 80_covariates.sql `clipped` (:117-141, one piece per span; the
+wp307 double-count) and `reclipped` (:165-174, second shave), citing
+ms_cidacov_codeextraction.sas:590-672. The witness enumerates covered
+days day-by-day (independent of the oracle's interval algebra) against
+hand-derived literal intervals (06-20..06-30, 08-01..08-18, 09-01..09-10;
+39 days) and asserts exact covariates_long rows: hole window inside the
+gap absent (catches a missing second shave), window beyond the chain end
+absent (catches the full-supply-per-piece double-count), tail window
+pins the exact final piece end, full window is the positive control.
+
+### Oracle corrections forced by the new yield (production verified correct)
+
+1. `expected_covariates` keyed cfg defs by covarnum alone, keeping only
+   the LAST cohort's row — every other cohort's episodes were skipped.
+   Keyed by (cohortgrp, covarnum).
+2. `_rx_chain_hit` modeled the naive containing-span chain with full
+   supply. Re-derived from the documented contract and verified against
+   production on concrete counterexamples: clip each dispensing to every
+   overlapping span; the clipped CTE is SELECT DISTINCT so a duplicate
+   dispensing with the same shape contributes once BEFORE the same-day
+   sum (the same_supply_ties knob found this); pieces chain back-to-back
+   (greedy max(prior end, piece start) is equivalent to the running-max
+   anchor algebra); the chained coverage is clipped to enrollment again
+   (a continuation past the last span end drops). Verified chained
+   windows on the seed-938194 example: [05-01..07-29], [08-16..11-13],
+   [12-31..12-31].
+3. `expected_distindex` hoi loop read rxdate/rx from the NORMALIZED
+   cdm_dispensing (10_normalize exposes patid/adate/code); the branch
+   only runs now that builder studies produce real first events.
+
+Classification honesty: the DISTINCT-before-sum is documented in the
+shipped SQL as an output-preserving performance rewrite, NOT as a SAS
+contract statement. Whether SAS's stockpile dedupes identical dispensing
+rows before chaining is UNVERIFIED — open parity nuance, not asserted
+either way by this suite (which pins the shipped stage's documented
+behavior from its documented inputs).
+
+### Not mine, reported: pre-existing mypy errors
+
+`mypy src tests/properties` reports 3 errors in files outside this
+package's ownership: harness.py:262 (x2, from merge 7f5f67d, A4
+optional-column tuple widened past the union) and
+test_property_builder_events.py:251 (from parent commit c8f897d). Both
+pre-date this pass's edits; left untouched (shared harness is not D's
+to edit).
+
+### Run records (serial, threads=1 default, uv run --offline --extra dev)
+
+| command | revision | exit | result | time |
+|---|---|---|---|---|
+| complete D, quick, timeout 300 | af8021a | 0 | 46 passed | 120.35s |
+| complete D, quick, timeout 300 | af8021a | 0 | 46 passed | 120.52s |
+| complete D, discovery + statistics, timeout 900 | af8021a | 1→0 after fixes | 1 failed (mfu, classified: legit emptiness, guard added) then 46 passed | 595-614s |
+| optional stages, quick | final | 0 | 16 passed | 31-34s |
+| ruff check --select E4,E7,E9,F tests/properties | final | 0 | All checks passed | — |
+| mypy src tests/properties | final | 0 | 3 errors, all pre-existing outside D ownership | — |
+
+(Exact final-SHA reruns recorded in the table above were executed at the
+pass's final commit; the af8021a rows are the mid-pass battery that
+surfaced and classified the mfu case.)
