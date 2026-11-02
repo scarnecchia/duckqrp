@@ -516,6 +516,23 @@ rows before chaining is UNVERIFIED — open parity nuance, not asserted
 either way by this suite (which pins the shipped stage's documented
 behavior from its documented inputs).
 
+**Lab-summary mean boundary (classified, oracle-side fix, residual lead
+recorded):** discovery found `lab_summary.mean_result` 134.083
+(production) vs 134.082 (oracle) on a 5-patient draw — four identical
+rows on both sides, true mean exactly 134.0825. Plain float summation is
+ORDER-sensitive: the oracle's row order gave 536.3299999999999, DuckDB's
+gave 536.33; the rounded third decimal flipped at the exact .0005
+boundary. No semantic defect on either side. The oracle now sums the
+exact decimals (Decimal(str(v))), matching the documented decimal
+half-away contract and making it order-immune. RESIDUAL LEAD for
+production reviewers (not edited by D): production's
+`round(avg(result_num), 3)` averages DOUBLEs whose sum order/ulp can
+land on either side of such a boundary; a DECIMAL-based mean would be
+deterministic and SAS-decimal-exact. A future draw whose exact mean sits
+on a .0005 boundary may reproduce this signature in either direction;
+classify by recomputing the exact decimal mean before treating it as a
+rounding-mode bug.
+
 ### Not mine, reported: pre-existing mypy errors
 
 `mypy src tests/properties` reports 3 errors in files outside this

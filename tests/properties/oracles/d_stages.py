@@ -362,13 +362,22 @@ def expected_lab_summary(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     out = []
     for (grp, code), rs in sorted(per.items()):
         nums = [r["result_num"] for r in rs if r["result_num"] is not None]
+        # Exact-decimal mean: the inputs are decimal-rounded results and
+        # the documented rounding (SAS half-away) is decimal semantics.
+        # Float summation is ORDER-sensitive and on an exact .0005
+        # boundary moves the rounded digit (observed: identical four
+        # rows rounded 134.082 vs 134.083 purely by summation order).
+        from decimal import Decimal
+
+        total = sum(Decimal(str(v)) for v in nums)
+        mean = float(total / len(nums))
         out.append(
             {
                 "cohortgrp": grp,
                 "labcode": code,
                 "records": len(rs),
                 "npts": len({r["patid"] for r in rs}),
-                "mean_result": round_half_away(sum(nums) / len(nums), 3),
+                "mean_result": round_half_away(mean, 3),
                 "min_result": min(nums),
                 "max_result": max(nums),
             }
