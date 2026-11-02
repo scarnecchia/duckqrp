@@ -44,12 +44,12 @@ preexisting worktrees are off-limits to campaign workers.
 | Package | Branch | Scope | Status |
 |---|---|---|---|
 | infra | `inv/0f462p/infra` | Property-test infrastructure: profiles/budgets/witnesses, synthetic builder + StudyConfig builder, stage + parquet harnesses, harness self-tests, AC.1 | complete |
-| A | *assigned by orchestrator* | *contract under test recorded in manifest when known* | pending |
-| B | *assigned by orchestrator* | *as above* | pending |
-| C | *assigned by orchestrator* | *as above* | pending |
-| D | *assigned by orchestrator* | *as above* | pending |
-| E | *assigned by orchestrator* | *as above* | pending |
-| F | *assigned by orchestrator* | *as above* | pending |
+| A | *assigned by orchestrator* | *contract under test recorded in manifest packages[] when known* | pass2-complete |
+| B | *assigned by orchestrator* | *as above* | pass2-complete |
+| C | *assigned by orchestrator* | *as above* | pass2-complete |
+| D | *assigned by orchestrator* | *as above* | pass2-complete |
+| E | *assigned by orchestrator* | *as above* | pass2-complete |
+| F | *assigned by orchestrator* | *as above* | pass2-complete |
 
 Package workers: read "Contracts under test" and "Ambiguity log" below
 before designing properties — several pipeline semantics are easy to
@@ -109,6 +109,15 @@ python -m pytest tests/test_rewrites.py
 python -m ruff check --select E4,E7,E9,F tests/properties
 python -m mypy src tests/properties
 ```
+
+Note on lint scope: the `ruff --select E4,E7,E9,F` line above is the
+campaign's gate, not the full lint. Ruff 0.17.3's full default ruleset
+reports pre-existing expanded-defaults findings (~100 in `src/`), and
+one in campaign-owned files: PYI034 at
+`tests/properties/harness.py:179` (`__enter__` returning the explicit
+`StageHarness` annotation instead of `typing.Self`, which the repo's
+mypy `python_version = "3.10"` target predates). Known version drift,
+recorded in packages/FINAL-VALIDATION.md; not a campaign regression.
 
 Environment: `.venv` in the worktree,
 `uv venv .venv --python 3.13 && uv pip install --python .venv/bin/python -e '.[dev]'`.
@@ -291,3 +300,61 @@ pass-less packages (D in flight; F stale) with an explicit skip reason
 and FAILS instead if a pending package ever records passes. Once
 packages[F] carries its real status (and F pass rows), the validator
 asserts F strictly and the skip disappears.
+
+*(Orchestrator note, later on 2026-11-02: resolved — all six packages
+now carry settled pass2-complete statuses and pass rows; the strict
+completion tier is green.)*
+
+**2026-11-02 — B/D pass-2 final batteries recorded (closing records,
+`inv/0f462p/closing-records` ea8936d).** Manifest gained pkg-b-pass2-*
+(four records from B.md pass records 1-6 at b-final 4891dfa) and
+pkg-d-pass2-* (three records from D.md's final battery at cc4945d,
+recorded at e5d4dd4 — at that time not yet merged, and the records said
+so), stale strict-xfail B2 witness references repaired to the current
+positive parity pins, and the D DOUBLE-mean / RX DISTINCT / B legacy
+overlap-caveat leads recorded. Narrative: packages/CLOSING-RECORDS.md.
+
+**2026-11-02 — final integration into `discovery` (31846dc).**
+- `5d0ac0a` — D final e5d4dd4 merged (D.md + reconciled optional-stage
+  oracles + anti-vacuity fixtures) after the parent's independent
+  review returned **APPROVE**; approval limits recorded in the
+  manifest's D package entry (documented-input pinning scope, RX
+  DISTINCT SAS parity asserted neither way, production DOUBLE mean
+  unresolved, contiguous open-top year-band claims only). The
+  previously executable-red
+  `test_optional_stage_matches_reference[attrition_person_time]`
+  divergence is resolved by this merge.
+- `4149258` — the closing-records manifest/ARBITRATION/CLOSING-RECORDS
+  update integrated.
+- `14a54f1` + `31846dc` — the last three campaign mypy errors fixed in
+  property-test files, no production changes
+  (investigation/packages/TYPES-FINAL.md).
+
+**2026-11-02 — final validation COMPLETE with known baseline residue.**
+Both post-integration runs at `31846dc`, executed serially as two
+disjoint selections that together cover every test (the plan's
+full-suite validation; not one command):
+
+- Properties, quick: `python -m pytest tests/properties
+  --hypothesis-profile=quick -q` → exit 0, **424 passed, 13 skipped,
+  1 xfailed, 13 warnings, 299.29s** (session `final-properties.log`).
+  The 13 skips are the opt-in replay wrappers (six mutation-replay,
+  seven finding-replay), executed separately.
+- Original suites: `python -m pytest --ignore=tests/properties -q` →
+  exit 1, **373 passed, 2 failed, 3 skipped, 437 warnings, 464.08s**
+  (session `final-existing.log`; summary and FAILED lines verified).
+  Recorded as `orchestrator-final-existing-suites-1` with result
+  `confirmed` — the run FAILED and is recorded as failed, never
+  relabeled: the 2 failures are exactly the pre-existing baseline
+  spill-attribution OOM tests (`OutOfMemoryException` inside the
+  forced ~286 MiB limit), zero new failures vs the recorded baseline
+  (337 passed / 2 failed / 3 skipped at c3e60db; the +36 passing are
+  campaign-integrated regression tests), and the 3 skips match the
+  baseline's environmental skips.
+
+Parent post-run checks: `mypy src tests/properties` clean (83 files),
+`git diff --check` clean. Full report with the AC.1–AC.9 mapping,
+limitations (D DOUBLE-mean rounding with the reproducibility-only
+DECIMAL proposal, RX DISTINCT nuance, B legacy overlap scope, PYI034
+lint-scope note), unresolved DB-2..DB-5, and the no-universal-claim
+scope statement: investigation/packages/FINAL-VALIDATION.md.
