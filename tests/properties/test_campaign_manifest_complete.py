@@ -1,39 +1,47 @@
 """AC.8: validate investigation/manifest.json as the record of truth.
 
 Cheap on purpose — JSON parsing, filesystem existence, and one git
-call per base revision; no DuckDB, no Hypothesis. Deliberately part of
+call per revision token; no DuckDB, no Hypothesis. Deliberately part of
 the normal quick suite: a manifest that fails this test invalidates
 every claim that references it.
 
-What is enforced, per the campaign acceptance criteria:
+Two tiers live here:
 
-* schema/version; every known package (infra, A, B, C, D, E, F) has a
-  branch and a settled status. A pending/in_progress status is
-  tolerated ONLY for packages still in flight (status pending/
-  in_progress AND no pass-1 record in passes[]) — D while its worker
-  runs, and any other package whose record still lags its merged
-  branch (today: F, merged at 3085eb4 with its status still
-  "pending"; only the orchestrator may refresh packages[], so the
-  validator must not lie about it either). A pending status on a
-  package that already records passes is a self-contradiction and
-  fails loudly.
-* every passes[] entry has command/revision/result/detail, a known
-  package, one of the recorded result vocabularies, and a
-  duration_seconds key (None allowed).
-* every calibrations[] entry passes the shared record parser
-  (investigation/replay_core.parse_record — the same validation the
-  replay machinery applies) and its references resolve: diff file
-  exists inside the repo, base revision resolves as a commit, the
-  failing command names at least one existing test file, the package
-  id is known.
-* every findings[] entry has a matching document under
-  investigation/findings/ carrying every template-required field.
-  The array may legitimately be empty until the findings arbiter
-  merges.
-* every witness path referenced in the manifest or in the
-  investigation tree exists on disk.
+* Always-on record validity — schema/version; every known package
+  (infra, A–F) has a branch and a settled status (pending/in_progress
+  is a completion failure, never a skip); every passes[] entry is
+  field-complete with a known package and a recorded result vocabulary;
+  calibration records parse through the shared record parser
+  (investigation/replay_core.parse_record) and their references
+  resolve; finding documents exist and carry every template-required
+  field; every referenced witness path exists.
+
+* Strict completion tier — the campaign record only counts as complete
+  when every package A–F records a pass-1 AND a pass-2 run with result
+  'pass' (id marks the pass: 'pass2' in the id, or an explicit integer
+  campaign_pass field), each pass-2 record names a resolvable revision
+  and real test files, every package carries a deliberate-mutation
+  calibration record, the package report is referenced by name, and the
+  committed machine-verdict record
+  (investigation/audit-replays/replay-verdicts.json) covers every
+  calibration id with genuine red→green evidence — red exit 1 for the
+  recorded reason, green exit 0, no collection/skip/empty-run masking.
+
+The completion tier is expected to FAIL while packages B and D have not
+integrated their pass-2 records. That failure is legitimate and
+informative: its message lists exactly which records are still missing.
+Do not invent evidence to turn it green — integrate the records.
+
+Fail closed: an unreadable or malformed manifest raises
+ManifestUnreadable in every check that touches it. Nothing here skips.
+
+The validation predicates themselves are pure functions in
+investigation/replay_core.py; the negative tests below exercise them
+against synthetic manifests so a validator hole cannot hide behind the
+accidentally-correct real record.
 """
 
+import glob
 import json
 import re
 import shlex
@@ -52,18 +60,10 @@ TEMPLATE_PATH = REPO_ROOT / "investigation" / "findings" / "000-template.md"
 FINDINGS_DIR = REPO_ROOT / "investigation" / "findings"
 WITNESS_DIR = REPO_ROOT / "investigation" / "witnesses"
 CALIBRATIONS_DIR = REPO_ROOT / "investigation" / "calibrations"
+VERDICTS_PATH = REPO_ROOT / replay_core.VERDICT_RECORD_PATH
 
 MANIFEST_SCHEMA = "qrp-investigation-manifest/1"
-PACKAGE_IDS = ("infra", "A", "B", "C", "D", "E", "F")
-# Arbitration, campaign-infra and orchestrator records reference these
-# worker ids in passes[].package; they are campaign participants, not
-# property packages, so they need no manifest packages[] entry.
-CAMPAIGN_WORKER_IDS = ("arb", "arb2", "arb3", "campaign-infra", "orchestrator")
-# 'red'/'green' record single-leg prototype evidence (e.g. a validated fix
-# prototype that was later removed by an operator ruling); 'red then green'
-# records a complete committed fix branch.
-PASS_RESULTS = frozenset({"pass", "confirmed", "red then green", "red", "green"})
-IN_FLIGHT_STATUSES = frozenset({"pending", "in_progress"})
+PACKAGE_IDS = ("infra", *replay_core.CAMPAIGN_PACKAGES)
 REQUIRED_TOP_LEVEL = (
     "schema", "campaign", "environment", "profiles", "packages",
     "passes", "calibrations", "evidence", "findings", "open_questions",
@@ -78,8 +78,27 @@ WITNESS_REF_RE = re.compile(r"investigation/witnesses/[A-Za-z0-9._-]+")
 TEMPLATE_FIELD_RE = re.compile(r"^\s*-\s*\*\*(.+?):\*\*", re.MULTILINE)
 
 
+class ManifestUnreadable(Exception):
+    """The campaign manifest cannot be loaded as a JSON object."""
+
+
+def load_manifest(path: Path) -> dict:
+    """Read the manifest; any failure is loud (fail closed)."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ManifestUnreadable(f"cannot read {path}: {exc}") from exc
+    try:
+        manifest = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ManifestUnreadable(f"{path} is not valid JSON: {exc}") from exc
+    if not isinstance(manifest, dict):
+        raise ManifestUnreadable(f"{path} must contain a JSON object")
+    return manifest
+
+
 def _manifest() -> dict:
-    return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    return load_manifest(MANIFEST_PATH)
 
 
 def _packages_by_id(manifest: dict) -> dict[str, dict]:
@@ -103,8 +122,20 @@ def _revision_resolves(revision: str) -> bool:
     return proc.returncode == 0
 
 
+def _repo_path_exists(repo_relative: str) -> bool:
+    """Existence check for repo-relative paths, glob tokens included."""
+    if any(char in repo_relative for char in "*?["):
+        return bool(glob.glob(str(REPO_ROOT / repo_relative)))
+    return (REPO_ROOT / repo_relative).is_file()
+
+
 def _template_required_fields() -> list[str]:
     return TEMPLATE_FIELD_RE.findall(TEMPLATE_PATH.read_text(encoding="utf-8"))
+
+
+# ---------------------------------------------------------------------------
+# Always-on record validity
+# ---------------------------------------------------------------------------
 
 
 def test_manifest_schema_and_campaign_record() -> None:
@@ -133,26 +164,24 @@ def test_package_branches_and_statuses() -> None:
     manifest = _manifest()
     packages = _packages_by_id(manifest)
     passes = manifest["passes"]
-    in_flight: list[str] = []
+    not_settled: list[str] = []
     for pid in PACKAGE_IDS:
         entry = packages[pid]
         branch = entry.get("branch")
         assert isinstance(branch, str) and branch.strip(), (
             f"package {pid} has no branch recorded")
         status = entry.get("status")
-        if status in IN_FLIGHT_STATUSES:
+        assert isinstance(status, str) and status.strip(), (
+            f"package {pid} has no status recorded")
+        if status in replay_core.IN_FLIGHT_STATUSES:
             recorded_passes = any(p.get("package") == pid for p in passes)
             assert not recorded_passes, (
                 f"package {pid} records passes in passes[] but its status "
                 f"is still {status!r} — the record contradicts itself")
-            in_flight.append(f"{pid} (status={status!r})")
-        else:
-            assert isinstance(status, str) and status.strip(), (
-                f"package {pid} has no status recorded")
-    if in_flight:
-        pytest.skip(
-            "still in flight; AC.8 completeness assertions deferred until "
-            "each package records its pass-1 run: " + "; ".join(in_flight))
+            not_settled.append(f"{pid} (status={status!r})")
+    assert not not_settled, (
+        "campaign record is not complete — package(s) still unsettled: "
+        + "; ".join(not_settled))
 
 
 def test_pass_entries_are_complete() -> None:
@@ -160,25 +189,13 @@ def test_pass_entries_are_complete() -> None:
     passes = manifest["passes"]
     assert isinstance(passes, list) and passes
     seen_ids: set[str] = set()
+    known_packages = set(PACKAGE_IDS) | replay_core.CAMPAIGN_WORKER_IDS
     for entry in passes:
-        pass_id = entry.get("id")
-        assert isinstance(pass_id, str) and pass_id.strip(), (
-            f"pass entry without id: {entry!r}")
+        errors = replay_core.validate_pass_entry(entry, known_packages)
+        assert not errors, "; ".join(errors)
+        pass_id = str(entry.get("id"))
         assert pass_id not in seen_ids, f"duplicate pass id {pass_id!r}"
         seen_ids.add(pass_id)
-        for field in ("command", "revision", "result", "detail"):
-            value = entry.get(field)
-            assert isinstance(value, str) and value.strip(), (
-                f"pass {pass_id!r}: field {field!r} must be a non-empty "
-                f"string, got {value!r}")
-        assert entry["result"] in PASS_RESULTS, (
-            f"pass {pass_id!r}: result {entry['result']!r} not in "
-            f"{sorted(PASS_RESULTS)}")
-        assert "duration_seconds" in entry, (
-            f"pass {pass_id!r}: duration_seconds key missing (None allowed)")
-        package = entry.get("package")
-        assert package in PACKAGE_IDS or package in CAMPAIGN_WORKER_IDS, (
-            f"pass {pass_id!r}: unknown package {package!r}")
 
 
 def test_calibration_records_are_schema_valid() -> None:
@@ -283,3 +300,276 @@ def test_ledger_tree_present() -> None:
     assert any(CALIBRATIONS_DIR.glob("*.patch")), (
         "investigation/calibrations/ holds no patch files despite "
         "calibrations[] being populated")
+
+
+# ---------------------------------------------------------------------------
+# Strict completion tier (red until the parent integrates the pass records)
+# ---------------------------------------------------------------------------
+
+
+def test_campaign_record_is_strictly_complete() -> None:
+    manifest = _manifest()
+    problems = replay_core.completion_problems(
+        manifest, path_exists=_repo_path_exists,
+        revision_resolves=_revision_resolves)
+    assert not problems, (
+        "campaign record is not complete — remaining record requirements:\n"
+        + "\n".join(f"- {problem}" for problem in problems))
+
+
+def test_calibration_replays_have_committed_genuine_verdicts() -> None:
+    manifest = _manifest()
+    ids, error = replay_core.manifest_calibration_ids(manifest)
+    assert not error, f"manifest unusable for verdict coverage: {error}"
+    assert VERDICTS_PATH.is_file(), (
+        f"no committed machine-verdict record at {replay_core.VERDICT_RECORD_PATH}"
+        " — every calibration needs executed red→green evidence, not prose")
+    verdicts = json.loads(VERDICTS_PATH.read_text(encoding="utf-8"))
+    problems = replay_core.verdict_coverage_problems(ids, verdicts)
+    assert not problems, "\n".join(problems)
+
+
+# ---------------------------------------------------------------------------
+# Negative validator self-tests (synthetic; the predicates must reject
+# absent, fabricated, and malformed fields — a validator that only ever
+# saw the real record proves nothing)
+# ---------------------------------------------------------------------------
+
+
+def _valid_pass_entry() -> dict:
+    return {"id": "x-1", "package": "A", "command": "python -m pytest t.py",
+            "revision": "aaaaaaaa", "result": "pass", "detail": "ok",
+            "duration_seconds": None}
+
+
+def _synthetic_manifest() -> dict:
+    """Minimal manifest that satisfies completion_problems by construction."""
+    packages = [
+        {"id": pid, "branch": f"inv/x/{pid.lower()}",
+         "status": "pass2-complete", "notes": "recorded"}
+        for pid in replay_core.CAMPAIGN_PACKAGES
+    ]
+    passes = []
+    for pid in replay_core.CAMPAIGN_PACKAGES:
+        for number in (1, 2):
+            marker = "pass2" if number == 2 else "pass1"
+            passes.append({
+                "id": f"{pid.lower()}-{marker}", "package": pid,
+                "command": "python -m pytest tests/test_x.py",
+                "revision": "aaaaaaaa", "result": "pass",
+                "detail": f"run {number} recorded in "
+                          f"investigation/packages/{pid}.md",
+                "duration_seconds": 1.0,
+            })
+    calibrations = [{"id": f"{pid.lower()}-1", "package": pid}
+                    for pid in replay_core.CAMPAIGN_PACKAGES]
+    return {"schema": MANIFEST_SCHEMA, "packages": packages,
+            "passes": passes, "calibrations": calibrations}
+
+
+def _fake_path_exists(repo_relative: str) -> bool:
+    return repo_relative == "tests/test_x.py" or repo_relative.startswith(
+        "investigation/packages/")
+
+
+def _fake_revision_resolves(revision: str) -> bool:
+    return revision == "aaaaaaaa"
+
+
+def _completion_problems(manifest: dict) -> tuple[str, ...]:
+    return replay_core.completion_problems(
+        manifest, path_exists=_fake_path_exists,
+        revision_resolves=_fake_revision_resolves)
+
+
+def test_synthetic_record_is_complete_by_construction() -> None:
+    assert _completion_problems(_synthetic_manifest()) == ()
+
+
+def test_missing_pass2_entry_is_flagged_with_exact_requirement() -> None:
+    manifest = _synthetic_manifest()
+    manifest["passes"] = [p for p in manifest["passes"] if p["id"] != "f-pass2"]
+    problems = _completion_problems(manifest)
+    flagged = [p for p in problems if p.startswith("package F")]
+    assert flagged, problems
+    assert "pass-2" in flagged[0]
+    assert "campaign_pass" in flagged[0]
+    assert "investigation/packages/F.md" in flagged[0]
+
+
+def test_stale_status_is_flagged() -> None:
+    manifest = _synthetic_manifest()
+    for entry in manifest["packages"]:
+        if entry["id"] == "C":
+            entry["status"] = "pass1-complete"
+    assert any("stale status" in problem and "package C" in problem
+               for problem in _completion_problems(manifest))
+
+
+def test_unsettled_status_is_flagged() -> None:
+    manifest = _synthetic_manifest()
+    for entry in manifest["packages"]:
+        if entry["id"] == "B":
+            entry["status"] = "in_progress"
+    assert any("not settled" in problem and "package B" in problem
+               for problem in _completion_problems(manifest))
+
+
+def test_unresolvable_revision_and_missing_test_file_are_flagged() -> None:
+    manifest = _synthetic_manifest()
+    for record in manifest["passes"]:
+        if record["id"] == "b-pass2":
+            record["revision"] = "deadbeef"
+            record["command"] = "python -m pytest tests/gone.py"
+    problems = _completion_problems(manifest)
+    assert any("resolvable commit" in problem for problem in problems), problems
+    assert any("nonexistent test path" in problem
+               and "tests/gone.py" in problem for problem in problems), problems
+
+
+def test_missing_calibration_and_missing_report_are_flagged() -> None:
+    manifest = _synthetic_manifest()
+    manifest["calibrations"] = [c for c in manifest["calibrations"]
+                                if c["package"] != "D"]
+    problems = replay_core.completion_problems(
+        manifest,
+        path_exists=lambda token: (token != "investigation/packages/E.md"
+                                   and _fake_path_exists(token)),
+        revision_resolves=_fake_revision_resolves)
+    assert any("no calibration record" in problem and "package D" in problem
+               for problem in problems), problems
+    assert any("does not exist" in problem
+               and "investigation/packages/E.md" in problem
+               for problem in problems), problems
+
+
+def test_unreferenced_report_is_flagged() -> None:
+    manifest = _synthetic_manifest()
+    for record in manifest["passes"]:
+        if record["package"] == "C":
+            record["detail"] = "no reference here"
+    for entry in manifest["packages"]:
+        if entry["id"] == "C":
+            entry["notes"] = "no reference either"
+    problems = _completion_problems(manifest)
+    assert any("not referenced" in problem and "package C" in problem
+               for problem in problems), problems
+
+
+def test_pass_entry_conventions() -> None:
+    assert replay_core.validate_pass_entry(_valid_pass_entry(), {"A"}) == ()
+    assert replay_core.validate_pass_entry("not an entry", {"A"})
+    number, error = replay_core.campaign_pass_number(
+        {"id": "pkg-b-pass2-quick-1"})
+    assert (number, error) == (2, "")
+    number, error = replay_core.campaign_pass_number({"id": "pkg-b-quick-1"})
+    assert (number, error) == (1, "")
+    number, error = replay_core.campaign_pass_number(
+        {"id": "x-pass2", "campaign_pass": 1})
+    assert (number, error) == (1, "")
+    number, error = replay_core.campaign_pass_number(
+        {"id": "x", "campaign_pass": 0})
+    assert number is None and "campaign_pass" in error
+
+
+def test_pass_entry_absent_fields_are_rejected() -> None:
+    for field in ("id", "package", "command", "revision", "result", "detail",
+                  "duration_seconds"):
+        entry = {key: value for key, value in _valid_pass_entry().items()
+                 if key != field}
+        errors = replay_core.validate_pass_entry(entry, {"A"})
+        assert errors and any(field in error for error in errors), (
+            field, errors)
+
+
+def test_pass_entry_fabricated_values_are_rejected() -> None:
+    mutations: list[tuple[dict[str, object], str]] = [
+        ({"result": "PASS"}, "not in"),
+        ({"result": ""}, "non-empty"),
+        ({"package": "Z"}, "unknown package"),
+        ({"package": ""}, "unknown package"),
+        ({"campaign_pass": 3}, "campaign_pass"),
+        ({"campaign_pass": "2"}, "campaign_pass"),
+        ({"campaign_pass": True}, "campaign_pass"),
+        ({"id": ""}, "id"),
+        ({"detail": None}, "detail"),
+    ]
+    for override, needle in mutations:
+        entry = {**_valid_pass_entry(), **override}
+        errors = replay_core.validate_pass_entry(entry, {"A"})
+        assert errors and any(needle in error for error in errors), (
+            override, errors)
+
+
+def _genuine_verdict(record_id: str = "a-1") -> dict:
+    return {
+        "record_id": record_id, "ok": True,
+        "red_exit_code": 1, "green_exit_code": 0,
+        "red_pattern_matched": True, "worktree_removed": True,
+        "steps": [{"step": step, "ok": True, "detail": ""}
+                  for step in replay_core.VERDICT_STEPS],
+        "red_tail": "FAILED tests/test_x.py::test_y - AssertionError: boom\n"
+                    "1 failed in 0.1s",
+        "green_tail": "1 passed in 0.2s",
+    }
+
+
+def test_genuine_verdict_passes_and_mutations_are_rejected() -> None:
+    assert replay_core.validate_replay_verdict(_genuine_verdict()) == ()
+    mutations: list[tuple[dict, str]] = [
+        ({"ok": False}, "ok must be true"),
+        ({"red_exit_code": 0}, "red_exit_code"),
+        ({"red_exit_code": 2}, "red_exit_code"),
+        ({"red_exit_code": 5}, "red_exit_code"),
+        ({"red_exit_code": "1"}, "integer"),
+        ({"green_exit_code": 1}, "green_exit_code"),
+        ({"red_pattern_matched": False}, "red_pattern_matched"),
+        ({"worktree_removed": False}, "worktree_removed"),
+        ({"steps": [{"step": "red", "ok": True, "detail": ""}]}, "steps"),
+        ({"steps": [{"step": step, "ok": False, "detail": "boom"}
+                    for step in replay_core.VERDICT_STEPS]}, "not ok"),
+        ({"red_tail": "collected 0 items"}, "masked"),
+        ({"red_tail": "all quiet"}, "no failure evidence"),
+        ({"green_tail": "1 passed, 1 skipped in 0.2s"}, "masked"),
+        ({"green_tail": "nothing ran"}, "no passing test"),
+    ]
+    for override, needle in mutations:
+        verdict = {**_genuine_verdict(), **override}
+        errors = replay_core.validate_replay_verdict(verdict)
+        assert errors and any(needle in error for error in errors), (
+            override, errors)
+    missing = replay_core.validate_replay_verdict({"record_id": "a-1"})
+    assert any("missing field" in error for error in missing), missing
+    assert replay_core.validate_replay_verdict("not a verdict")
+
+
+def test_verdict_coverage_must_match_records_exactly() -> None:
+    ids = ["a-1", "b-1"]
+    problems = replay_core.verdict_coverage_problems(
+        ids, [_genuine_verdict("a-1")])
+    assert any("no committed replay verdict" in problem and "b-1" in problem
+               for problem in problems), problems
+    problems = replay_core.verdict_coverage_problems(
+        ids, [_genuine_verdict("a-1"), _genuine_verdict("z-9")])
+    assert any("stale evidence" in problem and "z-9" in problem
+               for problem in problems), problems
+    problems = replay_core.verdict_coverage_problems(
+        ids, [_genuine_verdict("a-1"), _genuine_verdict("a-1")])
+    assert any("duplicate verdict" in problem for problem in problems), problems
+    assert replay_core.verdict_coverage_problems(ids, {"not": "a list"}) == (
+        "replay verdicts must be a list of verdict objects",)
+
+
+def test_manifest_loader_fails_closed(tmp_path: Path) -> None:
+    with pytest.raises(ManifestUnreadable, match="cannot read"):
+        load_manifest(tmp_path / "absent.json")
+    broken = tmp_path / "broken.json"
+    broken.write_text("{not json", encoding="utf-8")
+    with pytest.raises(ManifestUnreadable, match="not valid JSON"):
+        load_manifest(broken)
+    array = tmp_path / "array.json"
+    array.write_text("[]", encoding="utf-8")
+    with pytest.raises(ManifestUnreadable, match="JSON object"):
+        load_manifest(array)
+    _, error = replay_core.manifest_calibration_ids([])
+    assert error

@@ -8,14 +8,19 @@ reason, the mutation is reverted, and the command is REQUIRED to pass
 again. Minutes per record; no DuckDB usage outside the disposable
 worktrees.
 
-Normal suite runs SKIP every test here with an explicit reason. Run
-them explicitly:
+Normal suite runs SKIP every replay test here with an explicit reason;
+the sentinel test below always runs. Run the replays explicitly:
 
     python -m pytest tests/properties/test_campaign_mutation_replay.py -m mutation_replay
 
 Selection is honored through the standard -m marker expression; the
-autouse guard below only turns "not explicitly selected" into a skip,
-so default runs and marker-deselected runs both stay green.
+autouse guard below only turns "not explicitly selected" into a skip
+for the marker-carrying replay tests, so default runs and
+marker-deselected runs both stay green.
+
+Fail closed: when the manifest is unreadable, malformed, or records no
+calibration records, the sentinel test FAILS in every run instead of
+letting the replay parametrization silently shrink to zero tests.
 
 Requires: the `uv` tool on PATH and a campaign worktree on an
 `inv/0f462p/*` branch (the replay script refuses anything else).
@@ -29,6 +34,9 @@ from pathlib import Path
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "investigation"))
+import replay_core  # noqa: E402  (campaign script module, deliberately shared)
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _REPLAY_SCRIPT = _REPO_ROOT / "investigation" / "replay_mutation.py"
 _MANIFEST = _REPO_ROOT / "investigation" / "manifest.json"
@@ -37,27 +45,42 @@ _MANIFEST = _REPO_ROOT / "investigation" / "manifest.json"
 # 1800 s per record is a generous ceiling, not a target.
 _PER_RECORD_TIMEOUT = 1800
 
-pytestmark = [pytest.mark.mutation_replay]
+
+def _replay_ids_and_error() -> tuple[list[str], str]:
+    """Calibration ids to parametrize over, or an error when the manifest
+    cannot be trusted. A silently empty parametrization would make every
+    replay run pass without replaying anything — never acceptable."""
+    try:
+        manifest = json.loads(_MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [], f"investigation/manifest.json is unreadable: {exc}"
+    ids, error = replay_core.manifest_calibration_ids(manifest)
+    if error:
+        return [], f"investigation/manifest.json is unusable for replay: {error}"
+    if not ids:
+        return [], ("investigation/manifest.json records no calibration "
+                    "records — nothing to replay, refusing to pass silently")
+    return ids, ""
+
+
+_REPLAY_IDS, _MANIFEST_ERROR = _replay_ids_and_error()
+
+
+def test_manifest_must_be_replayable() -> None:
+    """Fail closed when the replay parametrization cannot be trusted."""
+    assert not _MANIFEST_ERROR, _MANIFEST_ERROR
 
 
 @pytest.fixture(autouse=True)
 def _require_explicit_marker_selection(request: pytest.FixtureRequest) -> None:
-    """Skip unless pytest was invoked with -m ... mutation_replay ..."""
+    """Skip marker-carrying tests unless pytest was invoked with
+    -m ... mutation_replay ...; the sentinel test has no marker and
+    always runs."""
     markexpr = str(request.config.getoption("markexpr") or "")
     tokens = re.split(r"[()\s!,&|]", markexpr)
-    if "mutation_replay" not in tokens:
+    if ("mutation_replay" in request.node.keywords
+            and "mutation_replay" not in tokens):
         pytest.skip("run explicitly with -m mutation_replay")
-
-
-def _calibration_ids() -> list[str]:
-    """Record ids for parametrization; [] keeps collection alive if the
-    manifest is momentarily unreadable (the manifest validator fails
-    loudly for that case in normal runs)."""
-    try:
-        manifest = json.loads(_MANIFEST.read_text(encoding="utf-8"))
-        return [str(record["id"]) for record in manifest["calibrations"]]
-    except (OSError, json.JSONDecodeError, KeyError, TypeError):
-        return []
 
 
 def _run_replay(record_id: str) -> subprocess.CompletedProcess[str]:
@@ -68,7 +91,8 @@ def _run_replay(record_id: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-@pytest.mark.parametrize("record_id", _calibration_ids())
+@pytest.mark.mutation_replay
+@pytest.mark.parametrize("record_id", _REPLAY_IDS)
 def test_calibration_record_replays_red_then_green(record_id: str) -> None:
     """One full replay cycle per calibration record, via the real CLI."""
     proc = _run_replay(record_id)
