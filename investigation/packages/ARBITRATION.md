@@ -674,3 +674,13 @@ Stale pass-1 strict-xfail B2 witness references in this file and the
 manifest were repaired to the current positive parity pins (see the
 witness repair note in the B2 outcome section). Narrative and the full
 record inventory: [CLOSING-RECORDS.md](CLOSING-RECORDS.md).
+
+**Post-integration update (2026-11-02, same day):** the parent
+independently reviewed D final e5d4dd4 with verdict **APPROVE** and
+merged it into discovery at 5d0ac0a; B final 4891dfa had been reviewed
+with its M1 doc-accuracy repair applied; the campaign's last three mypy
+errors were fixed by 14a54f1 (investigation/packages/TYPES-FINAL.md).
+The "NOT merged / review pending" phrasing above and in the pass
+records is historical (accurate at recording time). The D approval's
+limits are recorded in the manifest's D package entry; the final
+validation state lives in [FINAL-VALIDATION.md](FINAL-VALIDATION.md).
