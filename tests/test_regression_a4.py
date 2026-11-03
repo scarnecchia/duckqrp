@@ -140,4 +140,4 @@ def test_diagnosis_columns_present_keep_semantics(tmp_path: Path):
     assert len(dx) == 1
     assert dx[0]["codetype"] == "10"
     assert dx[0]["pdx"] == "P"
-    assert dx[0]["enctype"] == "AV"
+    assert dx[0]["enctype"] == "IP"

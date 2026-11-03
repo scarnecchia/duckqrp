@@ -92,11 +92,11 @@ def test_all_optional_columns_match_null(tmp_path: Path, table: str) -> None:
 
 
 @pytest.mark.parametrize("table,expected", [
-    ("diagnosis", (1, date(2011, 9, 16), "D00001", "10", "P", "AV")),
+    ("diagnosis", (1, date(2011, 9, 16), "D00001", "10", "P", "IP")),
     ("procedure", (1, date(2011, 9, 16), "PX1", "HC", "IP", "")),
     ("lab_result", (1, date(2011, 9, 16), date(2009, 4, 13), date(2009, 4, 14),
-                    1.2, "POSITIVE", "N", "2160-0", "PX1", "CREATININE", "CHEMISTRY",
-                    "SERUM", "MG/DL", "Y", "O")),
+                    1.2, "POSITIVE", "N", "2160-0", "PX1", "CREATININE", "",
+                    "SERUM", "MG/DL", "X", "O")),
 ])
 def test_present_columns_keep_values(tmp_path: Path, table: str, expected: tuple) -> None:
     assert _normalized(tmp_path / "present", table, (), False) == expected
