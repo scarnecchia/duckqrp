@@ -588,12 +588,18 @@ def generate(
         # numeric value with null text and a unit; 'C' carries enumerated
         # text with null numeric; 'U' is reserved for UNMAPPED rows,
         # which this generator never emits, so it is never drawn.
+        # Numeric values draw ONE decimal: with the per-lab member counts
+        # this suite generates (<= 5), a one-decimal mean never lands on
+        # an exact .0005 boundary, so the recorded production DOUBLE-mean
+        # summation-order limitation (FINAL-VALIDATION.md, D lab mean
+        # rounding) cannot flake the oracle comparison. Two decimals
+        # manufacture such boundaries (observed: mean 107.2975).
         labs = tuple(
             LabResult(
                 patid=p.patid,
                 lab_dt=start + timedelta(days=rng.randrange(window_days)),
                 result_dt=None, order_dt=None,
-                ms_result_n=round(rng.random() * 200, 2) if rt == "N" else None,
+                ms_result_n=round(rng.random() * 200, 1) if rt == "N" else None,
                 ms_result_c=rng.choice(("POSITIVE", "NEGATIVE", "BORDERLINE",
                                         "UNDETERMINED")) if rt == "C" else None,
                 result_type=rt,
