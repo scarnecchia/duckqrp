@@ -15,7 +15,11 @@ purely random data does not. Mirroring gen_synthetic's tie injection,
 this builder can add:
 
 * duplicate demographic rows — same patid and birth_date, different
-  sex — which exercise the total-order tie-break in 10_normalize.sql;
+  sex — which exercise the total-order tie-break in 10_normalize.sql.
+  These rows deliberately violate SCDM 8.2.2 DEM's unique-row rule
+  ("Unique row: PatID" — one record per patient, demographic.md), so
+  they are non-canonical data-defect probes, like package B's
+  overlapping enrollment spans, not shapes a compliant extract carries;
 * same-patient/same-day/same-supply dispensings with DIFFERENT amounts,
   which exercise every supply/amount tie-break downstream.
 
@@ -42,7 +46,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from math import ceil
 from pathlib import Path
@@ -73,7 +77,10 @@ class Patient:
     """One demographic row (SCDM `demographic`)."""
 
     patid: int
-    birth_date: date
+    # None is SCDM-legal (demographic.md Birth_Date: "missing allowed");
+    # the pipeline drops such members (demographics_missing, attrition
+    # level 1). GenerateOptions.null_birth_dates draws one.
+    birth_date: date | None
     sex: str                      # F / M / U / A — raw value, not collapsed
     race: str
     hispanic: str
@@ -94,9 +101,13 @@ class EnrollmentSpan:
     patid: int
     enr_start: date
     enr_end: date
-    medcov: str                   # Y / N
-    drugcov: str                  # Y / N
-    chart: str                    # Y / N (optional column in SCDM)
+    medcov: str                   # Y / N / U / A (SCDM 8.2.2 MedCov; 'A'
+                                  # = ambulatory-only medical coverage)
+    drugcov: str                  # Y / N / U (SCDM 8.2.2 DrugCov)
+    chart: str                    # Y / N; the column is optional in the
+                                  # pipeline's read set (qrp.scdm) and a
+                                  # NULL reads as 'N' — in SCDM 8.2.2 the
+                                  # column itself is required
 
 
 @dataclass(frozen=True)
@@ -109,7 +120,10 @@ class Dispensing:
     rx_codetype: str
     rxsup: int                    # days of supply, > 0
     rxamt: float                  # amount dispensed, > 0, fractional allowed
-    providerid: int
+    providerid: int               # inert payload: the pipeline never
+                                  # reads it (qrp.scdm dispensing spec),
+                                  # so the .U/null case SCDM allows is
+                                  # unobservable through this pipeline
 
 
 @dataclass(frozen=True)
@@ -119,7 +133,10 @@ class Diagnosis:
     dx: str
     dx_codetype: str
     pdx: str
-    enctype: str                  # AV / OA / IP / ED / XX
+    enctype: str                  # AV / ED / IP / IS / OA (SCDM domain);
+                                  # 'XX' is 10_normalize.sql's fallback
+                                  # for a missing/null column, never a
+                                  # value a builder emits
 
 
 @dataclass(frozen=True)
@@ -137,7 +154,18 @@ class Procedure:
 @dataclass(frozen=True)
 class Encounter:
     """One encounter row. `ddate`/`discharge_status` drive inpatient
-    enveloping and encounter-derived deaths in 10_normalize.sql."""
+    enveloping and encounter-derived deaths in 10_normalize.sql.
+
+    SCDM 8.2.2 (encounter.md): `discharge_status` stays ""/None in this
+    generator — the d-package oracles model deaths from the death table
+    only, so an 'EX' draw would need oracle-side encounter-death
+    modeling first; the EX -> death derivation is pinned in
+    tests/test_pipeline.py
+    (test_deaths_come_from_the_death_table_and_expired_encounters,
+    including lowercase 'ex' and a missing ddate). EncounterID
+    uniqueness is UNRESOLVED in the reference (encounter.md:23); the
+    patid*10-family ids used here are globally unique, satisfying both
+    readings."""
 
     patid: int
     adate: date
@@ -158,7 +186,7 @@ class LabResult:
     result_dt: float | None
     order_dt: float | None
     ms_result_n: float | None
-    ms_result_c: str
+    ms_result_c: str | None
     result_type: str
     loinc: str
     px: str
@@ -371,9 +399,16 @@ NOISE_DRUG_POOL = tuple(f"N{i:05d}" for i in range(1, 21))
 NOISE_DX_POOL = tuple(f"X{i:05d}" for i in range(1, 41))
 
 _SUPPLIES = (7, 14, 30, 60, 90)
-_SEXES = ("F", "M")
-_RACES = ("0", "1", "2", "3", "4", "5")
-_ENCTYPES = ("AV", "OA", "IP", "ED")
+# SCDM 8.2.2 domains (demographic.md / encounter.md / diagnosis.md):
+# Sex A/F/M/U; Race 0-5 plus M = Multi-racial; EncType AV/ED/IP/IS/OA.
+# The pools match the conditionless-study defaults (qrp.config
+# CohortConfig.sex / .race), so every drawn value passes cfg_demog
+# eligibility; 'U'/'A' sex still collapses to 'O' for the covariate
+# (10_normalize.sql). "IS" is appended last so existing seeds' draw
+# indices are unchanged.
+_SEXES = ("F", "M", "U", "A")
+_RACES = ("0", "1", "2", "3", "4", "5", "M")
+_ENCTYPES = ("AV", "OA", "IP", "ED", "IS")
 
 
 def _pick(rng: random.Random, pool: Sequence[Any]) -> Any:
@@ -392,6 +427,10 @@ class GenerateOptions:
     include_deaths: bool = True
     include_encounters: bool = True
     include_labs: bool = False
+    # Null the LAST patient row's birth date (SCDM-legal missing; the
+    # pipeline drops the member — demographics_missing, attrition
+    # level 1). Off by default: only the SCDM boundary tests ask for it.
+    null_birth_dates: bool = False
 
 
 def generate(
@@ -407,6 +446,13 @@ def generate(
     Constructive, not rejective: enrollment spans are built FIRST and
     claim dates are drawn from inside a span, so dispensings are always
     plausibly covered. Same (patients, seed, options) -> same dataset.
+
+    Enrollment flags are uniform Y/Y/Y here; coverage-flag variety
+    (SCDM MedCov Y/N/U/A x DrugCov Y/N/U pairs) is package B's surface
+    (oracles/b_pkg_fixtures._FLAG_POOL). Spans assume
+    `end - start >= 211` days: with a shorter custom window the drawn
+    offsets can invert a span (enr_end < enr_start), which
+    cdm_enrollment drops (10_normalize.sql WHERE enr_end >= enr_start).
     """
     opt = options or GenerateOptions()
     if patients < 1:
@@ -465,18 +511,35 @@ def generate(
                 (span_end - span_start).days, 1)))
             code = _pick(rng, EVENT_CODE_POOL) if rng.random() < 0.4 \
                 else _pick(rng, NOISE_DX_POOL)
+            # Pdx exists only on IP/IS claims (diagnosis.md: "Populate
+            # only for IP and IS encounters; for ED, AV, and OA
+            # encounter types, set as missing/blank").
+            enctype = _pick(rng, _ENCTYPES)
             dx.append(Diagnosis(
                 patid=patid, adate=adate, dx=code, dx_codetype="09",
-                pdx=rng.choice(("P", "S")), enctype=_pick(rng, _ENCTYPES),
+                pdx=rng.choice(("P", "S")) if enctype in ("IP", "IS") else "",
+                enctype=enctype,
             ))
 
         if opt.include_encounters and rng.random() < 0.5:
             adate = span_start + timedelta(days=rng.randrange(max(
                 (span_end - span_start).days, 1)))
-            if rng.random() < 0.5:
+            kind = rng.random()
+            if kind < 0.4:
                 encs.append(Encounter(
                     patid=patid, adate=adate, enctype="IP",
                     encounterid=patid * 10,
+                    ddate=adate + timedelta(days=rng.randrange(1, 6)),
+                    discharge_status="",
+                ))
+            elif kind < 0.7:
+                # IS stays are SCDM-legal only with a discharge date (or
+                # the .S still-in-facility stand-in, null in Parquet) —
+                # encounter.md DDate. IS days are NOT enveloping days:
+                # 10_normalize.sql reads IP encounters only.
+                encs.append(Encounter(
+                    patid=patid, adate=adate, enctype="IS",
+                    encounterid=patid * 10 + 2,
                     ddate=adate + timedelta(days=rng.randrange(1, 6)),
                     discharge_status="",
                 ))
@@ -512,23 +575,36 @@ def generate(
             rx_codetype=donor.rx_codetype, rxsup=donor.rxsup,
             rxamt=donor.rxamt + 2.5, providerid=donor.providerid,
         ))
+    if opt.null_birth_dates and len(pts) > 1:
+        # SCDM-legal missing birth date (demographic.md) on the last
+        # patient row; at least one dated patient stays so index-age
+        # stages remain exercisable. The pipeline drops the member
+        # (demographics_missing / attrition level 1).
+        pts[-1] = replace(pts[-1], birth_date=None)
 
     labs: tuple[LabResult, ...] = ()
     if opt.include_labs:
+        # SCDM-legal result shapes (laboratory-result.md): 'N' carries a
+        # numeric value with null text and a unit; 'C' carries enumerated
+        # text with null numeric; 'U' is reserved for UNMAPPED rows,
+        # which this generator never emits, so it is never drawn.
         labs = tuple(
             LabResult(
                 patid=p.patid,
                 lab_dt=start + timedelta(days=rng.randrange(window_days)),
                 result_dt=None, order_dt=None,
-                ms_result_n=round(rng.random() * 200, 2),
-                ms_result_c="",
-                result_type=rng.choice(("N", "U", "C")),
+                ms_result_n=round(rng.random() * 200, 2) if rt == "N" else None,
+                ms_result_c=rng.choice(("POSITIVE", "NEGATIVE", "BORDERLINE",
+                                        "UNDETERMINED")) if rt == "C" else None,
+                result_type=rt,
                 loinc="2160-0", px="PX1",
                 ms_test_name="CREATININE", ms_test_sub_category="",
-                specimen_source="SR_PLS", ms_result_unit="MG/DL",
+                specimen_source="SR_PLS",
+                ms_result_unit="MG/DL" if rt == "N" else None,
                 fast_ind="X", pt_loc="O",
             )
             for p in pts[: patients]  # one per patient, deterministic
+            for rt in (rng.choice(("N", "C")),)
         )
 
     return SyntheticDataset(
@@ -569,7 +645,9 @@ def hand_fixture() -> tuple[SyntheticDataset, StudyConfig]:
           but no index date (index detection is enrollment-bounded);
     * P4  two same-day/same-supply E00021 fills with different amounts
           (the tie payload) -> one beta-cohort episode;
-    * P5  DUPLICATE demographic rows -> present in demographics_multi
+    * P5  DUPLICATE demographic rows — a deliberate violation of SCDM
+          DEM's "Unique row: PatID" rule (non-canonical defect probe,
+          like the module-level ties) -> present in demographics_multi
           and excluded from pov1/ptsmasterlist, which is what the
           pipeline does with ambiguous demographics.
 
@@ -607,7 +685,12 @@ def hand_fixture() -> tuple[SyntheticDataset, StudyConfig]:
         Dispensing(5, date(2014, 3, 15), "E00021", "ND", 30, 9.0, 1005),
     )
     diagnoses = (
-        # inside P1's IP stay, ambulatory -> enveloped to IP/'X'
+        # Deliberate out-of-SCDM-domain Pdx values: these AV claims carry
+        # P/S to probe IP-stay enveloping (10_normalize.sql re-files
+        # non-IP claims on IP days to enctype IP / pdx 'X'). The 5/3 row
+        # sits inside P1's IP stay and is enveloped to IP/'X'; the 6/1
+        # row is outside every stay and stays AV. Real SCDM AV claims
+        # carry blank Pdx (diagnosis.md).
         Diagnosis(1, date(2014, 5, 3), "D00002", "09", "S", "AV"),
         Diagnosis(1, date(2014, 6, 1), "D00001", "09", "P", "AV"),
     )
