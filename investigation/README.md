@@ -418,3 +418,7 @@ investigation/witnesses/scdm-full-alignment-probe.txt).
 repository and changed the remote; pushing the discovery branch to the
 fork is authorized. The campaign remains private — no publication
 beyond the operator's fork.
+
+**Current-state findings report (2026-11-03, operator-requested):**
+investigation/FINDINGS.md lists only what is broken, unverified, or
+waiting on a decision at discovery 178f71c.
