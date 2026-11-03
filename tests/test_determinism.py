@@ -116,7 +116,11 @@ def test_partial_order_is_genuinely_ambiguous(eng):
 
 
 def test_demographics_tie_is_resolved_deterministically(eng):
-    """Two demographic rows, same birth date, different sex."""
+    """Two demographic rows, same birth date, different sex.
+
+    The duplicate PatIDs intentionally violate the SCDM 8.2.2
+    Demographic unique-row rule ("Unique row: PatID") — a non-canonical
+    defect probe, like synth's tie injection."""
     eng.con.execute("""
         CREATE OR REPLACE TABLE d (
             patid BIGINT, birth_date DATE, sex VARCHAR,

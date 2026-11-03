@@ -7894,6 +7894,9 @@ def test_distindex_numbering_follows_ms_codedistribution():
             {"patid": 3, "adate": D, "code": "J2506", "codetype": "HC", "enctype": "IP", "pdx": "X"}],
             "patid BIGINT, adate DATE, code VARCHAR, codetype VARCHAR, enctype VARCHAR, pdx VARCHAR")
         eng.register("cdm_diagnosis", [
+            # pdx 'S' on an AV claim is not SCDM-canonical (diagnosis.md:
+            # Pdx is blank on ambulatory claims); it exists to exercise
+            # the '*' -> P S X '' token expansion below.
             {"patid": 1, "adate": D, "code": "D1", "codetype": "10", "pdx": "S", "enctype": "AV"}],
             "patid BIGINT, adate DATE, code VARCHAR, codetype VARCHAR, pdx VARCHAR, enctype VARCHAR")
         eng.register("cdm_dispensing", [], "patid BIGINT, adate DATE, code VARCHAR")
@@ -8022,6 +8025,9 @@ def test_claim_views_envelope_inpatient_stays():
                               "enctype": "IP"}],
                      "patid BIGINT, adate DATE, ddate DATE, enctype VARCHAR")
         eng.register("dx", [
+            # AV rows carry P/S to pin flag preservation through the
+            # normalize view; real SCDM AV claims have blank Pdx, so the
+            # ('AV', 'P'/'S') shapes are probes, not canonical data.
             {"patid": 1, "adate": D(2023, 1, 11), "dx": "D1", "dx_codetype": "10", "pdx": "P", "enctype": "AV"},
             {"patid": 1, "adate": D(2023, 1, 20), "dx": "D1", "dx_codetype": "10", "pdx": "P", "enctype": "AV"},
             {"patid": 1, "adate": D(2023, 1, 11), "dx": "D2", "dx_codetype": "10", "pdx": "S", "enctype": "IP"}],
@@ -8175,6 +8181,9 @@ def test_deaths_come_from_the_death_table_and_expired_encounters():
             eng.register("enc", [
                 {"patid": 2, "adate": D(2023, 3, 1), "ddate": D(2023, 3, 4), "discharge_status": "EX"},
                 {"patid": 3, "adate": D(2023, 7, 10), "ddate": D(2023, 7, 15), "discharge_status": "EX"},
+                # lowercase on purpose: probes the case-insensitive EX
+                # match ('EX' is the SCDM value; 'ex' is not a domain
+                # example).
                 {"patid": 4, "adate": D(2023, 2, 2), "ddate": None, "discharge_status": "ex"},
                 {"patid": 5, "adate": D(2023, 1, 1), "ddate": D(2023, 1, 3), "discharge_status": "HO"}],
                 "patid BIGINT, adate DATE, ddate DATE, discharge_status VARCHAR")

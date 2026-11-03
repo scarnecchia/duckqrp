@@ -89,11 +89,13 @@ def _write_scdm(root: Path) -> None:
     # The diagnosis optionals (dx_codetype/pdx/enctype) are declared
     # optional in scdm.py but referenced unconditionally in normalize
     # (a recorded production lead, not this branch's scope), so the
-    # fixture carries them the way real extracts do.
+    # fixture carries them the way real extracts do. The schema-only
+    # VALUES below never materialize (WHERE 1 = 0); their literals are
+    # in-domain anyway ('10' = ICD-10-CM, 'P' = a Pdx value).
     con.execute(f"""
         COPY (
             SELECT * FROM (VALUES
-                (1, DATE '2014-01-01', 'X999', 'ICD10', 'N', 'OA')
+                (1, DATE '2014-01-01', 'X999', '10', 'P', 'OA')
             ) t(patid, adate, dx, dx_codetype, pdx, enctype)
             WHERE 1 = 0
         ) TO '{root / "diagnosis.parquet"}' (FORMAT PARQUET)

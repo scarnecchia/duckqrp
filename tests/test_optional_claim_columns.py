@@ -38,10 +38,15 @@ def _normalized(root: Path, table: str, omitted: tuple[str, ...], nulls: bool) -
         "demographic": (1, date(1980, 5, 1), "F"),
         "enrollment": (1, date(2011, 1, 1), date(2011, 12, 31), "Y", "Y"),
         "dispensing": (1, date(2011, 9, 15), "E00001", 30, 10.0),
-        "diagnosis": (1, date(2011, 9, 16), "D00001", "10", "P", "AV"),
+        # SCDM note: pdx 'P' rides an IP claim (diagnosis.md populates Pdx
+        # only for IP/IS); the lab row's padded/lowercase values pin
+        # trim+upper normalization (' positive '->POSITIVE etc.), and its
+        # result_type 'N' with ms_result_c populated is a trim probe only —
+        # SCDM requires null text on numeric results.
+        "diagnosis": (1, date(2011, 9, 16), "D00001", "10", "P", "IP"),
         "procedure": (1, date(2011, 9, 16), "PX1", "HC", "IP"),
         "lab_result": (1, date(2011, 9, 16), 18000.0, 18001.0, 1.2, " positive ", "N",
-                       "2160-0", "PX1", " creatinine ", " chemistry ", " serum ", " mg/dl ", "Y", "O"),
+                       "2160-0", "PX1", " creatinine ", "", " serum ", " mg/dl ", " X ", "O"),
     }
     with duckdb.connect(config={"threads": 1}) as con:
         for name, schema in schemas.items():

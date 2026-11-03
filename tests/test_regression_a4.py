@@ -130,7 +130,8 @@ def test_diagnosis_columns_present_keep_semantics(tmp_path: Path):
     indata = _write_extract(
         tmp_path,
         schema,
-        [(1, date(2011, 9, 16), "D00001", "10", "P", "AV")],
+        # pdx 'P' on an IP claim — SCDM populates Pdx only for IP/IS
+        [(1, date(2011, 9, 16), "D00001", "10", "P", "IP")],
     )
     result = run(_study(), str(indata), verbose=False)
     con = result.engine.con
