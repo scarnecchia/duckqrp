@@ -276,8 +276,6 @@ def test_pdx_restricted_care_settings_match_only_legal_shapes() -> None:
     ('IS','') only blank-pdx IS claims. An enveloped claim (rewritten
     to IP/'X') matches neither — every input shape here is
     SCDM-legal."""
-    import pytest
-
     ds = _is_dataset()
     base = _is_study()
     for token, expect in ((("IS", "P"), date(2014, 3, 12)),
