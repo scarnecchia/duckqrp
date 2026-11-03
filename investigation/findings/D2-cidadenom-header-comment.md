@@ -50,3 +50,5 @@
   comment now names), DB-2 (the decision brief for that gap), package D
   D2 (original report).
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed 2026-11-03 — comment-only
+  documentation fix; no SCDM data-model-bearing assumption.

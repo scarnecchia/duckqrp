@@ -87,3 +87,7 @@
 - **related findings:** none sharing the mechanism (A-2 is the
   optional-column class).
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed 2026-11-03 (full-surface audit,
+  investigation/packages/SCDM-ALIGNMENT.md) — the finding concerns the
+  study-config loader (COHORTFILE semantics), not a clinical SCDM
+  table; no data-model-bearing assumption.

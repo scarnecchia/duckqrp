@@ -56,3 +56,5 @@
   after the fix the finally DOES release the engine even on SIGINT,
   because finally runs on unwinding for BaseException too).
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed 2026-11-03 — CLI failure-path
+  engine lifecycle; no SCDM data-model-bearing assumption.

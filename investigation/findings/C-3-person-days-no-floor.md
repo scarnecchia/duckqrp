@@ -77,3 +77,5 @@
 - **related findings:** OC-3 (package C open question — RESOLVED by
   this ruling), C-1 (same stage family; different mechanism).
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed 2026-11-03 — person-time
+  arithmetic; no SCDM data-model-bearing assumption.

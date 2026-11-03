@@ -74,3 +74,5 @@
 - **related findings:** DB-3 (E-3's brief), DB-4 (E-4's brief), E-2
   (shared failure path), package E findings 3-4 / OQ-1 / OQ-3.
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed 2026-11-03 — signal/failure
+  terminal contracts; no SCDM data-model-bearing assumption.

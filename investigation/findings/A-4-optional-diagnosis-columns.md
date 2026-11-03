@@ -158,3 +158,9 @@ distinguishes missing optional columns that SQL actually resolves from
 those still referenced unconditionally. A compatibility report should
 not promise that an extract can run when such bindings will fail.
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed against diagnosis.md
+  (Dx_Codetype / EncType / Pdx domains) on 2026-11-03 — the
+  optional-column resolution (absent → NULL → pipeline fallbacks) is
+  an INPUTS.md contract, not an SCDM claim; the blank-Pdx fallback
+  reachability question surfaced by this audit is filed as decision
+  brief DB-8 (investigation/packages/ARBITRATION.md).

@@ -72,3 +72,11 @@
 - **related findings:** B2 (same conclusion shape: the wart is SAS
   parity; documentation corrected rather than behavior).
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** SCDM DEM admits exactly one row per PatID
+  ("Unique row: PatID", demographic.md:11), so every
+  duplicate-demographics fixture — synth's tie injections and this
+  finding's full-tie battery — is a deliberate non-canonical
+  data-defect probe of the pipeline's dedupe / demographics_multi /
+  pov1-exclusion defense, not a shape a compliant extract can carry;
+  the finding's mechanism statement is consistent with the data model
+  (full-surface audit, 2026-11-03).

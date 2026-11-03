@@ -66,3 +66,5 @@
   frontend; fixed on the same branch because the fix shape is the same
   try/finally), OQ-2 (close idempotency observed-safe-but-not-promised).
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed 2026-11-03 — UI engine-lifecycle
+  behavior; no SCDM data-model-bearing assumption.

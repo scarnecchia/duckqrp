@@ -84,3 +84,6 @@
 - **related findings:** F2 (same package; independent mechanism);
   A-4 (crash class, unrelated).
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed 2026-11-03 — attrition funnel
+  arithmetic is SAS QRP semantics, not an SCDM table contract; no
+  data-model-bearing assumption.

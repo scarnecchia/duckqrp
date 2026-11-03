@@ -688,3 +688,273 @@ residue (properties: 424 passed / 13 skipped / 1 xfailed, exit 0;
 original suites: 373 passed / 2 failed / 3 skipped — the 2 failures
 exactly the pre-existing baseline spill-attribution OOM tests; the full
 state lives in [FINAL-VALIDATION.md](FINAL-VALIDATION.md)).
+
+---
+
+# Arbitration wave 4 — SCDM 8.2.2 full-surface review decision briefs
+
+Origin: the operator-requested SCDM 8.2.2 alignment review of the
+whole test and mocked-data surface (2026-11-03;
+investigation/packages/SCDM-ALIGNMENT.md; raw audits in
+investigation/packages/scdm-audit-notes/). These briefs are the
+suspected PRODUCTION defects that review surfaced. Per the review's
+charter, no production file was touched — every item below is an
+operator decision. None is tied to a campaign finding document; they
+are recorded here only (not in the manifest's open_decisions, which
+the finding-replay validator ties to finding dispositions).
+
+## Decision brief DB-6 (verbatim-ready for the operator)
+
+**Question:** attrition level 1's sex filter is vacuous, and the
+missing-demographics check misses blank strings — should
+`demographics_missing` use the NULL-or-blank semantics SAS's
+`missing()` has, and should level 1 count what pov1 counts?
+
+**Evidence:** 70_outputs.sql:29-31 filters `_att_dem` on
+`sex IS NOT NULL`, but `demographics.sex` is the COLLAPSED column
+(10_normalize.sql:41-42) whose CASE never yields NULL — even a NULL
+raw sex becomes 'O'. Meanwhile `demographics_missing`
+(10_normalize.sql:72-75) checks `sex IS NULL` only, while SAS's
+`missing()` on a character variable is NULL-or-blank; the repo ships
+the correct predicate (`is_missing`, 00_macros.sql:94-99, written for
+exactly this real-extract '' vs NULL distinction) and does not apply
+it here. Net effect: a member with a blank-string raw Sex (or blank
+Birth_Date handling analogues) and a valid birth date is COUNTED at
+attrition level 1 (whose description promises "non-missing
+birth date/sex"), then silently lost between attrition and eligibility
+— pov1 excludes them via `demographics_missing` (NULL check) or the
+cfg_demog raw-value join (blank matches no configured value).
+
+**Impact:** counts inconsistent by construction on blank-string
+demographics; zero effect on legal SCDM extracts (Sex/Birth_Date
+missing-not-allowed in SAS7BDAT, and Parquet nulls ARE caught — only
+the blank-string form slips through, which Parquet extracts can carry
+from empty-string conversions).
+
+**Options:**
+
+- **(a) Apply `is_missing` in `demographics_missing` (and align
+  `_att_dem` to it).** One-line-class change; makes level 1 mean what
+  its description says. Risk: SAS-parity of the level-1 count on
+  blank-demographics extracts is unverified against ms_attrition.sas —
+  needs the same evidence standard as DB-5 before changing numbers.
+- **(b) Document the known inconsistency.** A comment at both sites
+  stating the collapsed-column nuance and the blank-string gap.
+
+**Recommendation the brief supports:** (a) only after an ms_attrition
+source check; (b) immediately either way.
+
+## Decision brief DB-7 (verbatim-ready for the operator)
+
+**Question:** a NULL or absent Race column collapses to 'M'
+(Multi-racial) — is that the intended semantic, or should missing race
+map to SCDM's unknown code '0' (or an explicit missing category)?
+
+**Evidence:** 10_normalize.sql:43
+`upper(COALESCE({opt_race} AS VARCHAR), 'M')) AS race` — the default
+fires both for a NULL value and for an absent column (resolved to a
+NULL literal by the optional-column machinery). demographic.md:53-69:
+Race values 0-5 where **0 = Unknown**, plus M = Multi-racial; missing
+not allowed. A race-conditioned study (cfg_demog join at
+45_pov1.sql:45-46 on the collapsed value) therefore evaluates a
+missing-race member as Multi-racial; stratified outputs label them
+Multi-racial (70_outputs.sql:303). The a_config_semantics oracle pins
+the absent-condition default as ("0".."5","M") — the default admits
+the collapsed value, so no current test distinguishes 'M'-by-default
+from 'M'-by-data.
+
+**Impact:** mislabeling and potential eligibility misclassification
+for missing-race members under race-conditioned studies. Presumably
+SAS parity (SAS's own unknown-race handling should be verified before
+touching); real extracts carry race overwhelmingly, so magnitude is
+unmeasured.
+
+**Options:**
+
+- **(a) Verify SAS's missing-race behavior (ms_createpov1 / macros)
+  and match it.** If SAS maps missing to 'M' (plausible — the 'M'
+  default may be inherited), document; if to unknown/other, change the
+  COALESCE target.
+- **(b) Keep and document.**
+
+**Recommendation:** (a) — the SAS check is one macro read away; do not
+guess.
+
+## Decision brief DB-8 (verbatim-ready for the operator)
+
+**Question:** 10_normalize.sql relabels a NULL Pdx to 'X' BEFORE any
+consumer runs, so the care-setting grammar's explicit missing-Pdx
+token and the blank member of the DX codedistribution expansion can
+never match a diagnosis claim. Move the fallback after care-setting
+matching, or is 'X'-by-default the SAS behavior?
+
+**Evidence:** 10_normalize.sql:159
+`upper(COALESCE(CAST({opt_diagnosis_pdx} AS VARCHAR), 'X')) AS pdx`.
+The loader grammar encodes missing PDX explicitly: config.py:126-127
+maps a trailing `_` to `''`; 30_exposure.sql:490 matches
+`cs.pdx = '*' OR cs.pdx = COALESCE(x.pdx, '')`; 85_riskscores.sql:72
+mirrors it; 72_codedistribution.sql:89 expands a `*` Pdx to
+['P','S','X',''] including the blank member. Post-normalize,
+cdm_diagnosis.pdx is never NULL and never '' — for DX claims those
+branches are dead: a study token like `AV_` ("AV, blank Pdx") matches
+nothing, and a blank-Pdx AV claim (which SCDM REQUIRES on ambulatory
+claims, diagnosis.md:85) is attributed to the 'X' entity in
+distindex where SAS would file it under the blank entity. PX claims
+keep a genuine '' (cdm_procedure's pdx is computed, not COALESCEd),
+so the unreachability is DX-specific.
+
+**Impact:** wrong attribution for blank-Pdx DX claims under
+restricted care settings and in codedistribution — but only for
+studies that actually configure Pdx-restricted tokens, and only if
+SAS's own macros see blank rather than 'X'. In-repo SAS citations
+were not conclusive on this point.
+
+**Options:**
+
+- **(a) Ground-truth check first:** read ms_caresettingprincipal /
+  ms_codedistribution in the SAS reference tree to see whether SAS
+  normalizes blank Pdx to 'X' before matching (if it does, current
+  behavior is parity — close the brief); if SAS matches blank, move
+  the COALESCE after care-setting matching (or make the matcher treat
+  NULL and '' alike, which it already half-does via COALESCE at the
+  match site).
+- **(b) Document as an open parity question.**
+
+**Recommendation:** (a) — same one-macro-read standard as DB-7.
+
+## Decision brief DB-9 (verbatim-ready for the operator)
+
+**Question:** `enc_is`/NumIS is computed and emitted
+(74_utilization.sql:75, 96_baseline.sql:113, pipeline.py:220) while
+src/qrp/scdm.py:114-115 cites SAS counting only NumAV/NumOA/NumIP/
+NumED from the encounter table. Does SAS emit a NumIS the comment
+omits, or does this package emit a column SAS does not?
+
+**Evidence:** 74_utilization.sql:7-9 quotes ms_computeutilization.sas:63
+for the default setting list `AV OA IP IS ED` — which INCLUDES IS —
+while scdm.py:114-115 quotes ms_computeutilization.sas:139 for the
+four named count columns. The two in-repo citations are in tension;
+the SAS macro itself was not read for this review (out of charter).
+
+**Impact:** documentation-level if SAS has NumIS; an extra output
+column (baseline/utilization) SAS does not produce if it does not.
+
+**Options:** (a) read ms_computeutilization.sas and correct whichever
+comment is wrong; (b) leave as is.
+
+**Recommendation:** (a) — one macro read.
+
+## Decision brief DB-10 (verbatim-ready for the operator)
+
+**Question:** confirm the XX event/distindex asymmetry is SAS parity
+(not a porting slip): a diagnosis claim whose EnType normalizes to
+'XX' (missing/null column; SCDM has no XX) counts as an OUTCOME EVENT
+under a '**' care setting but can never appear in the codedistribution
+entities, which expand '**' to the five concrete settings and match
+exactly.
+
+**Evidence:** 30_exposure.sql:486-490 keeps the literal '**' in the
+event join (cs.enctype = '**' OR cs.enctype = x.enctype) — in-repo
+citation ms_caresettingprincipal.sas; 72_codedistribution.sql:79-96
+expands '**' to ['IP','IS','ED','AV','OA'] before matching
+(citation ms_codedistribution.sas). A cohort whose events are all XX
+reports numevents > 0 with a NULL distindexhoi list and the blank
+placeholder map row. Execution-pinned end to end by
+tests/properties/test_scdm_alignment.py::
+test_xx_enctype_claim_counts_as_event_but_matches_no_distindex_entity
+(SQL == independent oracle on both sides), so the asymmetry is real,
+internally consistent, and currently characterized — the open question
+is only whether SAS composes the same way on missing-enctype claims.
+
+**Impact:** none for SCDM-legal extracts (enctype never missing there,
+missing-not-allowed); affects only extracts omitting the column.
+
+**Options:** (a) read ms_codedistribution.sas's expansion-then-match
+against missing EncType and record the answer next to the pinned
+test; (b) accept the pinned characterization as documented behavior.
+
+**Recommendation:** (a) when next in the SAS tree; (b) meanwhile (the
+behavior is pinned and cannot regress silently).
+
+## Decision brief DB-11 (verbatim-ready for the operator)
+
+**Question:** tools/gen_synthetic.py — the repo's reference dataset
+generator (the /tmp/qrp_data/100k benchmark the original suites and
+the recorded baselines run on) — emits three out-of-domain value
+families as canonical data. Fix the generator (changing benchmark
+content), or accept and document?
+
+**Evidence (all verified against the SCDM references by audit D,
+investigation/packages/scdm-audit-notes/audit-d-raw.md):**
+
+1. **Enrollment plantype/payertype swapped** — gen_synthetic.py:80-81
+   `'MC' AS plantype, 'P' AS payertype`: 'MC' (Medicare) is a
+   PayerType value; 'P' (PPO) is a PlanType value. Both columns are
+   out of domain in the benchmark. Masking risk is low only because
+   the pipeline reads neither column — which is itself unverifiable
+   from data that has never carried legal values.
+2. **Pdx on ambulatory claims** — gen_synthetic.py:127-128 draws
+   pdx 'P'/'S' unconditionally while enctype is ~80% AV: ~4 of 5
+   diagnosis rows carry a principal/secondary flag on an ambulatory
+   encounter, which diagnosis.md restricts to IP/IS. The benchmark's
+   care-setting and codedistribution paths run predominantly on claim
+   shapes real extracts cannot produce.
+3. **Death source 'D' fabricated** — gen_synthetic.py:142: Death.Source
+   domain is {L,N,S,T,O,M}; 'D' is not in it. Every benchmark death
+   row carries it.
+
+**Impact:** the original-suite baselines (373 passed / 2 failed at
+31846dc and at this review's base 7165d77) pin behavior on the current
+extract; fixing the generator changes benchmark content and requires
+re-recording baselines. The defects do not mask any currently-tested
+behavior (the pipeline does not key on plantype/payertype/source; the
+pdx shapes are wildcard-matched), but they undermine the benchmark's
+value as "SCDM-shaped data" for any future column adoption.
+
+**Options:**
+
+- **(a) Fix all three + regenerate + re-record baselines.** Straight
+  mechanical edits (plantype 'P'/payertype 'MC' — or any legal pair;
+  pdx CASE WHEN enctype IN ('IP','IS'); source 'L' or another legal
+  value); then `tools/gen_synthetic.py --out /tmp/qrp_data/100k
+  --patients 100000` (seed 42, README command) and a full
+  original-suite re-run to confirm zero new failures.
+- **(b) Fix and keep the old dataset for the recorded baselines,
+  documenting the provenance split.** Avoids re-recording now, leaves
+  two dataset generations in flight.
+- **(c) Accept and document** in the generator's header.
+
+**Recommendation:** (a) — the baselines were re-recorded once already
+during the campaign; a second re-record is cheap next to the value of
+a legal-domain benchmark.
+
+## Decision brief DB-12 (verbatim-ready for the operator)
+
+**Question:** src/qrp/selfcheck.py's inline `doctor` extract emits
+pdx 'P' for every diagnosis row while enctype is a genuine ~50/50
+IP/AV mix (selfcheck.py:152-153) — so `qrp doctor`, the first thing a
+data partner runs, validates the pipeline on claim shapes SCDM
+forbids (principal flag on ambulatory claims).
+
+**Evidence:** selfcheck.py:152-153; the ~50/50 mix is real (DuckDB
+DOUBLE->INTEGER casts round, audit D verified empirically — an earlier
+truncation-based reading suggesting an off-by-one pool gap was
+retracted). diagnosis.md:85 requires blank Pdx on AV/ED/OA. An
+AV-with-blank-PDX regression in the pipeline would not be caught by
+the doctor path today.
+
+**Impact:** smoke-test blind spot only; the doctor run's purpose is
+end-to-end liveness, not domain validation — but its data doubles as
+the canonical "this is what SCDM data looks like" example in the
+repo.
+
+**Options:**
+
+- **(a) One-line fix:** `CASE WHEN enctype = 'IP' THEN 'P' ELSE '' END`
+  (matching the audit's DB-11 pdx shape), then re-run `qrp doctor` to
+  confirm liveness (the probe is: doctor still passes with blank Pdx
+  on AV rows).
+- **(b) Accept and document.**
+
+**Recommendation:** (a) — smallest of the seven briefs, and it makes
+the doctor extract SCDM-exemplary.

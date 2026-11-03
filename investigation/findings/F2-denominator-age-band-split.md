@@ -99,3 +99,8 @@
   re-ran denomcounts cell-level across repeated identical runs.
 - **related findings:** F1 (same package; independent mechanism).
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed against demographic.md
+  (Birth_Date: SAS date, days from 1960-01-01) on 2026-11-03 —
+  age-band computation operates on normalized DATEs; no
+  data-model-bearing assumption beyond the date semantics
+  10_normalize.sql already implements.

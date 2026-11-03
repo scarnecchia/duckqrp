@@ -68,3 +68,5 @@
   fixed), DB-5 (the decision brief this lead feeds), package C
   observation 1 (the original report, verified and sharpened here).
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed 2026-11-03 — dose-censoring
+  window mechanics; no SCDM data-model-bearing assumption.

@@ -96,3 +96,7 @@
 - **related findings:** A-1 (same package, different mechanism); the
   diagnosis-optional lead above (unfixed, same class).
 - **disclosure status:** PRIVATE — NOT AUTHORIZED FOR PUBLICATION
+- **SCDM 8.2.2 alignment:** reviewed against dispensing.md (RxAmt) on
+  2026-11-03 — the fix implements exactly the column optionality
+  INPUTS.md documents (absent column resolves to NULL, "no amount
+  recorded", not zero); no further data-model assumption.
