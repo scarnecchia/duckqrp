@@ -200,7 +200,7 @@ divergences (C-1 magnitude, D1 impact size) are harmless.
 Follow-up review (2026-11-03), operator-requested: the B2/enrollment
 alignment work extended to every synthetic builder, fixture generator,
 and oracle in the repo. Record of truth:
-[SCDM-ALIGNMENT.md](SCDM-ALIGNMENT.md) — audit matrix (42 items over
+[SCDM-ALIGNMENT.md](SCDM-ALIGNMENT.md) — audit matrix (39 items over
 the 8 pipeline-read tables), probes, unresolved reference ambiguities,
 and the scope evidence. Raw audit reports:
 `scdm-audit-notes/audit-{a,b,c,d}-raw.md`. Boundary tests:
@@ -213,10 +213,10 @@ touch investigation/ only).
 |---|---|---|
 | properties, quick | `python -m pytest tests/properties --hypothesis-profile=quick -q` | exit 0; counts recorded in manifest pass `scdm-audit-final-1` |
 | original suites | `python -m pytest --ignore=tests/properties -q` at fedfea3 | exit 1; 373 passed, 2 failed, 3 skipped, 437 warnings, 465.76s — the 2 failures are exactly the pre-existing spill-attribution OOM tests; zero new failures vs the recorded baseline; recorded as `scdm-audit-original-1` (result `confirmed`) |
-| static gates | `ruff check --select E4,E7,E9,F tests/properties`; `mypy src tests/properties` | ruff clean; mypy clean (83 source files) |
+| static gates | `ruff check --select E4,E7,E9,F tests/properties`; `mypy src tests/properties` | ruff clean; mypy clean (85 source files) |
 
-Audit verdicts (42 items): aligned 13 · aligned-with-annotation 12 ·
-misaligned-fixed 12 (all applied, tests-side only) · probe-needed 5
+Audit verdicts (39 items): aligned 11 · aligned-with-annotation 12 ·
+misaligned-fixed 11 (all applied, tests-side only) · probe-needed 5
 (four to decision briefs DB-11/DB-12, one to an executed boundary
 test).
 
@@ -229,7 +229,7 @@ test).
 | death | two-column subset equals the pipeline read set; the rules the subset can express hold by construction and are re-guarded by normalize |
 | procedure | probe rows field-legal; the enveloping rewrite is pinned for claims inside IP stays |
 | encounter | IP/IS/AV drawn with ENC-legal dates; discharge_status stays minimal (the EX→death derivation is pinned in tests/test_pipeline.py, including lowercase 'ex' and missing ddate); EncounterID uniqueness caveat recorded unresolved |
-| lab_result | Result_Type 'N'/'C' triples legal ('U' belongs to UNMAPPED rows only and is never drawn); unit only on numeric rows |
+| lab_result | Result_Type 'N'/'C' triples legal; the reference ties 'U' to UNMAPPED rows without stating the converse, so the generator conservatively never draws it; unit only on numeric rows |
 
 Boundary behaviors pinned (8 deterministic tests, SQL == expectation,
 SCDM citation in each docstring): sex U/A eligibility with 'O'

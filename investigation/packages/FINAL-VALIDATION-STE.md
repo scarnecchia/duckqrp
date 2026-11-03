@@ -143,8 +143,8 @@ live in tests/properties/test_scdm_alignment_complete.py.
 | original suites | `python -m pytest --ignore=tests/properties -q` at fedfea3 | exit 1. 373 passed, 2 failed, 3 skipped, 437 warnings, 465.76s. The 2 failures are the known spill-attribution OOM tests. Zero new failures against the baseline. The record scdm-audit-original-1 carries result confirmed. |
 | static gates | `ruff check --select E4,E7,E9,F tests/properties` and `mypy src tests/properties` | both clean. mypy checked 85 source files. |
 
-The audit matrix holds 42 items over the 8 tables the pipeline reads.
-Verdicts: aligned 13, aligned-with-annotation 12, misaligned-fixed 12,
+The audit matrix holds 39 items over the 8 tables the pipeline reads.
+Verdicts: aligned 11, aligned-with-annotation 12, misaligned-fixed 11,
 probe-needed 5. All misaligned-fixed changes are applied on the test
 side. Four probe-needed items became decision briefs DB-11 and DB-12.
 One probe-needed item became an executed boundary test.
@@ -158,7 +158,7 @@ One probe-needed item became an executed boundary test.
 | death | the two-column subset equals the pipeline read set. The rules the subset can express hold by construction. |
 | procedure | the probe rows are field-legal. A boundary test pins the enveloping rewrite for claims inside IP stays. |
 | encounter | the generator draws IP, IS, and AV encounters with ENC-legal dates. Discharge_status stays minimal. The original suite pins the EX-to-death derivation, including lowercase 'ex' and a missing ddate. The EncounterID uniqueness caveat stays unresolved. |
-| lab_result | the Result_Type triples are legal. 'U' belongs to UNMAPPED rows only. The generator never draws it. Only numeric rows carry a unit. |
+| lab_result | the Result_Type triples are legal. The reference ties 'U' to UNMAPPED rows and does not state the converse. The generator never draws 'U'. Only numeric rows carry a unit. |
 
 Eight deterministic boundary tests pin SCDM-legal behavior. Each test
 cites its SCDM reference. The pinned behaviors follow.

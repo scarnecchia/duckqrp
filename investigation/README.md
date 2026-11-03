@@ -382,13 +382,13 @@ Addendum in the B2 finding document.
 **SCDM 8.2.2 full-surface alignment review (2026-11-03, commits
 cdd9b15..HEAD).** Operator-requested extension of the B2 review to
 every synthetic builder, fixture generator, and oracle. Record of
-truth: investigation/packages/SCDM-ALIGNMENT.md (42-item audit matrix
+truth: investigation/packages/SCDM-ALIGNMENT.md (39-item audit matrix
 over the 8 pipeline-read tables; raw audit reports in
 investigation/packages/scdm-audit-notes/; probe witness
 investigation/witnesses/scdm-full-alignment-probe.txt).
 
-- Audit verdicts: aligned 13, aligned-with-annotation 12,
-  misaligned-fixed 12 (all applied, tests-side only), probe-needed 5
+- Audit verdicts: aligned 11, aligned-with-annotation 12,
+  misaligned-fixed 11 (all applied, tests-side only), probe-needed 5
   (4 to decision briefs DB-11/DB-12, 1 to an executed boundary test).
 - Test side: synth draws the full Sex (A/F/M/U), Race (0-5+M), and
   EncType (incl. IS) domains; Pdx only on IP/IS claims; SCDM-legal lab

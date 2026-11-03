@@ -57,12 +57,12 @@ Verdicts: `aligned` · `aligned-with-annotation` · `misaligned-fixed`
 | encounter | encounter.md (Discharge_Status 16 values; EX) | synth.py encounter draws; sql/10_normalize.sql:184-195; tests/test_pipeline.py:8151-8191 | C3 EX discharge absent from the properties generator | aligned-with-annotation | decision (b): existing-suite coverage suffices (lowercase 'ex', missing ddate, precedence all pinned); Encounter docstring note (5a6fadd) |
 | encounter | encounter.md:7/21/23 (unique-row caveat) | synth.py EncounterID scheme; oracle comments | C4 uniqueness key tension in the reference itself | aligned-with-annotation | UNRESOLVED (quoted in audit-c-raw.md); docstring note; patid*10 ids satisfy both readings (5a6fadd) |
 | death | death.md (full column list; COD separate table) | src/qrp/scdm.py death spec; synth.py Death rows; sql/10_normalize.sql:177-182 | C5 two-column subset relationship | aligned-with-annotation | subset framing recorded here (report-level); rules the subset can express are satisfied and re-guarded by 10_normalize |
-| lab_result | laboratory-result.md (Result_Type conditional semantics; MS_Result_C/N; MS_Result_unit) | synth.py labs block; sql/76_labs.sql; oracles/d_stages.py labs | C6 'U' drawn on mapped CREATININE; non-null numeric on 'C' rows; unit always populated | misaligned-fixed | legal N/C triples, 'U' never drawn (reserved for UNMAPPED), ms_result_c widened to `str \| None` in tests/properties/synth.py (5a6fadd) |
+| lab_result | laboratory-result.md (Result_Type conditional semantics; MS_Result_C/N; MS_Result_unit) | synth.py labs block; sql/76_labs.sql; oracles/d_stages.py labs | C6 'U' drawn on mapped CREATININE; non-null numeric on 'C' rows; unit always populated | misaligned-fixed | legal N/C triples in tests/properties/synth.py; the reference ties 'U' to UNMAPPED rows (laboratory-result.md:77) without stating the converse, so the generator conservatively never draws 'U'; ms_result_c widened to `str \| None` (5a6fadd) |
 | enrollment | enrollment.md (PlanType {F,H,E,P,S,M,O,U}; PayerType {CO,MC,MD,OG,OT,UN}) | tools/gen_synthetic.py:80-81 (production generator, frozen) | D plantype='MC'/payertype='P' — the two columns' values are swapped; flows into the /tmp/qrp_data/100k benchmark | probe-needed | DB-11 decision brief (investigation/packages/ARBITRATION.md); no pipeline change without operator ruling |
 | diagnosis | diagnosis.md (Pdx IP/IS only) | tools/gen_synthetic.py:127-128 (frozen) | D pdx P/S on ~80%-AV rows presented as canonical benchmark data | probe-needed | DB-11 decision brief |
 | death | death.md (Source {L,N,S,T,O,M}) | tools/gen_synthetic.py:142 (frozen) | D death source 'D' is fabricated | probe-needed | DB-11 decision brief |
 | diagnosis | diagnosis.md (Pdx IP/IS only) | src/qrp/selfcheck.py:152-153 (frozen) | D doctor extract: pdx 'P' on ~50% AV rows | probe-needed | DB-12 decision brief |
-| demographic | demographic.md | tools/gen_synthetic.py:47-58,165-178; src/qrp/selfcheck.py:127-133; tests/test_pipeline.py:5759; tests/test_regression_f1.py:43-53 | D demographic pools and labeled tie injections | aligned | tie rows carry a "genuine tie" label; DB-11 notes the unique-row framing for the generator comments |
+| demographic | demographic.md | tools/gen_synthetic.py:47-58,165-178; src/qrp/selfcheck.py:127-133; tests/test_pipeline.py:5759; tests/test_regression_f1.py:43-53 | D demographic pools and labeled tie injections | aligned | tie rows carry a "genuine tie" label; the unique-row framing for the generator comments is recorded in investigation/packages/scdm-audit-notes/audit-d-raw.md (annotation suggestions) |
 | enrollment | enrollment.md | tools/gen_synthetic.py:70-79; src/qrp/selfcheck.py:134-138 | D enrollment pools (aside from the swapped columns above) | aligned | none needed |
 | dispensing | dispensing.md | tools/gen_synthetic.py:94-104,154-164; src/qrp/selfcheck.py:139-145; tests/test_regression_a2.py:31-33,98-99,132-133 | D dispensing pools; labeled duplicate/zero-amount/no-codetype probes | aligned | deliberate probes already labeled in-file |
 | diagnosis | diagnosis.md | tools/gen_synthetic.py:117-126 | D diagnosis codetype/code/enctype pools | aligned | none needed |
@@ -77,9 +77,10 @@ Verdicts: `aligned` · `aligned-with-annotation` · `misaligned-fixed`
 | diagnosis | diagnosis.md (Dx_Codetype; Pdx) | tests/test_regression_c3.py:93-100 | D zero-row schema literals out of domain | aligned-with-annotation | literals made in-domain + note (ce178d8); rows never materialize (WHERE 1 = 0) |
 | (cross-table) | config.py utilfile loader (cohortgrp required) vs 74_utilization.sql equality join | tests/properties/test_pkg_d_optional_stages.py `util_med_drug` ("", "MED", ...) | follow-up: utilization/baseline fixtures carried cohortgrp '' — matches no cohort in SQL, oracle, or loader, so the counts compared zeros against zeros (vacuous) | misaligned-fixed | real per-cohort windows in tests/properties/test_pkg_d_optional_stages.py + four oracle repairs in tests/properties/oracles/ (5a594c1); the IS boundary test test_scdm_alignment.py::test_is_encounters_counted_and_is_claims_not_enveloped exercises the now-live counts |
 
-Counts: aligned 13 · aligned-with-annotation 12 · misaligned-fixed 12
-· probe-needed 5 (all five resolve to decision briefs DB-11/DB-12 —
-frozen production files — or to executed tests; none remains open).
+Counts: 39 items — aligned 11 · aligned-with-annotation 12 ·
+misaligned-fixed 11 · probe-needed 5 (all five resolve to decision
+briefs DB-11/DB-12 — frozen production files — or to executed tests;
+none remains open).
 
 ## Probes executed
 

@@ -585,8 +585,10 @@ def generate(
     if opt.include_labs:
         # SCDM-legal result shapes (laboratory-result.md): 'N' carries a
         # numeric value with null text and a unit; 'C' carries enumerated
-        # text with null numeric; 'U' is reserved for UNMAPPED rows,
-        # which this generator never emits, so it is never drawn.
+        # text with null numeric. The reference states 'U' is populated
+        # when MS_Test_Name = UNMAPPED (laboratory-result.md:77) and does
+        # not state the converse; this generator emits mapped tests only,
+        # so it conservatively never draws 'U'.
         # Numeric values draw ONE decimal: with the per-lab member counts
         # this suite generates (<= 5), a one-decimal mean never lands on
         # an exact .0005 boundary, so the recorded production DOUBLE-mean
