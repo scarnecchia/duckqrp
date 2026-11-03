@@ -876,6 +876,17 @@ test; (b) accept the pinned characterization as documented behavior.
 **Recommendation:** (a) when next in the SAS tree; (b) meanwhile (the
 behavior is pinned and cannot regress silently).
 
+**Close-out (2026-11-03, SAS ground truth Q5):** option (a) executed by
+the macro read — the asymmetry IS SAS parity. The event path matches a
+blank EnType because the '**' wildcard is compared on the parameter
+side only (`codes.lkp_enctype = "**" and codes.lkp_pdx = claim.Pdx`,
+ms_loopmeds.sas:57); the codedistribution path expands '**' to the
+literal `IP IS ED AV OA` (ms_expand_enctype_pdx.sas:43-49) and
+exact-merges on `codecat codetype enctype pdx code`
+(ms_codedistribution.sas:163-165), which a blank-EnType claim fails.
+Verbatim quotes: scdm-audit-notes/sas-ground-truth-rulings.md Q5. No
+code change; the pinned test's docstring now cites the confirmation.
+
 ## Decision brief DB-11 (verbatim-ready for the operator)
 
 **Question:** tools/gen_synthetic.py — the repo's reference dataset

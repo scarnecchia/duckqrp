@@ -305,9 +305,14 @@ def test_xx_enctype_claim_counts_as_event_but_matches_no_distindex_entity() -> N
     Under a '**' care setting the claim still fires as an event
     (30_exposure.sql keeps the literal wildcard), but matches no
     distindex entity — the wildcard expands to the five concrete
-    enctypes and compares exactly (72_codedistribution.sql:81-84). SAS
-    parity per the quoted ms_caresettingprincipal /
-    ms_codedistribution semantics; the oracle agrees on both sides."""
+    enctypes and compares exactly (72_codedistribution.sql:81-84).
+    SAS parity confirmed by macro read (decision DB-10 closed): the
+    event join compares the wildcard on the parameter side only
+    (ms_loopmeds.sas:57), while codedistribution expands '**' to the
+    literal settings and exact-merges on enctype
+    (ms_expand_enctype_pdx.sas:43-49, ms_codedistribution.sas:163-165),
+    so a blank-EnType claim never matches there. Ground truth:
+    sas-ground-truth-rulings.md Q5; the oracle agrees on both sides."""
     ds = _hand_dataset(
         patients=(patient(1),),
         enrollment=(span(1, W_START, W_END),),
