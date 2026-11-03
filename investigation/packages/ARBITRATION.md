@@ -1007,6 +1007,69 @@ overstated. Magnitude unmeasured (no witness study yet).
 **Recommendation the brief supports:** (a) — the same one-macro-read
 standard that closed DB-7 and DB-8.
 
+## Decision brief DB-14 (verbatim-ready for the operator)
+
+**Question:** the port applies the max-episode-duration cap (`:168`
+equivalent) BEFORE the length flags are evaluated — SAS evaluates the
+flags on the uncapped end first, then caps (ms_createptsmasterlist.sas:
+flags :146-165, then `if &maxepisdur.>0 and EpisodeEndDt-IndexDt+1 >
+&maxepisdur. then EpisodeEndDt = IndexDt+&maxepisdur.-1`, then
+FUEnrolMet, the blackout delete, and the :185 subsetting IF). Divergence
+or acceptable port placement?
+
+**Evidence (from the DB-5 verification pass, 2026-11-03; SAS read
+verbatim):** on this base the cap sits in 50_episodes.sql's censor chain
+and both the stage-50 flags and the new stage-55 re-evaluation see the
+capped end. Live impact on this base: none — the flags the cap could
+flip are trivially satisfied in shipped configs (demo study:
+minepisdur=1, reqdaysaftepi=0, blackoutper=0; maxepisdur=365 does
+bind). Latent divergence for configs with a binding maxepisdur AND
+reqdaysaftepi > 0 (SAS demands observable days after the UNCAPPED end,
+so the port keeps episodes SAS drops) or minepisdur > maxepisdur
+(opposite direction).
+
+**Impact:** none today; latent for binding-maxepisdur studies.
+
+**Options:**
+
+- **(a) Re-order to SAS semantics** — evaluate the end-dependent flags
+  on the uncapped end and apply the cap afterwards (the same
+  truncate-then-recheck pattern stage 55 now uses for the dose censor),
+  with a witness study for the binding configuration.
+- **(b) Document as a known latent divergence** next to the 55 stage
+  notes, implemented when a binding study enters scope.
+
+**Recommendation the brief supports:** (b) now — zero live impact on
+shipped configs — with (a) pre-planned via witness study the moment a
+study configures a binding maxepisdur with reqdaysaftepi > 0 or
+minepisdur > maxepisdur.
+
+## Decision brief DB-15 (verbatim-ready for the operator)
+
+**Question:** SAS carries a SECOND blackout delete for propensity-score
+/ covariate studies — `if run_ps_cov_analysis='Y' and
+IndexLookEndDt-(IndexDt+blackoutper)<0 then delete`
+(ms_createptsmasterlist.sas:183-186, between the :168 cap and the :185
+subsetting IF). The port has no equivalent; `IndexLookEndDt` exists only
+as a constant output column (62_mstr_wide). Implement or document?
+
+**Evidence (from the DB-5 verification pass, 2026-11-03):** the delete
+is conditional on the PS/cov analysis switch, which the port does not
+configure today. Latent for any future study combining PS/cov analysis
+with blackoutper > 0: the port would keep episodes SAS deletes.
+
+**Impact:** none today; latent for PS/cov + blackout studies.
+
+**Options:**
+
+- **(a) Implement the delete** when the PS/cov switch exists, preceded
+  by one macro read to pin `IndexLookEndDt`'s construction (the
+  ground-truth report does not quote it).
+- **(b) Document as a known latent divergence.**
+
+**Recommendation the brief supports:** (b) now; (a) together with
+whatever work introduces PS/cov analysis configuration.
+
 ## Operator rulings (2026-11-03)
 
 Recorded verbatim from the operator; these authorize production
