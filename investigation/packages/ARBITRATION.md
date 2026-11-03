@@ -970,6 +970,43 @@ repo.
 **Recommendation:** (a) — smallest of the seven briefs, and it makes
 the doctor extract SCDM-exemplary.
 
+## Decision brief DB-13 (verbatim-ready for the operator)
+
+**Question:** the EXCLUSION-half window build ends an RX claim's removal
+window at `adate - condfrom`, but SAS's exclusion formulas read as
+symmetric to the inclusion ones — `UneligEnd = Expiredt - CondFrom`
+(with the same DATEONLY split) — so an RX claim's supply-extended
+expiry would extend the removal window too. Divergence, or parity
+already?
+
+**Evidence (surfaced by the DB-2 implementation pass, 2026-11-03):**
+the EXC branch of src/qrp/sql/92_cidadenom.sql computes RX removal
+windows ending at `adate - condfrom`; the SAS
+ground truth quotes the exclusion windows as symmetric to the inclusion
+formulas with the same dateonly split (ms_cidadenom.sas:303-310; full
+quotes in scdm-audit-notes/sas-ground-truth-rulings.md Q6). If SAS
+anchors on Expiredt (= ADate + supply - 1), then every dispensing with
+supply > 1 currently removes FEWER days than SAS would — overstating
+member-days for EXC-condition studies. Not yet verified: the exact
+Expiredt definition on the exclusion side (the Q6 quotes cover the
+inclusion side verbatim; the symmetry reading is one macro read away).
+
+**Impact:** affected shape = studies with EXCLUSIONCODES carrying
+RX-coded rules with supply > 1. Direction if divergent: member-days
+overstated. Magnitude unmeasured (no witness study yet).
+
+**Options:**
+
+- **(a) One macro read of ms_cidadenom.sas:290-320** to pin the
+  exclusion-side Expiredt; if supply-extended, fix the EXC branch's RX
+  end anchor to `expiredt - condfrom` with a hand-derived witness test
+  in the DB-2 test style.
+- **(b) Document as an open parity question** next to the pinned
+  exclusion-parity claims.
+
+**Recommendation the brief supports:** (a) — the same one-macro-read
+standard that closed DB-7 and DB-8.
+
 ## Operator rulings (2026-11-03)
 
 Recorded verbatim from the operator; these authorize production
