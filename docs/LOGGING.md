@@ -88,30 +88,27 @@ read `[3/0]` because the stage total was never set.
 
 Both now come from `pipeline.run`, with `plan_stages()` as the single
 source for the stage list. The CLI and the UI observe an identical
-stream for successful runs. On failure the driver synthesizes the
-terminal event. The UI does this today. The CLI does not emit a
-terminal event on failure. See the open contract note below.
+stream for successful runs. When a run fails, the streams differ. See
+"Who owns the terminal events" below.
 `test_cli_and_ui_emit_the_same_events` pins the success path so the
 paths cannot drift again.
 
 ### Who owns the terminal events
 
-The ownership of the terminal events is split. `pipeline.run` owns the
-terminal events for a completed run. It emits `RunStarted` when the
-work starts. It emits `RunFinished(ok=True)` when the work completes.
-The failure path is different. When the pipeline raises, the exception
-propagates out of `pipeline.run`. The CLI prints the error message.
-The CLI does not emit a terminal event into its JSONL stream. A failed
-CLI run has no `RunFinished` record. The UI driver (`RunHandle._work`)
-catches the exception. It synthesizes `RunFinished(ok=False,
-error=...)` into the same event stream. The UI stream therefore always
-ends with a terminal event. Keep this split in mind when you compare
-event streams from failed runs. Operator ruling DB-4(b) keeps this
-behavior and documents the split here. Whether the CLI should also
-emit a failure terminal is an open contract question.
+The terminal events have two owners. `pipeline.run` owns the terminal
+events for a completed run. It emits `RunStarted` and then
+`RunFinished(ok=True)`. The failure path is different. When the
+pipeline raises, the exception propagates out of `pipeline.run`. The
+CLI prints the error message. A failed CLI run has no `RunFinished`
+record. The UI driver (`RunHandle._work`) catches the exception. It
+synthesizes `RunFinished(ok=False, error=...)` into the same event
+stream. The UI stream therefore always ends with a terminal event.
+Operator ruling DB-4(b) keeps this behavior and documents the split
+here. Whether the CLI should also emit a terminal event on failure is
+an open contract question.
 
-DB-3 is separate work. It will add a terminal record for SIGINT
-mid-runs. It is not part of this change.
+DB-3 is separate work. It will add a terminal record for a SIGINT
+mid-run.
 
 ## Comparing runs
 
