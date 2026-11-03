@@ -112,7 +112,9 @@ SCDM: tuple[TableSpec, ...] = (
         optional_table=True,
     ),
     # Read for medical utilization: SAS counts visits (NumAV, NumOA, NumIP,
-    # NumED) from the ENCOUNTER table (ms_computeutilization.sas:139).
+    # NumIS, NumED) from the ENCOUNTER table (ms_computeutilization.sas:62
+    # lists the settings AV OA IP IS ED; ms_util.sas:196 emits
+    # Num<setting> for each).
     # Counting them from diagnosis claims missed encounters with no
     # diagnosis — wp307: NumAV 56 short over 38 episodes, NumOA 559 short
     # over 264. Optional: without it, visits come from diagnosis claims.
