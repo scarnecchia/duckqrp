@@ -185,7 +185,10 @@ tests/test_regression_c3.py
 Every path is under `tests/` or `investigation/`; no production
 `src/` or `tools/` file appears. The machine check lives in
 tests/properties/test_scdm_alignment_complete.py::
-test_scdm_audit_scope_is_tests_and_investigation_only.
+test_scdm_audit_scope_is_tests_and_investigation_only, which pins the
+same command to the review's closed range (7165d77..844a1da; the
+operator rulings of 2026-11-03 authorize production changes beyond
+that range and are recorded in ARBITRATION.md).
 
 ## Limitations
 

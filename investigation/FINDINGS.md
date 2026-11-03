@@ -4,7 +4,7 @@
 
 Current state of the qrp-duckdb repository at `discovery` `178f71c`
 (2026-11-03). This report lists only items that are broken, unverified,
-or waiting on a decision. Everything else passes: the property suite
+or in remediation. Everything else passes: the property suite
 (441 passed / 13 skipped / 1 xfailed), the original suites (373 passed
 / 3 skipped), and both static gates.
 
@@ -27,15 +27,12 @@ Three further tests skip for environmental reasons: one needs a
 production input file, two need a larger generated dataset
 (`/tmp/qrp_data/2m`).
 
-## Decisions needed from you
+## Ruled by the operator (2026-11-03) — fixes authorized
 
-The charter for all recent work allows changes to tests and mocked
-data only. Everything below is production code or production-adjacent
-tooling; each item is fully evidenced and held until you rule. A ruling
-can be as short as "DB-6: a". Where the right answer depends on what
-the original SAS macros do, the ruling can be "check SAS first" — that
-is a one-file read in the read-only reference tree
-(`/home/scarndp/dev/Sentinel/qrp/`).
+The operator ruled on every open item below. These rulings authorize
+production changes for exactly these items (recorded in
+`investigation/packages/ARBITRATION.md`, "Operator rulings"). Items
+stay listed here until their fix lands and validates.
 
 ### Defects
 
@@ -45,58 +42,41 @@ to the inclusion windows and, under dose limits, to dose-eligible
 members. This implementation keeps all enrolled time minus exclusions.
 Direction certain; magnitude unmeasured. Studies without inclusion
 conditions are exact.
-Decide: (a) implement both restrictions for parity — days of focused
-work plus an oracle extension; (b) document as a known divergence —
-one paragraph, affected studies keep overstatement; (c) implement only
-one restriction — smaller divergence, not a correct subset.
-Recorded recommendation: (b) now, (a) when the first
-inclusion-condition study enters scope.
+Ruling: (a) — implement both restrictions for parity, with the oracle
+and generator extensions.
 
 **DB-5 — dose-truncated episodes skip the length re-check.**
 SAS re-checks the minimum-duration criteria after dose censoring
 truncates an episode. This implementation filters before truncation
 and never re-checks, so short truncated episodes survive that SAS
 would delete. Affects only studies with maxcumdose and cumdoseper
-both set. Magnitude unmeasured.
-Decide: (a) implement the SAS-ordered re-check — but only after a
-witness study quantifies how many episodes it would delete; (b)
-document plus a witness pin now.
-Recorded recommendation: (b) with the witness study; (a) only if a
-production maxcumdose study is in scope.
+both set.
+Ruling: (a) — implement the re-check, witness study first.
 
 **DB-6 — attrition level 1 counts members pov1 silently drops.**
 The level-1 sex filter tests a column that is never NULL by
 construction, and the missing-demographics check treats blank strings
 as present (SAS's `missing()` does not). A member with a blank-string
 sex is counted at level 1, then lost between attrition and eligibility
-with no record. Zero effect on SCDM-legal extracts; only blank-string
-values slipping in from empty-string conversions are affected.
-Decide: (a) apply the repo's existing NULL-or-blank predicate and
-align level 1 — after one SAS check that the level-1 count matches;
-(b) document the inconsistency at both sites.
-Recorded recommendation: (b) immediately; (a) after the ms_attrition
-check passes.
+with no record. Zero effect on SCDM-legal extracts.
+Ruling: (a) — apply the NULL-or-blank predicate and align level 1,
+after the ms_attrition source check.
 
 **DB-7 — a missing race becomes Multi-racial.**
 A NULL or absent race column collapses to 'M' (Multi-racial); SCDM's
 unknown code is '0'. Race-conditioned studies and stratified outputs
 label missing-race members as Multi-racial.
-Decide: (a) read SAS's missing-race handling and match it — if SAS
-also maps to 'M', document and close; if not, change the default;
-(b) keep and document as-is.
-Recorded recommendation: (a) — one macro read; do not guess.
+Ruling: (a) — read SAS's missing-race handling and match it.
 
 **DB-8 — a blank Pdx can never match a diagnosis claim.**
 Normalize relabels a NULL Pdx to 'X' before any consumer runs. The
 care-setting grammar's explicit "missing Pdx" token and the blank
 member of the code-distribution expansion are therefore dead code for
-diagnosis claims — while SCDM requires blank Pdx on ambulatory claims,
-so real data hits this. Affects only studies that configure
-Pdx-restricted care-setting tokens.
-Decide: (a) read the SAS macros to learn whether SAS matches blank or
-'X'; if blank, move the relabel after matching; if 'X', close as
-parity; (b) document as an open parity question.
-Recorded recommendation: (a) — one macro read.
+diagnosis claims — while SCDM requires blank Pdx on ambulatory claims.
+Affects only studies that configure Pdx-restricted care-setting
+tokens.
+Ruling: (a) — read the SAS macros; if SAS matches blank, move the
+relabel after matching; if 'X', close as parity.
 
 **DB-11 — the benchmark generator emits illegal values.**
 `tools/gen_synthetic.py` — the source of the `/tmp/qrp_data/100k`
@@ -105,20 +85,15 @@ payertype domains, puts a principal-diagnosis flag on ~80% of
 ambulatory claims, and fabricates a death source code. No
 currently-tested behavior is masked, but the benchmark is not
 SCDM-shaped data.
-Decide: (a) fix all three, regenerate the dataset, re-record the
-baselines (mechanical; one full-suite re-run to confirm); (b) fix the
-generator but keep the old dataset for the recorded baselines — two
-dataset generations in flight; (c) accept and document in the
-generator header.
-Recorded recommendation: (a).
+Ruling: (a) — fix all three, regenerate the dataset, re-record the
+baselines.
 
 **DB-12 — `qrp doctor` validates on illegal claim shapes.**
 The built-in doctor extract puts Pdx 'P' on roughly half its
 ambulatory diagnosis rows, so a regression that mishandles blank Pdx
 on ambulatory claims would still pass the doctor run.
-Decide: (a) one-line fix (Pdx only on IP rows) plus a doctor re-run to
-confirm liveness; (b) accept and document.
-Recorded recommendation: (a) — smallest item on this list.
+Ruling: (a) — Pdx only on IP rows, then a doctor re-run to confirm
+liveness.
 
 ### Contract questions
 
@@ -126,45 +101,34 @@ Recorded recommendation: (a) — smallest item on this list.
 A Ctrl-C kills the run with a raw traceback; the JSONL stream and .log
 end with no final event, so a cancelled run is indistinguishable from
 a truncated one.
-Decide: (a) keep and document; (b) catch KeyboardInterrupt in the CLI,
-emit a cancelled terminal record, exit 130 — reuses the existing
-in-app cancellation semantics; (c) full signal-handler cancellation —
-most uniform, most work.
-Recorded recommendation: (b), with (c) only if cancelled runs confuse
-tooling in practice.
+Ruling: (b) — catch KeyboardInterrupt in the CLI, emit the cancelled
+terminal record, exit 130. Full signal-handler cancellation only if
+tooling reports confusion.
 
 **DB-4 — the failure path emits no RunFinished event.**
 CLI and UI event streams are identical for successful runs only; on
 failure the CLI carries no terminal event, and a replay tool cannot
 tell a failed run from a truncated one.
-Decide: (a) make pipeline.run own the failure terminal event — makes
-the parity promise unconditional, needs a double-emit guard in the UI
-path; (b) document the split ownership (pipeline for successes,
-drivers synthesize failures); (c) drivers own all terminal events —
-re-creates a past drift bug.
-Recorded recommendation: (b) now; (a) only as deliberate feature work.
+Ruling: (b) — document the split ownership in LOGGING.md and amend the
+parity sentence.
 
 **DB-9 — `enc_is` has no cited SAS basis.**
 The pipeline counts non-acute institutional stays in utilization and
 baseline output while the schema note cites SAS counting only
 AV/OA/IP/ED. Either SAS has a column the note omits, or this package
 emits one SAS does not.
-Decide: (a) read ms_computeutilization.sas and correct whichever
-comment is wrong; (b) leave as is.
-Recorded recommendation: (a) — one macro read.
+Ruling: (a) — read ms_computeutilization.sas and correct whichever
+comment is wrong.
 
 **DB-10 — missing-enctype claims: event yes, distribution no.**
 A diagnosis claim with no EnType counts as an outcome event under a
 wildcard care setting but can never appear in the code-distribution
 tables. Both halves quote SAS macros; the behavior is pinned by tests
 either way.
-Decide: (a) read ms_codedistribution.sas and record whether SAS
-composes the same way; (b) accept the pinned characterization as
-documented behavior.
-Recorded recommendation: (b) now (nothing can regress silently), (a)
-on the next pass through the SAS tree.
+Ruling: (a) — read ms_codedistribution.sas; "let's at least understand
+what SAS does."
 
-## Ruled: documented, no action pending
+## Ruled earlier: documented, no action pending
 
 **B2 — one dispensing inside overlapping enrollment spans counts
 twice.** Inherited bug-for-bug from the SAS original; the ruling keeps
@@ -196,14 +160,17 @@ not applied.
   documented-input pinning only; the DOUBLE mean and the DISTINCT
   question sit outside it.
 
-## Reference ambiguities (not repository defects)
+## Reference ambiguities
 
 Three points where the SCDM 8.2.2 documentation contradicts itself or
-leaves a rule open. Per the standing rule, none became a validation
-rule; they are recorded in `investigation/packages/SCDM-ALIGNMENT.md`:
+leaves a rule open were recorded as unresolved during the audit. Two
+are now resolved by operator ruling (2026-11-03, recorded in
+ARBITRATION.md):
 
-- the Encounter unique-row key (PatID+EncounterID vs EncounterID
-  alone — the reference states both);
-- the ImputedRace code-3 description (duplicates code 4's text);
-- Result_Loc nullability (one line says nulls exist, another says
-  none do).
+- **Encounter unique-row key — RESOLVED by ruling: PatID+EncounterID.**
+  The synthetic EncounterIDs are globally unique and satisfy it; no
+  production code joins on EncounterID.
+- **ImputedRace code-3 description** (duplicates code 4's text) —
+  still unresolved; outside the pipeline read set; no action.
+- **Result_Loc nullability — RESOLVED by ruling: non-nullable.**
+  Outside the pipeline read set; records-only.

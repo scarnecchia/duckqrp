@@ -37,6 +37,11 @@ _FINAL = _REPO_ROOT / "investigation" / "packages" / "FINAL-VALIDATION.md"
 _STE = _REPO_ROOT / "investigation" / "packages" / "FINAL-VALIDATION-STE.md"
 # The discovery tip this review started from (recorded in SCDM-ALIGNMENT.md).
 _BASE_SHA = "7165d77"
+# The review's final records commit: the scope check is a closed-range
+# historical check. Later operator rulings (ARBITRATION.md, 2026-11-03)
+# authorize production changes for the named items; those live beyond
+# _REVIEW_TIP and are intentionally outside this check.
+_REVIEW_TIP = "844a1da"
 
 _VERDICTS = ("aligned", "aligned-with-annotation", "misaligned-fixed",
              "probe-needed")
@@ -111,7 +116,7 @@ def test_audit_matrix_records_unresolved_ambiguities() -> None:
 
 def test_scdm_audit_scope_is_tests_and_investigation_only() -> None:
     proc = subprocess.run(
-        ["git", "diff", "--name-only", f"{_BASE_SHA}..HEAD"],
+        ["git", "diff", "--name-only", f"{_BASE_SHA}..{_REVIEW_TIP}"],
         cwd=str(_REPO_ROOT), capture_output=True, text=True, check=False)
     assert proc.returncode == 0, proc.stderr
     files = [f for f in proc.stdout.splitlines() if f]

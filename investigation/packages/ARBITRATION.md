@@ -958,3 +958,33 @@ repo.
 
 **Recommendation:** (a) — smallest of the seven briefs, and it makes
 the doctor extract SCDM-exemplary.
+
+## Operator rulings (2026-11-03)
+
+Recorded verbatim from the operator; these authorize production
+changes for the named items, superseding the tests-only charter for
+exactly these items.
+
+| brief | ruling | consequence |
+|---|---|---|
+| DB-2 | a | Implement SAS's inclusion-window AND dose-denominator restrictions in the CIDA denominators, with the oracle and generator extensions. |
+| DB-5 | a | Implement the SAS-ordered post-truncation length re-check; the brief's evidence-first condition (witness study) applies as the first step. |
+| DB-6 | a | Apply the NULL-or-blank predicate and align level 1, after the ms_attrition source check embedded in option (a). |
+| DB-7 | a | Read SAS's missing-race handling and match it. |
+| DB-8 | a | Read the SAS macros; if SAS matches blank Pdx, move the relabel after matching; if 'X', close as parity. |
+| DB-9 | a | Read ms_computeutilization.sas and correct whichever comment is wrong. |
+| DB-10 | a | Read ms_codedistribution.sas — "let's at least understand what SAS does." |
+| DB-11 | a | Fix all three generator defects, regenerate /tmp/qrp_data/100k, re-record baselines. |
+| DB-12 | a | One-line selfcheck fix (Pdx only on IP rows) + doctor re-run. |
+| DB-3 | b (agree with recommendation) | Catch KeyboardInterrupt in cli.main, emit the cancelled terminal record, exit 130; full signal-handler cancellation only if tooling reports confusion. |
+| DB-4 | b | Document the split ownership in LOGGING.md and amend the parity sentence; pipeline.run owns success terminals, drivers synthesize failure terminals. |
+
+Reference-ambiguity rulings (same date):
+
+- **Encounter unique-row key = PatID+EncounterID.** The SCDM
+  documentation's caveat is resolved by operator decision. The
+  repo's synthetic EncounterIDs are globally unique and therefore
+  satisfy it; no production code joins on EncounterID, so this is a
+  records-only resolution.
+- **Result_Loc is non-nullable.** Resolved by operator decision.
+  Result_Loc is outside the pipeline's read set; records-only.
