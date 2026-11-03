@@ -194,3 +194,73 @@ mutation-replay calibration groups, and committed machine-verdict
 evidence for all of it. What the campaign does NOT claim: universal
 correctness of qrp-duckdb, universal SAS parity, or that unmeasured
 divergences (C-1 magnitude, D1 impact size) are harmless.
+
+## SCDM alignment review
+
+Follow-up review (2026-11-03), operator-requested: the B2/enrollment
+alignment work extended to every synthetic builder, fixture generator,
+and oracle in the repo. Record of truth:
+[SCDM-ALIGNMENT.md](SCDM-ALIGNMENT.md) — audit matrix (42 items over
+the 8 pipeline-read tables), probes, unresolved reference ambiguities,
+and the scope evidence. Raw audit reports:
+`scdm-audit-notes/audit-{a,b,c,d}-raw.md`. Boundary tests:
+`tests/properties/test_scdm_alignment.py`. Machine checks:
+`tests/properties/test_scdm_alignment_complete.py`.
+Final revision: **fedfea3** (test content; the records commits after it
+touch investigation/ only).
+
+| run | command | result |
+|---|---|---|
+| properties, quick | `python -m pytest tests/properties --hypothesis-profile=quick -q` | exit 0; counts recorded in manifest pass `scdm-audit-final-1` |
+| original suites | `python -m pytest --ignore=tests/properties -q` at fedfea3 | exit 1; 373 passed, 2 failed, 3 skipped, 437 warnings, 465.76s — the 2 failures are exactly the pre-existing spill-attribution OOM tests; zero new failures vs the recorded baseline; recorded as `scdm-audit-original-1` (result `confirmed`) |
+| static gates | `ruff check --select E4,E7,E9,F tests/properties`; `mypy src tests/properties` | ruff clean; mypy clean (83 source files) |
+
+Audit verdicts (42 items): aligned 13 · aligned-with-annotation 12 ·
+misaligned-fixed 12 (all applied, tests-side only) · probe-needed 5
+(four to decision briefs DB-11/DB-12, one to an executed boundary
+test).
+
+| table | end state |
+|---|---|
+| enrollment | coverage flags SCDM-legal everywhere (`_FLAG_POOL` draws 7 legal MedCov/DrugCov pairs; generator spans Y/Y/Y with variety owned by package B); span-date and chart semantics annotated |
+| demographic | all four Sex values and all seven Race values drawn; Hispanic N/Y/U; null Birth_Date supported as a legal shape (pipeline drops it at attrition level 1); duplicate rows labeled as DEM unique-row violations |
+| dispensing | all drawn fields in domain; codetype equality pinned by a boundary test; ProviderID inert (annotated) |
+| diagnosis | full EncType domain including IS; Pdx populated only on IP/IS claims; IP-stay enveloping probes labeled; the 'XX' fallback documented as pipeline-internal, never a data value |
+| death | two-column subset equals the pipeline read set; the rules the subset can express hold by construction and are re-guarded by normalize |
+| procedure | probe rows field-legal; the enveloping rewrite is pinned for claims inside IP stays |
+| encounter | IP/IS/AV drawn with ENC-legal dates; discharge_status stays minimal (the EX→death derivation is pinned in tests/test_pipeline.py, including lowercase 'ex' and missing ddate); EncounterID uniqueness caveat recorded unresolved |
+| lab_result | Result_Type 'N'/'C' triples legal ('U' belongs to UNMAPPED rows only and is never drawn); unit only on numeric rows |
+
+Boundary behaviors pinned (8 deterministic tests, SQL == expectation,
+SCDM citation in each docstring): sex U/A eligibility with 'O'
+collapse and pov1-only exclusion; race 'M' eligibility; null
+Birth_Date drop at attrition level 1; IS counted in `enc_is` and the
+'**' distindex expansion while IS days stay non-enveloping;
+pdx-by-enctype matching under restricted care settings; the 'XX'
+event/distindex asymmetry; alternate Rx codetype capture; procedure
+enveloping inside IP stays.
+
+Oracle state: `expected_utilization` reads the normalized dispensing
+columns and models 74_utilization.sql's diagnosis-claims fallback for
+empty encounter data; `expected_lab_summary` emits NULL aggregates for
+character-only groups; `expected_denomcounts` emits the collapsed sex
+covariate (the raw value governs eligibility). The d-package
+utilization fixtures carry real cohortgrps, so MED/DRUG counts compare
+live values against the oracles.
+
+Findings: every finding document carries an SCDM 8.2.2 alignment note
+(grounding for A-3 and A-4; reviewed-no-bearing lines elsewhere; B2
+via its 2026-11-03 addendum). No finding status changed.
+
+Open operator decisions: DB-6..DB-12 (ARBITRATION.md, wave 4) —
+attrition level-1 sex-filter vacuity and blank-string gap; NULL-race →
+'M' default; blank-Pdx unreachability for DX claims; NumIS SAS basis;
+XX asymmetry parity confirmation; gen_synthetic.py canonical-domain
+defects; selfcheck.py doctor Pdx on ambulatory claims.
+
+Limitations: the synthetic extracts are pipeline-relevant-column
+subsets, not full SCDM tables; three reference ambiguities stay
+unresolved (encounter unique-row key, ImputedRace code-3 text,
+Result_Loc nullability); production `src/` and `tools/` untouched —
+the diff against base `7165d77` contains only `tests/` and
+`investigation/` paths; no SAS-parity claim added or removed.

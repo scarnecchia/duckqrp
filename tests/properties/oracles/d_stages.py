@@ -70,7 +70,7 @@ def expected_utilization(
     util_cfg: list[dict[str, Any]],
     baseline_cohorts: set[str],
     drugclass: list[dict[str, Any]],
-    diagnoses: list[dict[str, Any]] = (),
+    diagnoses: list[dict[str, Any]] | tuple[()] = (),
 ) -> list[dict[str, Any]]:
     """One row per master-list episode; counts of DISTINCT
     (adate, enctype) encounters in the window and of dispensings joined to

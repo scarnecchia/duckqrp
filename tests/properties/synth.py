@@ -133,10 +133,9 @@ class Diagnosis:
     dx: str
     dx_codetype: str
     pdx: str
-    enctype: str                  # AV / ED / IP / IS / OA (SCDM domain);
-                                  # 'XX' is 10_normalize.sql's fallback
-                                  # for a missing/null column, never a
-                                  # value a builder emits
+    # None writes a NULL column value: 10_normalize.sql turns it into
+    # the pipeline-internal 'XX' fallback (never an SCDM domain value).
+    enctype: str | None
 
 
 @dataclass(frozen=True)
@@ -193,7 +192,7 @@ class LabResult:
     ms_test_name: str
     ms_test_sub_category: str
     specimen_source: str
-    ms_result_unit: str
+    ms_result_unit: str | None    # only Result_Type 'N' rows carry a unit
     fast_ind: str
     pt_loc: str
 

@@ -19,14 +19,14 @@ from dataclasses import replace
 from datetime import date, timedelta
 from typing import Any
 
-from tests.properties.harness import StageHarness
-from tests.properties.oracles import d_stages
-from tests.properties.oracles.b_pkg_fixtures import (
+from .harness import StageHarness
+from .oracles import d_stages
+from .oracles.b_pkg_fixtures import (
     END, NOISE_CODE, START, disp, patient, span, two_cohort_study,
 )
-from tests.properties.oracles.d_fixtures import CIDA_LEVELS, study_with_features
-from tests.properties.synth import (
-    Diagnosis, Encounter, Procedure, SyntheticDataset,
+from .oracles.d_fixtures import CIDA_LEVELS, study_with_features
+from .synth import (
+    Diagnosis, Encounter, Patient, Procedure, SyntheticDataset,
 )
 
 W_START = date(2014, 1, 1)
@@ -146,7 +146,8 @@ def test_null_birth_date_member_dropped_at_attrition_level_1() -> None:
     1, 70_outputs.sql:29-31) and excluded from pov1 via
     demographics_missing (10_normalize.sql:72-75, 45_pov1.sql)."""
     ds = _hand_dataset(
-        patients=(patient(1), patient(2, None, "F")),
+        patients=(patient(1),
+                  Patient(2, None, "F", "1", "N", "02108", START)),
         enrollment=(span(1, START, END), span(2, START, END)),
         dispensings=(
             disp(1, START + timedelta(days=200), "E00001", 30, 10.0),
@@ -335,7 +336,7 @@ def test_xx_enctype_claim_counts_as_event_but_matches_no_distindex_entity() -> N
                    ("distindexmap", "distindex", "distindex_episodes")}
     assert dx == [(date(2014, 3, 15), "D00001", "P", "XX")], dx
     assert fin and fin[0][1] == date(2014, 3, 15) and fin[0][2] >= 1, fin
-    assert xx[0] == 0, xx
+    assert xx and xx[0] == 0, xx
     assert all(r[0] is None for r in hoi), hoi
     for t in ("distindexmap", "distindex", "distindex_episodes"):
         assert d_stages.canonical(di_rows[t]) == d_stages.canonical(
