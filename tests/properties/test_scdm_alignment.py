@@ -78,9 +78,12 @@ def _attrition_remaining(harness: StageHarness, level: float) -> set[tuple[str, 
 
 def _sex_domain_dataset() -> SyntheticDataset:
     """Three members with SCDM-legal sex values (demographic.md: Sex
-    domain A/F/M/U), one fill each, fully enrolled."""
+    domain A/F/M/U), one fill each, fully enrolled. Member 2 also
+    carries race 'M' (Multi-racial) so the Race domain's extra value is
+    pinned through cfg_demog eligibility in the same run."""
     return _hand_dataset(
-        patients=(patient(1, sex="U"), patient(2, sex="A"), patient(3, sex="F")),
+        patients=(patient(1, sex="U"), patient(2, sex="A", race="M"),
+                  patient(3, sex="F")),
         enrollment=tuple(span(i, START, END) for i in (1, 2, 3)),
         dispensings=tuple(
             disp(i, START + timedelta(days=200), "E00001", 30, 10.0)
@@ -103,10 +106,13 @@ def test_sex_u_a_flow_through_conditionless_study_and_collapse_to_o(
         dem = h.engine.con.execute(
             "SELECT patid, sex_raw, sex FROM demographics ORDER BY patid"
         ).fetchall()
+        races = h.engine.con.execute(
+            "SELECT patid, race FROM demographics ORDER BY patid").fetchall()
         pov1 = {r[0] for r in h.engine.con.execute(
             "SELECT DISTINCT patid FROM pov1").fetchall()}
         lvl1 = _attrition_remaining(h, 1.0)
     assert dem == [(1, "U", "O"), (2, "A", "O"), (3, "F", "F")], dem
+    assert races == [(1, "1"), (2, "M"), (3, "1")], races
     assert pov1 == {1, 2, 3}, pov1
     assert lvl1 and all(n == 3 for _g, n in lvl1), lvl1
 
