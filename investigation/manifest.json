@@ -284,6 +284,15 @@
       "duration_seconds": null
     },
     {
+      "id": "scdm-b2-alignment-1",
+      "package": "B",
+      "command": "python -m pytest tests/properties/test_pkg_b_enrollment.py tests/properties/test_pkg_b_stockpile.py tests/properties/test_pkg_b_index.py tests/properties/test_pkg_b_episodes.py tests/properties/test_pkg_b_pass2.py tests/properties/test_pkg_b_independent_review.py --hypothesis-profile=quick -q",
+      "revision": "744189d",
+      "result": "pass",
+      "detail": "post-campaign SCDM 8.2.2 alignment re-run (2026-11-03): coverage-flag pool extended with SCDM-legal 'U' pairs, out-of-domain drugcov='A' removed, duplicate-row collapse and U-flag/chart deterministic tests added -> 16 passed in 18.52s; B2 parity pins exactly as documented -> 2 passed; evidence validators 67 passed; ruff E4,E7,E9,F clean; mypy 83 files clean. Execution-verified: exact duplicate enrollment rows (the representable residue of the SCDM's only sanctioned overlap form) collapse to ONE episode and do NOT trigger the B2 double-count; 'U' never qualifies for coverage yet a non-chart 'U' span still drops the patient under chart_required. Finding addendum records the grounding; no production code changed.",
+      "duration_seconds": 18.52
+    },
+    {
       "id": "orchestrator-merge-b-1",
       "package": "B",
       "command": "python -m pytest tests/properties --hypothesis-profile=quick",

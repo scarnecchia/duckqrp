@@ -24,11 +24,14 @@
   span ruptures from an inner span while lying inside an outer one
   (A=[2011-01-01..2011-12-31], B=[2011-02-15..2011-06-15],
   C=[2011-09-01..2011-09-30], enrol_gap=0), plus a dispensing dated
-  inside both episode outputs. RIPR: reachable whenever a real SCDM
-  extract contains overlapping enrollment rows for one patient;
-  infection happens at the stockpile pre-shave; propagates through
-  stockpiled into index_candidates/episodes; revealed by any output
-  carrying rxsup/rxamt/numdispensing.
+  inside both episode outputs. RIPR: reachable when a real SCDM extract
+  contains RUPTURING overlapping enrollment rows for one patient —
+  exact duplicate rows, the representable residue of the SCDM's only
+  sanctioned overlap form, collapse to one episode and do NOT trigger
+  it (verified; see the SCDM alignment addendum); infection happens at
+  the stockpile pre-shave; propagates through stockpiled into
+  index_candidates/episodes; revealed by any output carrying
+  rxsup/rxamt/numdispensing.
 - **witness/repro command:** `investigation/probes/b_overlap_probe.py` —
   `python investigation/probes/b_overlap_probe.py` (repo root on
   sys.path); independently reproduced by the orchestrator (manifest
@@ -105,7 +108,15 @@
   **Mitigation context:** the Sentinel model QA Suite is expected to
   prevent overlapping enrollment spans upstream, so real-world exposure
   is mitigated — stated as expected process, not verified in this
-  campaign. No crash; outputs stay internally consistent.
+  campaign. The SCDM 8.2.2 Enrollment definition itself supports the
+  expectation: its collapsing rule makes exact adjacency the only
+  sanctioned bridge (Enr_End 1/31 bridges Enr_Start 2/1, not 2/2 —
+  precisely the enrol_gap=0 boundary 20_enrollment.sql encodes) and
+  sanctions only PlanType/PayerType-differing duplicate overlaps, which
+  this pipeline cannot even represent (INPUTS.md enrollment reads no
+  such columns) — rupturing nested overlaps are non-canonical
+  preparation defects (see the SCDM alignment addendum). No crash;
+  outputs stay internally consistent.
 - **affected paths:** src/qrp/sql/30_exposure.sql (both shave joins —
   the fan-out), src/qrp/sql/20_enrollment.sql (segmentation producing
   the overlapping episodes), src/qrp/sql/50_episodes.sql (`located`
@@ -157,7 +168,10 @@
   which is why the double-count required the hand probe; package A/C
   quick sets and determinism/rewrites pass on the merged arb branch
   (109 + 38 passed) confirming the A-side fixes did not disturb this
-  behavior.
+  behavior. Post-campaign SCDM alignment re-run (2026-11-03): all six
+  package-B quick modules pass with the SCDM-legal flag pool (16
+  passed, 18.7s), including the two new deterministic SCDM boundary
+  tests; the two parity pins above still pass unchanged.
 - **addendum — episode peer ordering under fan-out is engine-defined
   (doc-only; FINAL-AUDIT §4):** when the `located` fan-out produces
   rows tied on the whole chaining window key (adate, expiredt, rxsup),
@@ -189,6 +203,41 @@
   precondition
   for a future fix and remains operator-gated; upstream Sentinel QA
   rejection of overlapping spans remains expected-but-unverified.
+- **addendum — SCDM 8.2.2 data-model alignment (post-campaign review,
+  2026-11-03):** the finding and the package-B machinery were re-read
+  against the SCDM 8.2.2 Enrollment/Dispensing definitions; no change to
+  the finding's status, and the data model STRENGTHENS the mitigation
+  rationale above.
+  - Value domains: MedCov Y/N/U/A, DrugCov Y/N/U, Chart Y/N (missing not
+    allowed); the pipeline reads patid/enr_start/enr_end/medcov/drugcov
+    plus optional chart (INPUTS.md; no PlanType/PayerType columns exist,
+    so the SCDM's only sanctioned overlap form — duplicates differing
+    solely in plan/payer — is unrepresentable here and arrives, if at
+    all, as exact duplicate rows).
+  - Verified by execution (investigation/probes/
+    b_scdm_alignment_probe.py): exact duplicate rows collapse to ONE
+    episode and one stockpiled row (numdispensing=1, full supply) — the
+    B2 double-count requires RUPTURING overlap shapes, not duplicate
+    enrollment data. This is the negative boundary of the trigger,
+    pinned as
+    tests/properties/test_pkg_b_enrollment.py::
+    test_enrollment_duplicate_identical_spans_collapse.
+  - 'U' (Unknown) flags are SCDM-legal for both coverage variables and
+    were previously never generated. SQL and the oracle agree on them
+    ('U' never qualifies in any coverage mode), including the
+    cross-rule nuance that a non-chart 'U' span still drops the whole
+    patient under chart_required (the chart filter runs over ALL raw
+    spans, before coverage filtering). Pinned as
+    test_enrollment_unknown_flags_and_chart_interaction; the generated
+    flag pool (b_pkg_fixtures._FLAG_POOL) now draws SCDM-legal U-pairs
+    (63.6% of quick draws carry a U-flag span; event recorded), and the
+    out-of-domain drugcov='A' draw was removed (DrugCov has no 'A'
+    value; MedCov 'A' remains and is counted as covered medical per
+    has_coverage, matching SCDM's ambulatory-only responsibility
+    definition).
+  - enrol_gap=0 reproduces the SCDM collapsing rule's adjacency boundary
+    verbatim (bridge Enr_End→next-day Enr_Start; one blank day
+    ruptures), grounding the B1 parity ruling in the data model.
 - **related findings:** B1 — RESOLVED: the segmentation is parity-
   intended (docs/SAS_PARITY.md "Enrollment spans" verified against
   ms_episoderec2.sas:67-77), so the fix location question collapsed

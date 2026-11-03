@@ -130,7 +130,13 @@ removed). No seeded mutation remains integrated.
   order-independent overlap evidence is
   test_pkg_b_independent_review.py; the production-side thread is lead
   L-B3 (chaining-window ORDER BY is not a total order under fan-out
-  ties; not authorized to fix).
+  ties; not authorized to fix). Post-campaign SCDM 8.2.2 alignment
+  review (2026-11-03, run `scdm-b2-alignment-1`): trigger scoped to
+  RUPTURING overlaps — the SCDM's only sanctioned overlap form
+  (plan/payer-only duplicates) is unrepresentable here and its
+  representable residue, exact duplicate rows, was execution-verified
+  to collapse to one episode with no fan-out; see the addendum in the
+  B2 finding document.
 - **D approval limits.** The integration review of D final e5d4dd4
   returned APPROVE (per the parent's integration record; no separate
   review document was committed). Limits, from the committed record:

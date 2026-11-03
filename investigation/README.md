@@ -358,3 +358,23 @@ limitations (D DOUBLE-mean rounding with the reproducibility-only
 DECIMAL proposal, RX DISTINCT nuance, B legacy overlap scope, PYI034
 lint-scope note), unresolved DB-2..DB-5, and the no-universal-claim
 scope statement: investigation/packages/FINAL-VALIDATION.md.
+
+**Post-campaign SCDM 8.2.2 alignment review (2026-11-03, commit 744189d +
+records).** Operator-requested re-read of finding B2 and the package-B
+machinery against the SCDM 8.2.2 Enrollment/Dispensing definitions.
+Outcome: the finding stands (documented, parity kept) with a sharper
+trigger — exact duplicate rows (the representable residue of the SCDM's
+only sanctioned overlap form, plan/payer-only duplicates, which this
+pipeline cannot even represent) collapse to one episode and do NOT
+trigger the double-count; rupturing nested overlaps do. The data model
+strengthens the QA-Suite mitigation rationale (the SCDM collapsing rule
+sanctions only exact-adjacency bridging — the enrol_gap=0 boundary —
+and instructs partners to collapse duplicate overlaps). Machinery
+updates: `_FLAG_POOL` now draws SCDM-legal 'U' coverage pairs (63.6% of
+quick draws) and no longer draws out-of-domain drugcov='A'; new
+deterministic tests
+`test_enrollment_duplicate_identical_spans_collapse` and
+`test_enrollment_unknown_flags_and_chart_interaction` pin both verified
+boundaries (SQL == oracle). Recorded as `scdm-b2-alignment-1` (16
+passed 18.52s; pins 2 passed; validators 67 passed; ruff/mypy clean).
+Addendum in the B2 finding document.
