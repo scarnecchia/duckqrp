@@ -37,3 +37,4 @@ _dbg_*/
 # artifact, never committed, and deliberately kept apart from any repo-root
 # .hypothesis/ directory (which belongs to whoever ran the tool there).
 tests/properties/.hypothesis-db/
+.worktrees/
