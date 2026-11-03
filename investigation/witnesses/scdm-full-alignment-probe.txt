@@ -1,0 +1,44 @@
+family 1 (sex U/A):
+  demographics (patid, sex_raw, sex): [(1, 'U', 'O'), (2, 'A', 'O'), (3, 'F', 'F')]
+  pov1 patids (conditionless): [1, 2, 3]
+  attrition level 1 (group, remaining): [('cohort_a', 3), ('cohort_b', 3)]
+  pov1 patids (sex=F,M): [3]
+  attrition level 1.0 (group, remaining): [('cohort_a', 3), ('cohort_b', 3)]
+  attrition level 2.0 (group, remaining): [('cohort_a', 3), ('cohort_b', 3)]
+  attrition level 5.0 (group, remaining): [('cohort_a', 3), ('cohort_b', 3)]
+  -> raw-value eligibility, 'O' collapse, pov1-only exclusion OK
+family 2 (null birth_date):
+  demographics_missing: [2]
+  pov1 patids: [1]  ptsmasterlist: [1]
+  attrition level 1 (group, remaining): [('cohort_a', 1), ('cohort_b', 1)]
+  -> dropped at attrition level 1 and excluded from pov1 OK
+families 3+4 (IS encounter/claims, pdx x enctype):
+  cdm_diagnosis (adate, code, pdx, enctype): [(datetime.date(2014, 3, 12), 'D00001', 'P', 'IS'), (datetime.date(2014, 3, 19), 'D00001', '', 'IS'), (datetime.date(2014, 3, 20), 'X00001', '', 'IS'), (datetime.date(2014, 3, 25), 'D00001', 'X', 'IP')]
+  [dbg] ptsmasterlist: [('cohort_a', 1, datetime.date(2014, 3, 1))]
+  [dbg] index_candidates: [('cohort_a', 1, datetime.date(2014, 3, 1))]
+  [dbg] cfg_codes: [('DEF', 'RX', 'ND', 'E00001'), ('EVENT', 'DX', '09', 'D00001')]
+  [dbg] cfg_utilization: [('cohort_a', 'MED', -30, 365)]
+  [dbg] event_claims: [(datetime.date(2014, 3, 12), 'D00001'), (datetime.date(2014, 3, 19), 'D00001'), (datetime.date(2014, 3, 25), 'D00001')]
+  [dbg] cohort_final: [('cohort_a', 1, datetime.date(2014, 3, 1), datetime.date(2014, 3, 12))]
+  [dbg] distindexmap (full): [('cohort_a', 'exp', '_default', 'RX', None, None, None, None, 1), ('cohort_a', 'hoi', None, 'DX', '09', 'IP', 'P', 'D00001', 1), ('cohort_a', 'hoi', None, 'DX', '09', 'IP', 'S', 'D00001', 2), ('cohort_a', 'hoi', None, 'DX', '09', 'IP', 'X', 'D00001', 3), ('cohort_a', 'hoi', None, 'DX', '09', 'IP', '', 'D00001', 4), ('cohort_a', 'hoi', None, 'DX', '09', 'IS', 'P', 'D00001', 5), ('cohort_a', 'hoi', None, 'DX', '09', 'IS', 'S', 'D00001', 6), ('cohort_a', 'hoi', None, 'DX', '09', 'IS', 'X', 'D00001', 7)] ... total 21
+  utilization: [(0, 0, 1, 1, 0, 2, 2)]
+  distindex DX entities (enctype, pdx, code): [('AV', '', 'D00001'), ('AV', 'P', 'D00001'), ('AV', 'S', 'D00001'), ('AV', 'X', 'D00001'), ('ED', '', 'D00001'), ('ED', 'P', 'D00001'), ('ED', 'S', 'D00001'), ('ED', 'X', 'D00001'), ('IP', '', 'D00001'), ('IP', 'P', 'D00001'), ('IP', 'S', 'D00001'), ('IP', 'X', 'D00001'), ('IS', '', 'D00001'), ('IS', 'P', 'D00001'), ('IS', 'S', 'D00001'), ('IS', 'X', 'D00001'), ('OA', '', 'D00001'), ('OA', 'P', 'D00001'), ('OA', 'S', 'D00001'), ('OA', 'X', 'D00001')]
+  utilization == oracle: True  distindex == oracle: True
+  IS/P entity id: (5,)  distindex_episodes hoi: [('5',)]
+  event_claims under care setting ('IS', 'P'): [(datetime.date(2014, 3, 12),)]
+  event_claims under care setting ('IS', ''): [(datetime.date(2014, 3, 19),)]
+  -> enc_is counted, IS in distindex, IS not enveloped, pdx x enctype matching OK
+family 5 ('XX' fallback claim):
+  cdm_diagnosis: [(datetime.date(2014, 3, 15), 'D00001', 'P', 'XX')]
+  cohort_final (patid, feventdt, numevents): [(1, datetime.date(2014, 3, 15), 1)]
+  distindex 'XX' entities: 0  distindex_episodes hoi: [(None,)]
+  distindex == oracle: True
+  -> event fires under '**', no distindex entity, oracle agrees OK
+family 6 (Rx codetype SN vs ND):
+  study codetype SN: exposure_claims [(datetime.date(2014, 3, 1),)], index [(datetime.date(2014, 3, 1),)]
+  study codetype ND: exposure_claims [(datetime.date(2014, 4, 10),)], index [(datetime.date(2014, 4, 10),)]
+  -> codetype equality filters fills symmetrically OK
+family 7 (procedure enveloping):
+  cdm_procedure (adate, code, enctype, pdx): [(datetime.date(2014, 7, 1), 'PX2', 'AV', ''), (datetime.date(2014, 8, 3), 'PX1', 'IP', 'X')]
+  -> procedure re-filed IP/'X' inside the stay only OK
+all families passed
