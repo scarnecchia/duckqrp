@@ -206,7 +206,7 @@ and the scope evidence. Raw audit reports:
 `scdm-audit-notes/audit-{a,b,c,d}-raw.md`. Boundary tests:
 `tests/properties/test_scdm_alignment.py`. Machine checks:
 `tests/properties/test_scdm_alignment_complete.py`.
-Final revision: **fedfea3** (test content; the records commits after it
+Final revision: fedfea3 (test content; the records commits after it
 touch investigation/ only).
 
 | run | command | result |
