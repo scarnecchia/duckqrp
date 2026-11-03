@@ -284,6 +284,24 @@
       "duration_seconds": null
     },
     {
+      "id": "scdm-audit-final-1",
+      "package": "orchestrator",
+      "command": "python -m pytest tests/properties --hypothesis-profile=quick -q",
+      "revision": "b620615",
+      "result": "pass",
+      "detail": "SCDM 8.2.2 full-surface review final properties run (2026-11-03): 441 passed, 13 skipped, 1 xfailed, 13 warnings, 303.10s - the recorded 424 baseline plus the 8 deterministic boundary tests (tests/properties/test_scdm_alignment.py) and the 7 completeness validators (tests/properties/test_scdm_alignment_complete.py); skip/xfail profile unchanged. Static gates at the same test content: ruff check --select E4,E7,E9,F tests/properties clean; mypy src tests/properties clean (85 source files). Record: investigation/packages/SCDM-ALIGNMENT.md; report section + STE copy in FINAL-VALIDATION.md / FINAL-VALIDATION-STE.md.",
+      "duration_seconds": 303.10
+    },
+    {
+      "id": "scdm-audit-original-1",
+      "package": "orchestrator",
+      "command": "python -m pytest --ignore=tests/properties -q",
+      "revision": "fedfea3",
+      "result": "confirmed",
+      "detail": "SCDM 8.2.2 full-surface review original-suites run (2026-11-03): exit 1; 373 passed, 2 failed, 3 skipped, 437 warnings, 465.76s. The run FAILED and is recorded as failed, never relabeled; 'confirmed' means the 2 failures are exactly the pre-existing spill-attribution OOM tests and zero new failures appear vs the recorded baseline - identical counts to orchestrator-final-existing-suites-1. Test-side fixture edits in this review: tests/test_optional_claim_columns.py, tests/test_regression_a4.py, tests/test_regression_c3.py, tests/test_pipeline.py (comments), tests/test_determinism.py (docstring).",
+      "duration_seconds": 465.76
+    },
+    {
       "id": "scdm-b2-alignment-1",
       "package": "B",
       "command": "python -m pytest tests/properties/test_pkg_b_enrollment.py tests/properties/test_pkg_b_stockpile.py tests/properties/test_pkg_b_index.py tests/properties/test_pkg_b_episodes.py tests/properties/test_pkg_b_pass2.py tests/properties/test_pkg_b_independent_review.py --hypothesis-profile=quick -q",

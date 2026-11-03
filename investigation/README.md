@@ -378,3 +378,43 @@ deterministic tests
 boundaries (SQL == oracle). Recorded as `scdm-b2-alignment-1` (16
 passed 18.52s; pins 2 passed; validators 67 passed; ruff/mypy clean).
 Addendum in the B2 finding document.
+
+**SCDM 8.2.2 full-surface alignment review (2026-11-03, commits
+cdd9b15..HEAD).** Operator-requested extension of the B2 review to
+every synthetic builder, fixture generator, and oracle. Record of
+truth: investigation/packages/SCDM-ALIGNMENT.md (42-item audit matrix
+over the 8 pipeline-read tables; raw audit reports in
+investigation/packages/scdm-audit-notes/; probe witness
+investigation/witnesses/scdm-full-alignment-probe.txt).
+
+- Audit verdicts: aligned 13, aligned-with-annotation 12,
+  misaligned-fixed 12 (all applied, tests-side only), probe-needed 5
+  (4 to decision briefs DB-11/DB-12, 1 to an executed boundary test).
+- Test side: synth draws the full Sex (A/F/M/U), Race (0-5+M), and
+  EncType (incl. IS) domains; Pdx only on IP/IS claims; SCDM-legal lab
+  N/C triples; null Birth_Date supported; original-suite fixtures
+  carry in-domain canonical values with deliberate probes labeled.
+  8 deterministic boundary tests (tests/properties/
+  test_scdm_alignment.py) and 7 completeness validators
+  (test_scdm_alignment_complete.py) added.
+- The review's IS probe exposed a d-package utilization fixture
+  vacuity (cohortgrp '' rows match nothing in SQL, oracle, or loader),
+  whose repair surfaced and fixed four latent oracle defects
+  (5a594c1).
+- Findings: alignment notes added to every finding document; no status
+  changed. New decision briefs DB-6..DB-12 in ARBITRATION.md (wave 4);
+  no production file touched.
+- Final runs: properties quick 441 passed / 13 skipped / 1 xfailed
+  (`scdm-audit-final-1` at b620615); original suites 373 passed /
+  2 failed / 3 skipped — exactly the baseline residue
+  (`scdm-audit-original-1` at fedfea3); ruff and mypy clean; scope
+  verified: `git diff --name-only 7165d77..HEAD` contains only tests/
+  and investigation/ paths.
+- Supersession (operator instruction): this review's charter supersedes
+  ledger ground rule 3's no-edits-to-existing-tests clause for
+  test-side files only; the src/ freeze stands unchanged.
+
+**Push grant (2026-11-03, operator):** the operator forked the
+repository and changed the remote; pushing the discovery branch to the
+fork is authorized. The campaign remains private — no publication
+beyond the operator's fork.
