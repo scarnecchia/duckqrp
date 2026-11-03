@@ -118,8 +118,9 @@ class RunHandle:
                 self.engine.cancel()
 
             # pipeline.run emits RunStarted and RunFinished itself, so
-            # the CLI and the UI observe an identical stream. Nothing to
-            # emit here on the happy path.
+            # the CLI and the UI observe an identical stream on
+            # successful runs. On failure the except block below emits
+            # the terminal event.
             run(self.study, self.indata, engine=self.engine,
                 output_dir=self.output_dir, table_map=self.table_map,
                 debug=self.debug, csv=self.csv, layout=self.layout,
