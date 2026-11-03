@@ -70,15 +70,28 @@ def expected_utilization(
     util_cfg: list[dict[str, Any]],
     baseline_cohorts: set[str],
     drugclass: list[dict[str, Any]],
+    diagnoses: list[dict[str, Any]] = (),
 ) -> list[dict[str, Any]]:
     """One row per master-list episode; counts of DISTINCT
     (adate, enctype) encounters in the window and of dispensings joined to
-    the drug-class file; zeros when absent (LEFT join contract)."""
-    enc = {
-        (e["patid"], e["adate"], str(e["enctype"]).upper().strip())
-        for e in encounters
-        if e["adate"] is not None
-    }
+    the drug-class file; zeros when absent (LEFT join contract).
+
+    When the encounter input is EMPTY, visits fall back to DISTINCT
+    (patid, adate, enctype) diagnosis claims — 74_utilization.sql's
+    documented fallback for a study/site with no encounter data (an
+    empty encounter table fires it, same as an absent one)."""
+    if encounters:
+        enc = {
+            (e["patid"], e["adate"], str(e["enctype"]).upper().strip())
+            for e in encounters
+            if e["adate"] is not None
+        }
+    else:
+        enc = {
+            (d["patid"], d["adate"], str(d["enctype"]).upper().strip())
+            for d in diagnoses
+            if d["adate"] is not None
+        }
     cls = {(d["code"], d["generic"], d["classname"]) for d in drugclass}
     rows = []
     for m in master:
@@ -101,8 +114,12 @@ def expected_utilization(
         seen_c: set[str] = set()
         for a, b in (_win(m["indexdt"], u["utilfrom"], u["utilto"]) for u in drug_cfg):
             for d in dispensings:
-                if d["patid"] == m["patid"] and a <= d["rxdate"] <= b:
-                    hits = {(g, cl) for c, g, cl in cls if c == str(d["rx"])}
+                # cdm_dispensing is the NORMALIZED view (10_normalize):
+                # adate/code, not the raw rxdate/rx — the raw keys were
+                # latent dead code until real cohortgrps made this
+                # branch reachable (SCDM audit vacuity fix).
+                if d["patid"] == m["patid"] and a <= d["adate"] <= b:
+                    hits = {(g, cl) for c, g, cl in cls if c == str(d["code"])}
                     if hits:
                         numrx += 1
                         seen_g |= {g for g, _ in hits}
@@ -369,17 +386,25 @@ def expected_lab_summary(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         # rows rounded 134.082 vs 134.083 purely by summation order).
         from decimal import Decimal
 
-        total = sum(Decimal(str(v)) for v in nums)
-        mean = float(total / len(nums))
+        if nums:
+            total = sum(Decimal(str(v)) for v in nums)
+            mean: float | None = float(total / len(nums))
+            lo: float | None = min(nums)
+            hi: float | None = max(nums)
+        else:
+            # All-character results (Result_Type 'C' rows matching via a
+            # result-type-agnostic config): avg/min/max over an empty
+            # numeric set are NULL in the engine (76_labs.sql), not zero.
+            mean = lo = hi = None
         out.append(
             {
                 "cohortgrp": grp,
                 "labcode": code,
                 "records": len(rs),
                 "npts": len({r["patid"] for r in rs}),
-                "mean_result": round_half_away(mean, 3),
-                "min_result": min(nums),
-                "max_result": max(nums),
+                "mean_result": None if mean is None else round_half_away(mean, 3),
+                "min_result": lo,
+                "max_result": hi,
             }
         )
     return out
@@ -1716,6 +1741,11 @@ def expected_distindex(
                 continue
             if ct != "" and ct != str(claim["codetype"] or ""):
                 continue
+            # Exact match against the five concrete enctypes the '**'
+            # wildcard expands to: an 'XX' (null-column fallback) claim
+            # matches NO entity here even though it fires as an event
+            # under '**' (see d_denom's event pass). SAS parity per
+            # ms_codedistribution's expansion-then-equality semantics.
             if et != claim["enctype"] or px_ != claim["pdx"]:
                 continue
             out.append(ident)

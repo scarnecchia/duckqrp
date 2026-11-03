@@ -28,6 +28,9 @@ def compare_window(birth: date, start: date, end: date, death: date | None,
         enrollment=tuple(EnrollmentSpan(p, start, end, "Y", "Y", "Y")
                          for p in range(1, patients + 1)),
         dispensings=(),
+        # pdx 'S' on AV claims: deliberate out-of-domain values (SCDM
+        # Pdx is blank on ambulatory claims); behavior-neutral under the
+        # wildcard care settings these noise rows flow through.
         diagnoses=tuple(Diagnosis(p, excluded, "X00001", "09", "S", "AV")
                         for p in range(1, patients + 1) for _ in range(2)) if excluded else (),
         procedures=(), encounters=(), labs=(), exposure_codes=("E00001",),

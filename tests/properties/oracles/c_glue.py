@@ -170,6 +170,11 @@ def grid_dataset(
         for off, code, sup, amt in all_fills
     )
     diagnoses = tuple(
+        # pdx 'P' rides whatever enctype the caller passes; builder
+        # studies use the ('**','*') wildcard, so pdx never gates a
+        # claim here. SCDM populates Pdx only on IP/IS claims — callers
+        # passing ambulatory enctypes carry a deliberate out-of-domain
+        # value (harmless under the wildcard).
         Diagnosis(patid, d(off), code, "09", "P", enctype)
         for off, code, enctype in dxs
     )

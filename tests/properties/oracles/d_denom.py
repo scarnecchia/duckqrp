@@ -486,6 +486,12 @@ def expected_denomcounts(dataset: SyntheticDataset,
         for patid, adate, enctype, pdx, code, supply in ev_claims:
             if not (claims_from <= adate <= claims_to):
                 continue
+            # An 'XX'-enctype claim (missing/null column, 10_normalize.sql)
+            # passes here under a '**' care setting — the literal wildcard
+            # is kept — but is absent from the distindex entities, whose
+            # wildcard expands to the five concrete enctypes and matches
+            # exactly (mirrored in d_stages.match_med). SAS parity per the
+            # ms_caresettingprincipal / ms_codedistribution semantics.
             if not any((ce == "**" or ce == enctype)
                        and (cp == "*" or cp == pdx)
                        for ce, cp in care[code]):
@@ -549,7 +555,13 @@ def expected_denomcounts(dataset: SyntheticDataset,
                                 cohort.cohortgrp,
                                 band_label if has["agegroup"] else None,
                                 band_ordinal if has["agegroup"] else None,
-                                m.sex_raw if has["sex"] else None,
+                                # The OUTPUT sex is the collapsed covariate
+                                # (10_normalize: non-F/M -> 'O'), which is
+                                # what the denominators group on; the RAW
+                                # value governs eligibility only (line
+                                # above, mirroring pov1's cfg_demog join).
+                                (m.sex_raw if m.sex_raw in ("F", "M")
+                                 else "O") if has["sex"] else None,
                                 m.race if has["race"] else None,
                                 m.hispanic if has["hispanic"] else None,
                                 str(seg_start.year) if has["year"] else None,

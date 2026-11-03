@@ -67,7 +67,16 @@ def _cases() -> dict[str, dict]:
             3, "index_rx", "RX", covfrom=0, covto=0, dateonly=True, codes=ALL_CODES
         ),
     )
-    util_med_drug = (("", "MED", -30, 30), ("", "DRUG", -60, 0))
+    # Utilization rows must carry REAL cohortgrps: the loader drops
+    # empty-group rows (config.py _utilfile), and both the SQL and the
+    # oracle match cohortgrp by equality (74_utilization.sql /
+    # d_stages.expected_utilization) — a "" row matches nothing, so the
+    # counts used to compare zero against zero (found by the SCDM
+    # full-surface audit's IS probe).
+    util_med_drug = (
+        ("cohort_a", "MED", -30, 30), ("cohort_b", "MED", -30, 30),
+        ("cohort_a", "DRUG", -60, 0), ("cohort_b", "DRUG", -60, 0),
+    )
     classes_a = ((CODES[0], "classA", "genA"),)
     cci_scores = (
         RiskScoreCode("CCI", "IN", "IN", weight=1.0),
@@ -354,6 +363,7 @@ def _check_tables(harness, dataset, study, spec, case_name: str) -> None:
                 if c["create_baseline"]
             },
             _rows(harness, "cfg_drugclass"),
+            diagnoses=_rows(harness, "cdm_diagnosis"),
         )
         assert d_stages.canonical(_rows(harness, "utilization")) == d_stages.canonical(
             expected

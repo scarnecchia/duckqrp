@@ -116,7 +116,11 @@ def dataset_for(fixture: TieFixture, order: str) -> SyntheticDataset:
         deaths=(),
         enrollment=(span, span8),
         dispensings=(disp7, disp8),
-        diagnoses=(Diagnosis(8, date(2014, 4, 1), "D00001", "09", "P", "AV"),),
+        diagnoses=(
+            # pdx 'P' on an AV claim: deliberate out-of-domain value
+            # (SCDM Pdx is blank on ambulatory claims); the wildcard
+            # care setting makes it behavior-neutral here.
+            Diagnosis(8, date(2014, 4, 1), "D00001", "09", "P", "AV"),),
         procedures=(),
         encounters=(),
         labs=(),

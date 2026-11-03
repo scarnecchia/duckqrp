@@ -28,9 +28,14 @@ def all_declared_columns() -> list[tuple[str, str]]:
 
 def probe_dataset() -> SyntheticDataset:
     base, _ = hand_fixture()
+    # The procedure row violates SCDM's cross-table ADate rule
+    # (procedure.md: a procedure's ADate must match the Encounter ADate
+    # for the same PatID/EncounterID; hand_fixture's encounter 10 is
+    # 2014-05-01). Unobservable: cdm_procedure never joins the encounter
+    # table on EncounterID — enveloping works on patid+adate.
     procedures = (Procedure(1, date(2014, 3, 12), "PX1", "HC", "AV", 10, 1001, None),)
     labs = tuple(
-        LabResult(p, date(2013, 12, 1), None, None, 1.2, "", "N", "2160-0",
+        LabResult(p, date(2013, 12, 1), None, None, 1.2, None, "N", "2160-0",
                   "PX1", "CREATININE", "", "SR_PLS", "MG/DL", "X", "O")
         for p in (1, 2)
     )

@@ -162,6 +162,8 @@ def test_denominator_exclusion_exactly_covers_stratum_boundary() -> None:
         enrollment=(EnrollmentSpan(1, start, end, "Y", "Y", "Y"),),
         dispensings=(Dispensing(1, denom_start + timedelta(days=10),
                                 "E00001", "ND", 30, 10.0, 1001),),
+        # pdx 'S' on an AV noise claim: deliberate out-of-domain value
+        # (SCDM Pdx is blank on ambulatory claims); wildcard-neutral.
         diagnoses=(Diagnosis(1, denom_start, "X00001", "09", "S", "AV"),),
         procedures=(),
         encounters=(),
@@ -229,6 +231,9 @@ def test_denominator_example_pair_differing_one_field(diff_field: str) -> None:
             deaths=(),
             enrollment=(EnrollmentSpan(1, start, end, "Y", "Y", "Y"),),
             dispensings=dataset.dispensings,
+            # pdx 'S' on an AV noise claim: deliberate out-of-domain
+            # value (SCDM Pdx is blank on ambulatory claims);
+            # wildcard-neutral.
             diagnoses=(Diagnosis(1, start + timedelta(days=250),
                                  "X00001", "09", "S", "AV"),),
             procedures=(), encounters=(), labs=(),
