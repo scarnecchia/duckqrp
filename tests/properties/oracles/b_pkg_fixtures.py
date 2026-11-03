@@ -86,7 +86,12 @@ def disp(pid: int, day: date, code: str, sup: int, amt: float,
 
 _SPAN_SHAPES = ("overlap", "adjacent", "gap_minus", "gap_exact",
                 "gap_plus", "far")
-_FLAG_POOL = ("YY", "AY", "YN", "NY", "AA")
+# SCDM 8.2.2 Enrollment value domains: MedCov Y/N/U/A, DrugCov Y/N/U
+# ('A' is SCDM-legal for MedCov only — ambulatory-only medical coverage,
+# which has_coverage counts as covered medical; 'U' never qualifies for
+# either flag in any coverage mode). drugcov='A' was drawn here before the
+# SCDM alignment review and removed: DrugCov has no 'A' value.
+_FLAG_POOL = ("YY", "AY", "YN", "NY", "UU", "UY", "YU")
 _SUPS = (1, 3, 7, 16, 30)
 _AMTS = (0.5, 1.0, 2.5, 7.5, 10.0, 10.5)
 _DAY_JITTER = (-1, 0, 1, 2, 3)

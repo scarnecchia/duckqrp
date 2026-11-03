@@ -126,6 +126,20 @@ def _model_rows(dataset: SyntheticDataset, study: StudyConfig) -> list[tuple]:
         "death_day": None,
     }],
 ))
+@example(_spec(  # SCDM-legal 'U' flags: non-qualifying spans are filtered
+    # BEFORE segmentation, so the Y Y spans on either side of the Y/U span
+    # see each other and merge — segmenting first would rupture on the
+    # flag change and emit two episodes.
+    coverage="MD",
+    patients=[{
+        "spans": [("adjacent", 5, "YY"), ("adjacent", 5, "YU"),
+                  ("adjacent", 5, "YY")],
+        "fills": [{"code": "E00001", "day": 8, "sup": 3, "amt": 1.0,
+                   "twin": False, "twin_sup_delta": 0,
+                   "twin_amt_epsilon": 0.0}],
+        "death_day": None,
+    }],
+))
 @example(_spec(  # leap February inside an enrollment window
     patients=[{
         "spans": [("adjacent", 200, "YY")],
@@ -151,6 +165,8 @@ def test_enrollment_matches_day_model(spec: dict) -> None:
     flags = [s[2] for p in spec["patients"] for s in p["spans"]]
     if len(set(flags)) > 1:
         event("coverage-flag variety present")
+    if any("U" in f for f in flags):
+        event("U-flag span present (SCDM unknown coverage)")
 
     with StageHarness(study) as harness:
         harness.attach_dataset(dataset)
@@ -217,6 +233,95 @@ def test_enrollment_overlapping_raw_spans_parity() -> None:
     assert len(dataset.dispensings) == 1
     assert max(r[6] for r in stock) > 30
     assert max(r[8] for r in stock) > len(dataset.dispensings)
+
+
+# ---------------------------------------------------------------------
+# SCDM 8.2.2 data-model boundaries (post-campaign alignment review;
+# probe: investigation/probes/b_scdm_alignment_probe.py).
+# ---------------------------------------------------------------------
+
+def test_enrollment_duplicate_identical_spans_collapse() -> None:
+    """Exact duplicate enrollment rows — the representable residue of the
+    SCDM "Collapsing enrollment spans" rule — collapse to ONE episode and
+    do NOT trigger the B2 fan-out: one fill stockpiles once.
+
+    SCDM 8.2.2 Enrollment sanctions exactly one overlap form: spans
+    identical on (PatID, Enr_Start, Enr_End, MedCov, DrugCov, Chart)
+    differing only in PlanType/PayerType, which partners are told to
+    collapse. This pipeline reads neither column (INPUTS.md enrollment:
+    patid, enr_start, enr_end, medcov, drugcov [, chart]), so the
+    sanctioned overlap arrives here as exact duplicate rows. Their
+    lag-break is a no-op (blank gap -1, no flag change), the island
+    min/max reconciles, and the claim matches one containing span."""
+    dataset = mini_dataset(
+        patients=(patient(1),),
+        enrollment=(
+            span(1, date(2011, 1, 1), date(2011, 12, 31)),
+            span(1, date(2011, 1, 1), date(2011, 12, 31)),
+        ),
+        dispensings=(disp(1, date(2011, 9, 15), "E00001", 30, 10.0),),
+    )
+    study = two_cohort_study()
+    with StageHarness(study) as harness:
+        harness.attach_dataset(dataset)
+        harness.run_through("exposure + stockpiling")
+        sql = fetch_rows(harness.engine, "enrollment_spans")
+        stock = fetch_rows(harness.engine, "stockpiled")
+    expected = [
+        ("MD|0|0", 1, 1, date(2011, 1, 1), date(2011, 12, 31)),
+    ]
+    assert sorted(sql) == sorted(expected), sql
+    assert _model_rows(dataset, study) == expected
+    # No B2 fan-out on duplicates: one stockpiled row for the one fill,
+    # full supply (nothing shaved), numdispensing=1 (row indices as in
+    # the parity pin above: r[6]=supply, r[8]=numdispensing).
+    assert len(stock) == 1, stock
+    assert stock[0][6] == 30, stock
+    assert stock[0][8] == 1, stock
+
+
+def test_enrollment_unknown_flags_and_chart_interaction() -> None:
+    """SCDM-legal 'U' (Unknown) coverage flags: MedCov Y/N/U/A, DrugCov
+    Y/N/U. 'U' never qualifies for coverage (00_macros has_coverage and
+    the oracle agree), BUT the chart filter runs over ALL raw spans — a
+    non-chart 'U' span still drops the whole patient under chart_required,
+    and a (U,Y) span qualifies under drug-only coverage."""
+    dataset = mini_dataset(
+        patients=(patient(1), patient(2), patient(3)),
+        enrollment=(
+            span(1, START, START + timedelta(days=60), "Y", "Y"),
+            span(1, START + timedelta(days=10), START + timedelta(days=20),
+                 "U", "U", chart="N"),
+            span(2, START, START + timedelta(days=60), "Y", "Y"),
+            span(3, START, START + timedelta(days=60), "U", "Y"),
+        ),
+        dispensings=(
+            disp(1, START + timedelta(days=10), "E00001", 7, 1.0),
+            disp(2, START + timedelta(days=10), "E00001", 7, 1.0),
+            disp(3, START + timedelta(days=10), "E00001", 7, 1.0),
+        ),
+    )
+    md_study = two_cohort_study(
+        coverage="MD", cohort_overrides={"chart_required": True})
+    with StageHarness(md_study) as harness:
+        harness.attach_dataset(dataset)
+        harness.run_through("enrollment_spans")
+        sql = fetch_rows(harness.engine, "enrollment_spans")
+    model = enrollment_episodes(dataset, md_study)
+    assert {r[1] for r in sql} == {2}, sql
+    assert {patid for (_cfg, patid) in model} == {2}
+
+    d_study = two_cohort_study(coverage="D")
+    with StageHarness(d_study) as harness:
+        harness.attach_dataset(dataset)
+        harness.run_through("enrollment_spans")
+        d_sql = fetch_rows(harness.engine, "enrollment_spans")
+    d_model = enrollment_episodes(dataset, d_study)
+    # Drug-only coverage, chart NOT required (a different enr_cfg_id, so
+    # the MD chart drop does not carry over): (U,Y) qualifies; (Y,U) and
+    # (U,U) never do; patient 1's (Y,Y) span qualifies again.
+    assert {r[1] for r in d_sql} == {1, 2, 3}, d_sql
+    assert {patid for (_cfg, patid) in d_model} == {1, 2, 3}
 
 
 # ---------------------------------------------------------------------
